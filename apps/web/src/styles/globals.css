@@ -1,0 +1,7 @@
+@import "@app/tailwind-config/globals.css";
+
+@layer base {
+  body {
+    min-height: 100dvh;
+  }
+}

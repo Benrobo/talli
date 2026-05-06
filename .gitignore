@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build artefacts
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Tooling caches
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Trigger.dev
+.trigger/
+
+# Env files (NEVER commit secrets)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# Local databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# Coverage
+coverage/
+
+# Prisma
+services/engine/.debug/
+
+# Generated files
+src/routeTree.gen.ts
+**/routeTree.gen.ts

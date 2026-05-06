@@ -1,0 +1,42 @@
+---
+description: Project-wide rules for AI agents working in ai-fullstack-starter
+alwaysApply: true
+---
+
+# Project rules
+
+Read [`AGENTS.md`](mdc:AGENTS.md) first. The following rules summarize the
+hard constraints from there:
+
+## Style
+
+- **Bun**, not npm / yarn / pnpm.
+- **No inline comments.** JSDoc (`/** ... */`) above exports only.
+- **No `console.log`** in `services/engine/`. Use the `logger` import.
+
+## Engine
+
+- Routes compose `requireFeature` -> `rateLimiter.rateLimit` ->
+  `validateSchema` -> `useCatchErrors(isAuthenticated(handler))`.
+- Throw `HttpException` subclasses; never craft error responses manually.
+- Schemas live in `services/engine/src/schemas/`.
+- Controllers live in `services/engine/src/controllers/`.
+
+## Web
+
+- TanStack Router, file-based, with `defaultPendingMs: 0` and
+  `defaultPreload: "intent"` already configured. Don't change those.
+- TanStack Query for server state. No Redux, no Recoil.
+- Forms are hand-rolled with `useState` + `useMutation`. Don't pull in
+  `react-hook-form` unless a route genuinely needs it.
+
+## Icons
+
+- `bun icons:add <slug>` before importing a new icon.
+- Sources: `duotone-rounded` (default) and `twotone-rounded`. See
+  `packages/icons/README.md`.
+
+## Memory and skills
+
+- Cross-cutting facts go in `memory/`.
+- Reusable how-to knowledge goes in `.agents/skills/<name>/SKILL.md`.
