@@ -14,7 +14,7 @@ export default function MarketingHome() {
         </p>
         <div className="flex items-center justify-center gap-3">
           <Link
-            href="http://localhost:5173"
+            href="http://localhost:7193"
             className="px-5 py-2.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
           >
             Open the app

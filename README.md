@@ -46,12 +46,17 @@ bun --filter @app/engine db:migrate
 bun dev
 ```
 
-Defaults:
+Defaults (all in the 719x block to stay clear of typical project ports):
 
-- Engine: http://localhost:6590
-- Socket.IO: http://localhost:6591
-- Web SPA: http://localhost:5173
-- Marketing: http://localhost:3001
+- Engine: http://localhost:7191
+- Socket.IO: http://localhost:7192
+- Web SPA: http://localhost:7193 (preview: 7194)
+- Marketing: http://localhost:7195
+
+Change them by editing the relevant `.env` and the `--port` flags in each
+app's `package.json` script. Keep them in sync via
+`services/engine/src/config/internal-config.ts`, which lists every default
+port and the CORS allowlist in one place.
 
 ## Stack snapshot
 
