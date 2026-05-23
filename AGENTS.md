@@ -97,6 +97,10 @@ Inside `.agents/skills/` and `.agents/skills-cursor/`. Load
 `SKILL.md` from the skill folder when the task matches the skill's
 description. The skill index is in `.agents/README.md`.
 
+Project-local additions include `karpathy-guidelines` for Andrej
+Karpathy-inspired guardrails around assumptions, simplicity, surgical
+changes, and verification.
+
 If a needed skill is missing, check the `find-skills` skill for how to
 discover and install one.
 
