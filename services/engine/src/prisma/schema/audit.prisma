@@ -1,0 +1,19 @@
+model AuditLog {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorUserId     String?
+  actor           User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorPlatformId String?
+  action          String
+  entityType      String
+  entityId        String
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

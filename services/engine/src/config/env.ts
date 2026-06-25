@@ -3,8 +3,8 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  PORT: z.coerce.number().default(7191),
-  SOCKET_PORT: z.coerce.number().default(7192),
+  PORT: z.coerce.number().default(7291),
+  SOCKET_PORT: z.coerce.number().default(7292),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
@@ -16,12 +16,13 @@ const envSchema = z.object({
 
   WEB_APP_URL: z.string().url().default("http://localhost:7193"),
   CLIENT_URL: z.string().url().default("http://localhost:7193"),
+  PUBLIC_API_URL: z.string().url().optional(),
 
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
   GOOGLE_REDIRECT_URI: z
     .string()
-    .default("http://localhost:7191/api/auth/google/callback"),
+    .default("http://localhost:7291/api/auth/google/callback"),
 
   PLUNK_API_KEY: z.string().default(""),
   MAIL_FROM: z.string().default("noreply@example.com"),
@@ -39,6 +40,25 @@ const envSchema = z.object({
   TRIGGER_PROJECT_ID: z.string().default(""),
 
   FEATURE_FLAGS: z.string().default(""),
+
+  NOMBA_ENV: z.enum(["test", "live"]).default("test"),
+  NOMBA_CLIENT_ID: z.string().default(""),
+  NOMBA_PRIVATE_KEY: z.string().default(""),
+  NOMBA_PARENT_ACCOUNT_ID: z.string().default(""),
+  NOMBA_SUB_ACCOUNT_ID: z.string().default(""),
+  NOMBA_WEBHOOK_SECRET: z.string().default(""),
+
+  TELEGRAM_BOT_TOKEN: z.string().default(""),
+  TELEGRAM_BOT_USERNAME: z.string().default(""),
+  TELEGRAM_WEBHOOK_SECRET: z.string().default(""),
+
+  WHATSAPP_ACCESS_TOKEN: z.string().default(""),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().default(""),
+  WHATSAPP_VERIFY_TOKEN: z.string().default(""),
+  WHATSAPP_APP_SECRET: z.string().default(""),
+
+  CHAT_LINK_CODE_TTL_MINUTES: z.coerce.number().default(15),
+  PAYMENT_PAGE_BASE_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

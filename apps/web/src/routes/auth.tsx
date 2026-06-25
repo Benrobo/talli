@@ -1,15 +1,25 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { z } from "zod";
 import { authApi } from "@/lib/auth";
+import { Button, Field, Input } from "@/components/ui";
+import { LogoMark } from "@/components/brand/logo";
+
+const authSearchSchema = z.object({
+  redirect: z.string().optional(),
+});
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search) => authSearchSchema.parse(search),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const router = useRouter();
+  const { redirect } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"email" | "code">("email");
@@ -27,65 +37,76 @@ function AuthPage() {
     mutationFn: authApi.verifyOtp,
     onSuccess: () => {
       toast.success("Signed in.");
-      navigate({ to: "/dashboard" });
+      if (redirect) {
+        router.history.push(redirect);
+        return;
+      }
+      navigate({ to: "/home" });
     },
     onError: () => toast.error("Invalid or expired code."),
   });
 
   return (
-    <main className="min-h-dvh flex items-center justify-center p-6">
+    <main className="flex min-h-dvh items-center justify-center bg-screen p-6">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (stage === "email") requestOtp.mutate({ email, mode: "login" });
           else verifyOtp.mutate({ email, code });
         }}
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-surface p-8 shadow-sm"
+        className="w-full max-w-sm space-y-6 rounded-[20px] border border-hairline bg-card p-8 shadow-card"
       >
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">Sign in</h1>
-          <p className="text-sm text-muted">
-            We'll email you a 6-digit code. No passwords.
-          </p>
+        <header className="space-y-4">
+          <LogoMark size={26} />
+          <div className="space-y-1.5">
+            <h1 className="font-serif text-[32px] leading-none">Sign in to Talli</h1>
+            <p className="text-sm text-content-muted">
+              We'll email you a 6-digit code. No passwords.
+            </p>
+          </div>
         </header>
 
         {stage === "email" ? (
-          <input
-            type="email"
-            required
-            autoFocus
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-border bg-paper px-3 py-2 outline-none focus:ring-2 focus:ring-brand-300"
-          />
+          <Field label="Email">
+            <Input
+              type="email"
+              required
+              autoFocus
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
         ) : (
-          <input
-            type="text"
-            inputMode="numeric"
-            required
-            autoFocus
-            maxLength={6}
-            placeholder="6-digit code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            className="w-full rounded-lg border border-border bg-paper px-3 py-2 text-center tracking-[0.3em] outline-none focus:ring-2 focus:ring-brand-300"
-          />
+          <Field label="6-digit code">
+            <Input
+              type="text"
+              inputMode="numeric"
+              required
+              autoFocus
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              className="tabular text-center tracking-[0.3em]"
+            />
+          </Field>
         )}
 
-        <button
+        <Button
           type="submit"
+          size="lg"
+          block
           disabled={requestOtp.isPending || verifyOtp.isPending}
-          className="w-full rounded-lg bg-brand-500 px-4 py-2 font-medium text-white transition hover:bg-brand-600 disabled:opacity-60"
         >
           {stage === "email" ? "Send code" : "Verify code"}
-        </button>
+        </Button>
 
         {stage === "code" ? (
           <button
             type="button"
             onClick={() => setStage("email")}
-            className="w-full text-sm text-muted hover:text-ink"
+            className="w-full text-sm text-content-muted transition-colors hover:text-content"
           >
             Use a different email
           </button>

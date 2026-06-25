@@ -17,7 +17,11 @@ import { fileURLToPath } from "node:url";
 const ICONS_REPO_ROOT =
   process.env.DESIGN_ICONS_DIR ?? "/Users/benaiah/projects/design-icons";
 
-const SUPPORTED_STYLES = ["duotone-rounded", "twotone-rounded"] as const;
+const SUPPORTED_STYLES = [
+  "duotone-rounded",
+  "twotone-rounded",
+  "solid-rounded",
+] as const;
 type Style = (typeof SUPPORTED_STYLES)[number];
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -230,8 +234,8 @@ function main() {
   }
   if (args.names.length === 0) {
     console.log(`Usage:
-  bun run icons:add <icon-slug> [<icon-slug> ...] [--style duotone-rounded|twotone-rounded] [--as PascalName]
-  bun run icons:list [--style duotone-rounded|twotone-rounded]
+  bun run icons:add <icon-slug> [<icon-slug> ...] [--style duotone-rounded|twotone-rounded|solid-rounded] [--as PascalName]
+  bun run icons:list [--style duotone-rounded|twotone-rounded|solid-rounded]
 
 Defaults to --style duotone-rounded. Source: ${ICONS_REPO_ROOT}/icons/<style>/.`);
     return;

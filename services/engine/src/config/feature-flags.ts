@@ -6,7 +6,14 @@ export type FeatureFlag =
   | "ai"
   | "media"
   | "notifications"
-  | "socket";
+  | "socket"
+  | "workspaces"
+  | "telegram"
+  | "whatsapp"
+  | "collections"
+  | "savings"
+  | "nomba"
+  | "bot_commands";
 
 interface FeatureFlagConfig {
   enabled: boolean;
@@ -17,9 +24,16 @@ const DEFAULT_FLAGS: Record<FeatureFlag, FeatureFlagConfig> = {
   auth: { enabled: true, label: "Authentication" },
   users: { enabled: true, label: "User profiles" },
   ai: { enabled: true, label: "AI generation" },
-  media: { enabled: true, label: "Media uploads" },
+  media: { enabled: false, label: "Media uploads" },
   notifications: { enabled: true, label: "Notifications" },
-  socket: { enabled: true, label: "Realtime socket" },
+  socket: { enabled: false, label: "Realtime socket" },
+  workspaces: { enabled: true, label: "Workspaces" },
+  telegram: { enabled: true, label: "Telegram bot" },
+  whatsapp: { enabled: true, label: "WhatsApp bot" },
+  collections: { enabled: true, label: "Collections" },
+  savings: { enabled: true, label: "Savings jars" },
+  nomba: { enabled: true, label: "Nomba payments" },
+  bot_commands: { enabled: true, label: "Bot command parser" },
 };
 
 function loadFlags(): Record<FeatureFlag, FeatureFlagConfig> {

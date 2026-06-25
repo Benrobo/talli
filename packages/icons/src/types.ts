@@ -6,10 +6,11 @@ import type { CSSProperties } from "react";
  * - `duotone-rounded` — two-tone filled icons with a `--icon-tone` CSS variable
  *   on the opacity layer. This is the **default** for product UI.
  * - `twotone-rounded` — distinct two-color stroke icons.
+ * - `solid-rounded` — single-color filled icons.
  *
- * Both styles are sourced from `~/projects/design-icons/icons/<style>/`.
+ * All styles are sourced from `~/projects/design-icons/icons/<style>/`.
  */
-export type IconStyle = "duotone-rounded" | "twotone-rounded";
+export type IconStyle = "duotone-rounded" | "twotone-rounded" | "solid-rounded";
 
 export interface IconData {
   /** Inline SVG content (everything between the <svg> tags). */

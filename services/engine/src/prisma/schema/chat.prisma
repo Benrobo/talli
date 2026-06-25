@@ -1,0 +1,95 @@
+enum ChatPlatform {
+  telegram
+  whatsapp
+}
+
+enum ChatType {
+  private
+  group
+}
+
+enum LinkedChatStatus {
+  active
+  disabled
+}
+
+enum ChatLinkPurpose {
+  private_link
+  group_link
+}
+
+enum BotCommandStatus {
+  received
+  parsed
+  confirmed
+  rejected
+  failed
+}
+
+model LinkedChat {
+  id               String           @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform         ChatPlatform
+  chatType         ChatType
+  platformChatId   String
+  platformUserId   String?
+  title            String?
+  verifiedByUserId String?
+  verifiedBy       User?            @relation("LinkedChatVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verifiedAt       DateTime?
+  status           LinkedChatStatus @default(active)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  botCommands BotCommand[]
+  collections Collection[]
+
+  @@unique([platform, platformChatId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("linked_chats")
+}
+
+model ChatLinkCode {
+  id              String          @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform        ChatPlatform
+  codeHash        String
+  purpose         ChatLinkPurpose
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String
+  createdBy       User            @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([codeHash])
+  @@index([expiresAt])
+  @@map("chat_link_codes")
+}
+
+model BotCommand {
+  id               String           @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  linkedChatId     String?
+  linkedChat       LinkedChat?      @relation(fields: [linkedChatId], references: [id], onDelete: SetNull)
+  platform         ChatPlatform
+  senderPlatformId String
+  rawText          String
+  parsedIntent     Json?
+  confidence       Float?
+  status           BotCommandStatus @default(received)
+  errorMessage     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([linkedChatId])
+  @@index([status])
+  @@map("bot_commands")
+}

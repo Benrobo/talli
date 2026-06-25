@@ -36,6 +36,49 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
+
+  /* ---- Talli product palette (dashboard + chat flows) ---- */
+  --color-iris: oklch(0.52 0.21 285);
+  --color-iris-deep: oklch(0.41 0.17 285);
+  --color-iris-soft: oklch(0.52 0.21 285 / 0.12);
+
+  --color-night: #161427;
+  --color-night-2: #201d34;
+  --color-night-3: #2b2745;
+
+  --color-screen: #f6f5fb;
+  --color-card: #ffffff;
+
+  --color-content: #191726;
+  --color-content-muted: #6e6b86;
+  --color-content-faint: #9c99b5;
+
+  --color-hairline: rgba(25, 23, 38, 0.09);
+  --color-hairline-soft: rgba(25, 23, 38, 0.055);
+  --color-track: #e7e4f2;
+
+  --color-amber: oklch(0.8 0.13 72);
+  --color-amber-deep: oklch(0.47 0.1 66);
+  --color-amber-soft: oklch(0.8 0.13 72 / 0.2);
+
+  --color-rose: oklch(0.58 0.18 18);
+  --color-rose-soft: oklch(0.62 0.16 20 / 0.4);
+
+  --color-on-night: #a8a5c0;
+  --color-on-night-soft: #7c7997;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-strong: rgba(255, 255, 255, 0.17);
+
+  /* Talli marketing palette (landing page) */
+  --color-leaf: oklch(0.84 0.17 148);
+  --color-leaf-deep: oklch(0.5 0.12 150);
+
+  --font-serif: "Instrument Serif", Georgia, serif;
+
+  --shadow-card: 0 1px 2px rgba(25, 23, 38, 0.04), 0 12px 32px -20px rgba(25, 23, 38, 0.22);
+  --shadow-win: 0 50px 100px -44px rgba(22, 20, 39, 0.5);
+  --shadow-btn: 0 2px 9px -2px rgba(63, 42, 180, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-phone: 0 44px 84px -38px rgba(22, 20, 39, 0.62);
 }
 
 @custom-variant dark ([data-theme="dark"] &);

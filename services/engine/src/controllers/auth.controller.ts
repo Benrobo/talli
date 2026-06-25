@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from "@app/shared/constants";
 import env from "../config/env.js";
+import { COOKIE_SECURE } from "../config/internal-config.js";
 import prisma from "../prisma/index.js";
 import jwtService from "../lib/jwt.js";
 import { cookieManager } from "../lib/cookie-manager.js";
@@ -13,6 +14,7 @@ import {
   UnauthorizedException,
 } from "../lib/exception.js";
 import type { RequestOtpInput, VerifyOtpInput } from "../schemas/auth.schema.js";
+import { workspaceService } from "../services/workspace.service.js";
 
 const OTP_TTL_SECONDS = 600;
 
@@ -52,6 +54,8 @@ class AuthController {
       update: { isVerified: true },
     });
 
+    await workspaceService.ensureDefaultWorkspace(user.id);
+
     const expiresAt = new Date(Date.now() + env.JWT_REFRESH_TOKEN_TTL * 1000);
     const session = await prisma.authSession.create({
       data: {
@@ -66,13 +70,13 @@ class AuthController {
     cookieManager.setCookie(ctx, AUTH_COOKIE_NAME, tokens.accessToken, {
       maxAge: env.JWT_ACCESS_TOKEN_TTL,
       sameSite: "lax",
-      secure: env.NODE_ENV === "production",
+      secure: COOKIE_SECURE,
       domain: env.COOKIE_DOMAIN,
     });
     cookieManager.setCookie(ctx, REFRESH_COOKIE_NAME, tokens.refreshToken, {
       maxAge: env.JWT_REFRESH_TOKEN_TTL,
       sameSite: "lax",
-      secure: env.NODE_ENV === "production",
+      secure: COOKIE_SECURE,
       domain: env.COOKIE_DOMAIN,
     });
 
@@ -104,9 +108,11 @@ class AuthController {
     }
     cookieManager.clearCookie(ctx, AUTH_COOKIE_NAME, {
       domain: env.COOKIE_DOMAIN,
+      secure: COOKIE_SECURE,
     });
     cookieManager.clearCookie(ctx, REFRESH_COOKIE_NAME, {
       domain: env.COOKIE_DOMAIN,
+      secure: COOKIE_SECURE,
     });
     return sendResponse.success(ctx, "Signed out", 200, null);
   }

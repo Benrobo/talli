@@ -1,0 +1,25 @@
+enum WebhookProcessingStatus {
+  received
+  processed
+  ignored
+  failed
+}
+
+model WebhookEvent {
+  id               String                  @id @default(cuid())
+  provider         String
+  providerEventId  String                  @unique
+  eventType        String
+  rawPayload       Json
+  signatureValid   Boolean?
+  processingStatus WebhookProcessingStatus @default(received)
+  errorMessage     String?
+  processedAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([provider])
+  @@index([processingStatus])
+  @@index([createdAt])
+  @@map("webhook_events")
+}
