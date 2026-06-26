@@ -5,15 +5,6 @@ CREATE TYPE "UserRole" AS ENUM ('user', 'admin', 'super_admin');
 CREATE TYPE "AccountProvider" AS ENUM ('google', 'github', 'apple', 'email');
 
 -- CreateEnum
-CREATE TYPE "MediaStatus" AS ENUM ('pending', 'ready', 'failed');
-
--- CreateEnum
-CREATE TYPE "WorkspaceStatus" AS ENUM ('active', 'archived');
-
--- CreateEnum
-CREATE TYPE "WorkspaceMemberRole" AS ENUM ('owner', 'admin', 'member');
-
--- CreateEnum
 CREATE TYPE "ChatPlatform" AS ENUM ('telegram', 'whatsapp');
 
 -- CreateEnum
@@ -38,6 +29,9 @@ CREATE TYPE "CollectionStatus" AS ENUM ('draft', 'active', 'paid', 'partially_pa
 CREATE TYPE "CollectionMemberStatus" AS ENUM ('not_paid', 'pending', 'paid', 'underpaid', 'overpaid', 'refunded', 'manual_review');
 
 -- CreateEnum
+CREATE TYPE "MediaStatus" AS ENUM ('pending', 'ready', 'failed');
+
+-- CreateEnum
 CREATE TYPE "PaymentProvider" AS ENUM ('nomba');
 
 -- CreateEnum
@@ -55,6 +49,27 @@ CREATE TYPE "SavingsTransactionStatus" AS ENUM ('pending', 'completed', 'failed'
 -- CreateEnum
 CREATE TYPE "WebhookProcessingStatus" AS ENUM ('received', 'processed', 'ignored', 'failed');
 
+-- CreateEnum
+CREATE TYPE "WorkspaceStatus" AS ENUM ('active', 'archived');
+
+-- CreateEnum
+CREATE TYPE "WorkspaceMemberRole" AS ENUM ('owner', 'admin', 'member');
+
+-- CreateTable
+CREATE TABLE "audit_logs" (
+    "id" TEXT NOT NULL,
+    "workspaceId" TEXT NOT NULL,
+    "actorUserId" TEXT,
+    "actorPlatformId" TEXT,
+    "action" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -67,6 +82,7 @@ CREATE TABLE "users" (
     "passwordHash" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "activeWorkspaceId" TEXT,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -110,61 +126,6 @@ CREATE TABLE "refresh_tokens" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "media" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT,
-    "bucketKey" TEXT NOT NULL,
-    "publicUrl" TEXT,
-    "mimeType" TEXT NOT NULL,
-    "size" INTEGER NOT NULL,
-    "status" "MediaStatus" NOT NULL DEFAULT 'ready',
-    "metadata" JSONB,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "media_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "notifications" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
-    "body" TEXT NOT NULL,
-    "data" JSONB,
-    "readAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "workspaces" (
-    "id" TEXT NOT NULL,
-    "ownerUserId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "slug" TEXT NOT NULL,
-    "currency" TEXT NOT NULL DEFAULT 'NGN',
-    "status" "WorkspaceStatus" NOT NULL DEFAULT 'active',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "workspaces_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "workspace_members" (
-    "id" TEXT NOT NULL,
-    "workspaceId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "role" "WorkspaceMemberRole" NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "workspace_members_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -254,6 +215,36 @@ CREATE TABLE "collection_members" (
 );
 
 -- CreateTable
+CREATE TABLE "media" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+    "bucketKey" TEXT NOT NULL,
+    "publicUrl" TEXT,
+    "mimeType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "status" "MediaStatus" NOT NULL DEFAULT 'ready',
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "media_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "notifications" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "data" JSONB,
+    "readAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "payments" (
     "id" TEXT NOT NULL,
     "workspaceId" TEXT NOT NULL,
@@ -322,19 +313,38 @@ CREATE TABLE "webhook_events" (
 );
 
 -- CreateTable
-CREATE TABLE "audit_logs" (
+CREATE TABLE "workspaces" (
+    "id" TEXT NOT NULL,
+    "ownerUserId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'NGN',
+    "status" "WorkspaceStatus" NOT NULL DEFAULT 'active',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "workspaces_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "workspace_members" (
     "id" TEXT NOT NULL,
     "workspaceId" TEXT NOT NULL,
-    "actorUserId" TEXT,
-    "actorPlatformId" TEXT,
-    "action" TEXT NOT NULL,
-    "entityType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "metadata" JSONB,
+    "userId" TEXT NOT NULL,
+    "role" "WorkspaceMemberRole" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "workspace_members_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE INDEX "audit_logs_workspaceId_idx" ON "audit_logs"("workspaceId");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_workspaceId_createdAt_idx" ON "audit_logs"("workspaceId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_entityType_entityId_idx" ON "audit_logs"("entityType", "entityId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
@@ -359,33 +369,6 @@ CREATE INDEX "refresh_tokens_userId_idx" ON "refresh_tokens"("userId");
 
 -- CreateIndex
 CREATE INDEX "refresh_tokens_sessionId_idx" ON "refresh_tokens"("sessionId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "media_bucketKey_key" ON "media"("bucketKey");
-
--- CreateIndex
-CREATE INDEX "media_userId_idx" ON "media"("userId");
-
--- CreateIndex
-CREATE INDEX "notifications_userId_createdAt_idx" ON "notifications"("userId", "createdAt");
-
--- CreateIndex
-CREATE INDEX "notifications_userId_readAt_idx" ON "notifications"("userId", "readAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "workspaces_slug_key" ON "workspaces"("slug");
-
--- CreateIndex
-CREATE INDEX "workspaces_ownerUserId_idx" ON "workspaces"("ownerUserId");
-
--- CreateIndex
-CREATE INDEX "workspaces_status_idx" ON "workspaces"("status");
-
--- CreateIndex
-CREATE INDEX "workspace_members_userId_idx" ON "workspace_members"("userId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "workspace_members_workspaceId_userId_key" ON "workspace_members"("workspaceId", "userId");
 
 -- CreateIndex
 CREATE INDEX "linked_chats_workspaceId_idx" ON "linked_chats"("workspaceId");
@@ -436,6 +419,18 @@ CREATE INDEX "collection_members_collectionId_platformUserId_idx" ON "collection
 CREATE INDEX "collection_members_appUserId_idx" ON "collection_members"("appUserId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "media_bucketKey_key" ON "media"("bucketKey");
+
+-- CreateIndex
+CREATE INDEX "media_userId_idx" ON "media"("userId");
+
+-- CreateIndex
+CREATE INDEX "notifications_userId_createdAt_idx" ON "notifications"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "notifications_userId_readAt_idx" ON "notifications"("userId", "readAt");
+
+-- CreateIndex
 CREATE INDEX "payments_workspaceId_idx" ON "payments"("workspaceId");
 
 -- CreateIndex
@@ -481,10 +476,16 @@ CREATE INDEX "webhook_events_processingStatus_idx" ON "webhook_events"("processi
 CREATE INDEX "webhook_events_createdAt_idx" ON "webhook_events"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_workspaceId_idx" ON "audit_logs"("workspaceId");
+CREATE UNIQUE INDEX "workspaces_slug_key" ON "workspaces"("slug");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_workspaceId_createdAt_idx" ON "audit_logs"("workspaceId", "createdAt");
+CREATE INDEX "workspaces_ownerUserId_idx" ON "workspaces"("ownerUserId");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_entityType_entityId_idx" ON "audit_logs"("entityType", "entityId");
+CREATE INDEX "workspaces_status_idx" ON "workspaces"("status");
+
+-- CreateIndex
+CREATE INDEX "workspace_members_userId_idx" ON "workspace_members"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "workspace_members_workspaceId_userId_key" ON "workspace_members"("workspaceId", "userId");

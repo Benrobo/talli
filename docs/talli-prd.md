@@ -1,18 +1,18 @@
 # Talli PRD
 
 **Product:** Talli  
-**Tagline:** AI treasurer and savings assistant for chats  
+**Tagline:** AI treasurer, savings, and money-transfer assistant for chats  
 **Platforms:** WhatsApp private chat, Telegram private chat, Telegram group chat, web dashboard  
 **Payment provider:** Nomba  
 **Primary stack:** Hono.js, Drizzle ORM, TanStack Router  
 **Document status:** Hackathon PRD draft  
-**Last updated:** 2026-06-22
+**Last updated:** 2026-06-26
 
 ---
 
 ## 1. Product Summary
 
-Talli is a conversational money assistant that lets users collect money, track payments, run savings jars, and manage group contributions directly inside chat.
+Talli is a conversational money assistant that lets users collect money, send money, track payments, run savings jars, and manage group contributions directly inside chat.
 
 Users configure their workspace from a web dashboard, connect their payment setup, then link the bot to WhatsApp private chat, Telegram private chat, or Telegram group chats.
 
@@ -21,13 +21,16 @@ The bot understands natural language commands like:
 ```txt
 Save ₦2,000 to my rent jar
 Collect ₦5,000 from everyone for Friday hangout
+Send ₦5,000 to Tunde 0123456789 GTBank
+Pay out the football money to my account
+Withdraw ₦10,000 from my rent jar
 Who has not paid?
 How much have we collected?
 Remind people who have not paid
 Show me my receipt for yesterday's payment
 ```
 
-Talli should not behave like an uncontrolled AI bank agent. AI is used to understand user intent, summarize payment status, and produce helpful replies. All actual payment actions must be deterministic, permission-checked, and confirmed through Nomba payment flows and webhooks.
+Talli should not behave like an uncontrolled AI bank agent. AI is used to understand user intent, summarize payment status, and produce helpful replies. All actual money movement — incoming payments **and outgoing transfers/payouts** — must be deterministic, permission-checked, and confirmed by the user before Talli calls any Nomba payment or payout API. The LLM parses and proposes a transfer; it never executes one on its own.
 
 ---
 
@@ -58,7 +61,7 @@ The long-term vision:
 
 For the hackathon MVP:
 
-> Talli helps users create collections and savings jars from chat, lets people pay through Nomba Checkout or virtual accounts, and updates payment status automatically through Nomba webhooks.
+> Talli helps users create collections and savings jars from chat, lets people pay through Nomba Checkout or virtual accounts, lets owners send money out (P2P transfers, collection payouts, and jar withdrawals) to bank accounts via confirmed Nomba payouts, and updates payment status automatically through Nomba webhooks.
 
 ---
 
@@ -152,7 +155,7 @@ Users should use the web dashboard to:
 
 ## 6. Core Product Modes
 
-Talli has two major modes.
+Talli has three major modes: **Collect**, **Save**, and **Send**.
 
 ---
 
@@ -273,6 +276,95 @@ Current progress: ₦42,000 / ₦200,000
 
 New progress: ₦44,000 / ₦200,000
 ```
+
+---
+
+# 6.3 Send Mode
+
+Send Mode helps users move money **out** of Talli to a bank account through natural language. The LLM parses the request and proposes a transfer; the user must confirm before Talli calls the Nomba payout/transfer API. AI never moves money on its own.
+
+Send Mode covers three MVP transfer types, all settling to a Nigerian bank account:
+
+1. **P2P transfer** — send to any bank account/number.
+2. **Collection payout** — owner disburses funds collected in a collection.
+3. **Savings jar withdrawal** — owner moves funds out of their own jar.
+
+Two transfer types are **post-MVP**:
+
+- **Wallet-to-wallet** — instant transfer between two linked Talli users using internal Talli balances. Requires a custodial wallet/balance system (see §11 Won't-Have), so it is deferred.
+- **Split payment / bill split** — a user uploads a receipt (e.g. a restaurant bill) to Talli, Talli reads it, and generates a custom payment link / collection so the bill can be split and collected from a group. (Payment-rail UX — hosted checkout URL vs. virtual account vs. pay-from-wallet — is still being decided; see §8.4.)
+
+## Use Cases
+
+- “Send ₦5,000 to Tunde 0123456789 GTBank.”
+- “Pay out the football money to my account.”
+- “Withdraw ₦10,000 from my rent jar to my GTBank account.”
+- “Send ₦2,000 to my saved beneficiary ‘Mum’.”
+
+## Main Flow: P2P Transfer (Private Chat)
+
+1. User sends:
+
+```txt
+Send ₦5,000 to Tunde 0123456789 GTBank
+```
+
+2. Bot parses the intent and (if needed) resolves the account name through Nomba account lookup, then asks for confirmation:
+
+```txt
+Confirm transfer?
+
+Amount: ₦5,000
+To: TUNDE BELLO
+Bank: GTBank • 0123456789
+
+[Send ₦5,000] [Cancel]
+```
+
+3. User confirms.
+4. Talli runs deterministic validation (role/permission, balance/limits, beneficiary).
+5. Talli calls the Nomba payout/transfer API and stores the provider reference.
+6. Nomba sends a payout webhook (success/failed).
+7. App verifies and processes the webhook idempotently.
+8. Bot replies:
+
+```txt
+✅ Sent ₦5,000 to TUNDE BELLO (GTBank).
+Reference: NMB-XXXX
+```
+
+## Main Flow: Collection Payout
+
+1. Owner sends in private chat or the linked group:
+
+```txt
+@Talli pay out the Saturday football money to my account
+```
+
+2. Bot confirms the destination and net amount (collected minus any fees):
+
+```txt
+Pay out collection?
+
+Collection: Saturday football pitch
+Available: ₦36,000
+To: BENAIAH ALUMONA • GTBank • 0123456789
+
+[Pay out ₦36,000] [Cancel]
+```
+
+3. Owner confirms.
+4. Talli validates (owner-only), calls the Nomba payout API, stores the reference.
+5. Payout webhook confirms; bot posts a receipt and writes an audit log.
+
+## Send Mode Rules
+
+- Only an **owner** can request a collection payout or a savings jar withdrawal.
+- P2P transfers are available to linked users in private chat, subject to per-transfer and daily limits.
+- Every transfer requires explicit user confirmation; AI cannot initiate a transfer autonomously.
+- Bot must refuse transfer commands in unverified chats.
+- Destination accounts should be resolved/validated (name enquiry) before confirmation when the provider supports it.
+- Transfers must be idempotent on the provider reference and reconciled from the payout webhook, never from optimistic UI.
 
 ---
 
@@ -423,17 +515,27 @@ The bot should understand natural language commands and map them to structured i
 - `create_savings_jar`
 - `fund_savings_jar`
 - `savings_status`
+- `send_money` // P2P transfer to a bank account
+- `request_payout` // disburse collection funds to a bank account (owner only)
+- `withdraw_savings` // move jar funds to a bank account (owner only)
+- `confirm_transfer`
+- `cancel_transfer`
 - `show_receipt`
 - `help`
 
+### Post-MVP Intents
+
+- `send_to_wallet` // wallet-to-wallet between Talli users
+- `split_bill_from_receipt` // upload a receipt → generate a split payment link
+
 ### AI Rules
 
-- AI should only parse and summarize.
+- AI should only parse, summarize, and propose actions.
 - AI must not call Nomba APIs directly.
-- AI must not move money.
+- AI must not move money on its own. For transfers/payouts it only proposes a structured transfer; the deterministic layer executes it via Nomba **after** explicit user confirmation.
 - AI must not override role permissions.
 - Low-confidence commands should trigger clarification.
-- Financial actions require confirmation.
+- Financial actions (incoming payments and outgoing transfers) require confirmation.
 
 ---
 
@@ -467,6 +569,33 @@ Virtual accounts can be added for more bank-transfer-native flows. Nomba virtual
 - Do not double-credit payments.
 - Do not trust frontend success redirect as final payment confirmation.
 - Keep raw payload for audit/debugging.
+
+### Outgoing Transfer / Payout Flow
+
+Outgoing money (P2P transfer, collection payout, jar withdrawal) uses the Nomba payout/transfer API, not Checkout.
+
+1. User issues a transfer command in chat.
+2. AI parses it into a structured transfer intent.
+3. App resolves/validates the destination account (name enquiry where supported).
+4. App runs deterministic checks: role/permission, available balance or collected funds, per-transfer and daily limits.
+5. Bot shows a confirmation card with amount, resolved recipient name, bank, and account number.
+6. User confirms.
+7. App calls the Nomba payout/transfer API with an idempotency key and stores the provider reference.
+8. Nomba sends a payout webhook (success/failed/reversed).
+9. App verifies and processes the webhook idempotently and updates transfer status.
+10. App writes an audit log and bot sends a receipt.
+
+### Transfer Rules
+
+- A transfer is never executed without explicit user confirmation.
+- Use a client-supplied idempotency key plus the provider reference so a retried or duplicated request never double-sends.
+- Reconcile final status from the payout webhook, never from optimistic UI.
+- Failed/reversed payouts must restore the source balance and notify the user.
+- Enforce role checks server-side (payouts/withdrawals are owner-only) and apply transfer limits.
+
+### Open Question: Incoming Payment Rail
+
+Still being decided (see discussion in §8.4 notes): whether collections/split-bills present (a) a hosted Nomba Checkout URL only, (b) a dedicated virtual account number only, or (c) both — checkout link **and** a virtual account number — letting a payer either pay on the hosted page or bank-transfer directly, including paying from within Talli. This affects reconciliation (Checkout order ref vs. virtual-account credit webhook) and the data model.
 
 ---
 
@@ -571,6 +700,8 @@ Can:
 - Add/remove admins.
 - Create collections.
 - Manage savings rules.
+- Request collection payout to a bank account.
+- Withdraw funds from savings jars to a bank account.
 - Request payout/export.
 - View all payments and audit logs.
 
@@ -591,15 +722,17 @@ Can:
 - View own payment status.
 - View public collection progress.
 - Join savings challenge.
+- Send a personal P2P transfer to a bank account (subject to limits).
 
 ### Safety Rules
 
 - Only owner/admin can create group collections.
 - Only owner can unlink a group.
-- Only owner can request payout.
+- Only owner can request a collection payout or jar withdrawal.
+- P2P transfers are personal to the sender and bounded by per-transfer/daily limits.
 - Members cannot change payment amount unless collection allows open contributions.
-- Bot must refuse commands in unverified chats.
-- Bot must require confirmation for collection creation and money movement.
+- Bot must refuse commands (including transfers) in unverified chats.
+- Bot must require confirmation for collection creation and all money movement, incoming and outgoing.
 
 ---
 
@@ -681,6 +814,10 @@ Acceptance criteria:
 13. Payment/webhook event log.
 14. Basic role checks.
 15. Confirmation before financial actions.
+16. Send money (P2P transfer to a bank account) from chat via natural language, parse-and-confirm only.
+17. Collection payout to a bank account (owner-only, confirmed).
+18. Savings jar withdrawal to a bank account (owner-only, confirmed).
+19. Nomba payout/transfer integration with idempotent payout webhook handling.
 
 ## Should Have
 
@@ -699,6 +836,9 @@ Acceptance criteria:
 4. CSV export.
 5. Custom payment page branding.
 6. WhatsApp production integration.
+7. Wallet-to-wallet transfers between Talli users (requires custodial wallet/balance system).
+8. Split payment / bill split from an uploaded receipt (vision parsing → custom payment link).
+9. Saved beneficiaries / address book for faster transfers.
 
 ## Won’t Have in MVP
 
@@ -791,6 +931,14 @@ GET  /api/collections/:collectionId/status
 POST /api/savings/jars
 GET  /api/savings/jars/:jarId
 POST /api/savings/jars/:jarId/fund
+POST /api/savings/jars/:jarId/withdraw
+
+POST /api/collections/:collectionId/payout
+
+POST /api/transfers/resolve-account
+POST /api/transfers
+GET  /api/transfers/:transferId
+POST /api/transfers/:transferId/confirm
 
 POST /api/nomba/webhook
 GET  /api/webhook-events
@@ -945,6 +1093,47 @@ created_at
 updated_at
 ```
 
+## transfers
+
+```txt
+id
+workspace_id
+type // p2p | collection_payout | savings_withdrawal
+source_collection_id // nullable
+source_savings_jar_id // nullable
+initiated_by_user_id
+initiated_by_platform_id
+amount
+currency
+beneficiary_id // nullable
+recipient_account_number
+recipient_bank_code
+recipient_account_name // resolved via name enquiry
+provider // nomba
+provider_reference
+idempotency_key
+status // draft | awaiting_confirmation | processing | successful | failed | reversed
+failure_reason
+confirmed_at
+completed_at
+created_at
+updated_at
+```
+
+## beneficiaries
+
+```txt
+id
+workspace_id
+owner_user_id
+label // e.g. "Mum", "Landlord"
+account_number
+bank_code
+account_name
+created_at
+updated_at
+```
+
 ## savings_jars
 
 ```txt
@@ -1026,6 +1215,9 @@ Save ₦2,000 to rent jar
 How much have I saved this month?
 Show my receipt for yesterday
 Create a collection for Tunde's birthday
+Send ₦5,000 to Tunde 0123456789 GTBank
+Pay out the football money to my account
+Withdraw ₦10,000 from my rent jar
 ```
 
 ## WhatsApp Private
@@ -1042,14 +1234,14 @@ Send me my last receipt
 
 ## 15. Payment Safety and Compliance Principles
 
-1. AI must not move money directly.
-2. Every payment creation must pass deterministic validation.
-3. Every financial action must be role-checked.
-4. Every payment must require user confirmation.
-5. Payment success must be confirmed through Nomba webhook or verification endpoint.
-6. Webhooks must be idempotent.
+1. AI must not move money directly. It may only propose transfers/payouts; a deterministic, role-checked layer executes them via Nomba after explicit user confirmation.
+2. Every payment and transfer creation must pass deterministic validation (amount, balance/funds, limits, beneficiary).
+3. Every financial action must be role-checked (payouts and withdrawals are owner-only).
+4. Every payment and transfer must require user confirmation.
+5. Payment and transfer success must be confirmed through the Nomba webhook or verification endpoint, never optimistic UI.
+6. Webhooks and transfer execution must be idempotent (provider reference + idempotency key); failed/reversed payouts must restore the source balance.
 7. Sensitive actions must be logged.
-8. Payouts/transfers should be owner-only and can be post-MVP.
+8. Collection payouts and jar withdrawals are owner-only; P2P transfers are personal to the sender and bounded by per-transfer/daily limits.
 9. Savings should be represented as internal ledger balances unless a compliant wallet/savings structure is provided.
 10. Avoid promising interest, investment returns, or banking features in MVP.
 
@@ -1272,8 +1464,9 @@ Mitigation:
 11. Update collection/member status after payment.
 12. Add status question commands.
 13. Add savings jar creation/funding.
-14. Add webhook/audit log dashboard.
-15. Polish demo flow.
+14. Add Nomba payout/transfer integration: send money (P2P), collection payout, jar withdrawal — all parse-and-confirm with idempotent payout webhook handling.
+15. Add webhook/audit log dashboard.
+16. Polish demo flow.
 
 ---
 

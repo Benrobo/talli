@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
-import { createServer } from "http";
+import type { Server as HttpServer } from "http";
+import type { ServerType } from "@hono/node-server";
 import { CORS_ORIGINS } from "../config/internal-config.js";
 import logger from "../lib/logger.js";
 import { authMiddleware } from "./middleware.js";
@@ -7,13 +8,12 @@ import { authMiddleware } from "./middleware.js";
 let io: Server | null = null;
 
 /**
- * Spin up a Socket.IO server on its own HTTP listener. Sharing a port with
- * the Hono app is possible but a separate port keeps the WebSocket lifecycle
- * isolated from request/response code.
+ * Attach Socket.IO to the existing Hono HTTP server so both share one port.
+ * Socket.IO claims the `/socket.io` path; every other request falls through
+ * to Hono untouched.
  */
-export function startSocketServer(port: number): Server {
-  const httpServer = createServer();
-  io = new Server(httpServer, {
+export function startSocketServer(httpServer: ServerType): Server {
+  io = new Server(httpServer as HttpServer, {
     cors: {
       origin: CORS_ORIGINS,
       credentials: true,
@@ -27,7 +27,9 @@ export function startSocketServer(port: number): Server {
     const userId = socket.data.userId as string | undefined;
     if (userId) {
       socket.join(`user:${userId}`);
-      logger.info(`[socket] connected user=${userId} sid=${socket.id}`);
+      logger.info(`[socket] ✅ connected user=${userId} sid=${socket.id}`);
+    } else {
+      logger.warn(`[socket] connected without userId sid=${socket.id}`);
     }
 
     socket.on("disconnect", (reason) => {
@@ -35,10 +37,11 @@ export function startSocketServer(port: number): Server {
     });
   });
 
-  httpServer.listen(port, () => {
-    logger.info(`[socket] listening on http://localhost:${port}`);
+  io.engine.on("connection_error", (err) => {
+    logger.warn(`[socket] connection rejected: ${err.code} ${err.message}`);
   });
 
+  logger.info("[socket] attached to engine server at /socket.io");
   return io;
 }
 

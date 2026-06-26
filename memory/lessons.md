@@ -2,6 +2,17 @@
 
 Bugs and surprises we already paid for. New entries land at the top.
 
+## Never put data-layer calls in a controller
+
+The first `auth.controller.ts` inlined `prisma`/`redis`/`jwt`/OTP logic
+directly in the handlers. Wrong: controllers are HTTP-only and logic belongs
+in `*.service.ts` (see `auth.service.ts`, `workspace.service.ts`, and the
+scribe/elorah engines, which all use a controller→service split). The fix
+moved everything into `auth.service.ts`; the controller now just reads input,
+calls the service, sets cookies, and responds. Before writing a new endpoint,
+check an existing service for the pattern instead of reaching for `prisma` in
+the controller.
+
 ## Don't share a default port between two services
 
 In the savi monorepo both the engine and the waitlist server defaulted to

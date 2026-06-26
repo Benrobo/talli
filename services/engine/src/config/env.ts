@@ -4,7 +4,6 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(7291),
-  SOCKET_PORT: z.coerce.number().default(7292),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
@@ -24,9 +23,10 @@ const envSchema = z.object({
     .string()
     .default("http://localhost:7291/api/auth/google/callback"),
 
-  PLUNK_API_KEY: z.string().default(""),
-  MAIL_FROM: z.string().default("noreply@example.com"),
-  MAIL_REPLY_TO: z.string().optional(),
+  MAIL_FROM: z.string().default("mail@elorah.app"),
+
+  CLOUDFLARE_API_TOKEN: z.string().default(""),
+  CLOUDFLARE_ACCOUNT_ID: z.string().default(""),
 
   R2_ACCESS_KEY_ID: z.string().default(""),
   R2_SECRET_ACCESS_KEY: z.string().default(""),

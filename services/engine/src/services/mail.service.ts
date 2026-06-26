@@ -1,26 +1,18 @@
-import env from "../config/env.js";
-import logger from "../lib/logger.js";
-import { PlunkProvider, type MailProvider, type SendMailParams } from "./mail/providers.js";
+import { sendEmail } from "../config/cloudflare/cf-email.js";
 import { generateOtpEmailHtml } from "../data/email-templates/otp-email.js";
 
+interface SendMailParams {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}
+
 /**
- * Mail orchestration. Wraps a provider and adds default `from`/`replyTo` and
- * a friendly footer. When `PLUNK_API_KEY` is empty the service no-ops with a
- * warning so local development never bricks on mail failures.
+ * Mail orchestration over Cloudflare email sending. Adds a friendly footer
+ * before handing off to the Cloudflare email API.
  */
 class MailService {
-  private provider: MailProvider | null = env.PLUNK_API_KEY
-    ? new PlunkProvider(env.PLUNK_API_KEY)
-    : null;
-
-  private get from(): string {
-    return env.MAIL_FROM;
-  }
-
-  private get replyTo(): string {
-    return env.MAIL_REPLY_TO ?? env.MAIL_FROM;
-  }
-
   private withFooter(html: string): string {
     return `${html}
       <p style="font-size:12px;color:#9b8673;margin:24px auto 0;max-width:560px;line-height:1.6;text-align:center;">
@@ -29,17 +21,11 @@ class MailService {
   }
 
   async send(params: SendMailParams): Promise<void> {
-    if (!this.provider) {
-      logger.warn("[mail] PLUNK_API_KEY is not configured; skipping email send");
-      return;
-    }
-
-    await this.provider.send({
-      from: params.from ?? this.from,
+    await sendEmail({
+      from: params.from,
       to: params.to,
       subject: params.subject,
       html: this.withFooter(params.html),
-      replyTo: params.replyTo ?? this.replyTo,
     });
   }
 

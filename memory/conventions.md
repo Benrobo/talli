@@ -6,6 +6,13 @@
   A schema file holds one feature's Zod schemas.
 - **`*.controller.ts`, `*.route.ts`, `*.service.ts`, `*.schema.ts`** for
   engine surfaces. The suffix is part of the name; do not omit.
+- **Controllers are thin; business logic lives in `*.service.ts`.**
+  A controller only does HTTP work: read validated input off `ctx`, call a
+  service method, set cookies, and return `sendResponse`. **No `prisma`,
+  `redis`, `jwt`, or other data-layer calls inside a controller** — those
+  belong in a service so they stay reusable and testable. `auth.service.ts`
+  and `workspace.service.ts` are the reference; scribe and elorah follow the
+  same controller→service split.
 - **kebab-case** for file names. **PascalCase** for component and class names.
   **camelCase** for functions and variables.
 - **`packages/<name>`** package names use `@app/<name>` in `package.json`.

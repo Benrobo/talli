@@ -16,3 +16,4 @@ export const refreshSchema = z.object({
 
 export type RequestOtpInput = z.infer<typeof requestOtpSchema>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
+export type RefreshInput = z.infer<typeof refreshSchema>;

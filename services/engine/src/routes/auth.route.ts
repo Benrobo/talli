@@ -3,6 +3,7 @@ import { authController } from "../controllers/auth.controller.js";
 import {
   requestOtpSchema,
   verifyOtpSchema,
+  refreshSchema,
 } from "../schemas/auth.schema.js";
 import useCatchErrors from "../lib/use-catch-errors.js";
 import { validateSchema } from "../middleware/validate.js";
@@ -33,6 +34,12 @@ router.post(
   }),
   validateSchema(verifyOtpSchema),
   useCatchErrors(authController.verifyOtp.bind(authController))
+);
+
+router.post(
+  "/auth/refresh",
+  validateSchema(refreshSchema),
+  useCatchErrors(authController.refresh.bind(authController))
 );
 
 router.get(
