@@ -1,11 +1,12 @@
 import logger from "../../../lib/logger.js";
-import { decodeCallback } from "../types.js";
+import { CALLBACK_ACTION, decodeCallback } from "../types.js";
 import type { TalliContext } from "../types.js";
+import { handleInfo } from "./info.handler.js";
+import { handleDisconnect } from "./disconnect.handler.js";
 
 /**
  * Inline-button taps. Decodes the `action:arg` callback data and dispatches.
- * Payment / confirm-cancel flows hook in here by action. Always answers the
- * query so the client's loading spinner clears.
+ * Always answers the query first so the client's loading spinner clears.
  */
 export async function handleCallback(ctx: TalliContext): Promise<void> {
   const { action, arg } = decodeCallback(ctx.callbackQuery!.data!);
@@ -15,5 +16,14 @@ export async function handleCallback(ctx: TalliContext): Promise<void> {
     await ctx.answerCallbackQuery();
   } catch (err) {
     logger.error(`[telegram] answerCallbackQuery failed: ${(err as Error).message}`);
+  }
+
+  switch (action) {
+    case CALLBACK_ACTION.info:
+      await handleInfo(ctx);
+      break;
+    case CALLBACK_ACTION.disconnect:
+      await handleDisconnect(ctx);
+      break;
   }
 }

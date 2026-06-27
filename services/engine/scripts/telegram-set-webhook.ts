@@ -24,6 +24,13 @@ async function set(): Promise<void> {
     allowed_updates: ["message", "callback_query", "my_chat_member"],
   });
   console.log(`✅ webhook set → ${url}`);
+
+  await bot.api.setMyCommands([
+    { command: "start", description: "Connect this chat with a code" },
+    { command: "info", description: "About Talli, status, and commands" },
+    { command: "disconnect", description: "Unlink this chat (admin only in groups)" },
+  ]);
+  console.log("✅ command menu registered");
 }
 
 async function info(): Promise<void> {

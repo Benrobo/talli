@@ -29,14 +29,19 @@ export const messages = {
     "Tap *Connect Talli* below 👇",
   ].join("\n"),
 
-  linked: [
-    "✅ *Talli is connected!*",
-    "",
-    "You're all set. Here's what you can try:",
-    '•  _“save ₦2,000 to my rent jar”_',
-    '•  _“collect ₦5,000 from the group”_',
-    '•  _“send ₦10,000 to GTB 0123456789”_',
-  ].join("\n"),
+  linked(workspaceName: string, connectedBy: string): string {
+    return [
+      "✅ *Talli is connected!*",
+      "",
+      `Workspace: *${workspaceName}*`,
+      `Connected by: ${connectedBy}`,
+      "",
+      "You're all set. Here's what you can try:",
+      '•  _“save ₦2,000 to my rent jar”_',
+      '•  _“collect ₦5,000 from the group”_',
+      '•  _“send ₦10,000 to GTB 0123456789”_',
+    ].join("\n");
+  },
 
   invalidCode: [
     "⚠️ *That link code didn't work*",
@@ -67,18 +72,86 @@ export const messages = {
 
   groupAdminOnly: "🔒 Only a *group admin* can connect this group to Talli.",
 
-  groupLinked: [
-    "✅ *This group is connected!*",
+  disconnectAdminOnly: "🔒 Only a *group admin* can disconnect this group from Talli.",
+
+  alreadyLinked(workspaceName: string): string {
+    return [
+      "⚠️ *Already connected*",
+      "",
+      `This chat is already linked to *${workspaceName}*.`,
+      "To link it somewhere else, disconnect first with `/disconnect`.",
+    ].join("\n");
+  },
+
+  disconnected: [
+    "✅ *Disconnected*",
     "",
-    `Mention me (${botMention}) with a command, for example:`,
-    `${botMention} collect ₦5,000 from everyone`,
+    "This chat is no longer linked to Talli. Run `/start <code>` to connect again.",
   ].join("\n"),
+
+  notConnected: "This chat isn't connected to Talli, so there's nothing to disconnect.",
+
+  groupLinked(workspaceName: string, connectedBy: string): string {
+    return [
+      "✅ *This group is connected!*",
+      "",
+      `Workspace: *${workspaceName}*`,
+      `Connected by: ${connectedBy}`,
+      "",
+      `Mention me (${botMention}) with a command, for example:`,
+      `${botMention} collect ₦5,000 from everyone`,
+    ].join("\n");
+  },
 
   groupNotLinked: [
     "🔒 *This group isn't connected to Talli yet*",
     "",
     "A group admin can link it with `/start <code>` from the dashboard.",
   ].join("\n"),
+
+  /**
+   * `/info` — what Talli is, this chat's connection status, and the commands
+   * available. `chatLabel` is "this group" or "this chat" depending on context.
+   */
+  info(params: {
+    chatLabel: string;
+    connected: boolean;
+    workspaceName?: string;
+    connectedBy?: string;
+  }): string {
+    const lines = [
+      "ℹ️ *About Talli*",
+      "_Your AI treasurer for chat._",
+      "",
+      "I help you handle money right where you chat:",
+      "💰  *Collect* — split bills & group dues",
+      "🏦  *Save* — set up savings jars",
+      "💸  *Send* — pay out to any bank",
+      "",
+      "*Status*",
+    ];
+
+    if (params.connected) {
+      lines.push(
+        `🟢 ${params.chatLabel} is *connected*`,
+        `• Workspace: *${params.workspaceName}*`,
+        `• Connected by: ${params.connectedBy}`
+      );
+    } else {
+      lines.push(`🔴 ${params.chatLabel} is *not connected*`, "• Connect it to start using Talli");
+    }
+
+    lines.push(
+      "",
+      "*Commands*",
+      "• `/start <code>` — connect this chat",
+      `• mention ${botMention} with a request once connected`,
+      "• `/disconnect` — unlink this chat (admin only in groups)",
+      "• `/info` — show this message"
+    );
+
+    return lines.join("\n");
+  },
 
   collectionPrompt(title: string, amount: number, paidCount: number): string {
     return `*${title}* — ${formatNaira(amount)} each.\nPaid so far: ${paidCount}`;

@@ -35,6 +35,8 @@ model LinkedChat {
   platformChatId   String
   platformUserId   String?
   title            String?
+  connectedByPlatformUserId String?
+  connectedBy               PlatformUser? @relation("ChatConnectedBy", fields: [connectedByPlatformUserId], references: [id], onDelete: SetNull)
   verifiedByUserId String?
   verifiedBy       User?            @relation("LinkedChatVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
   verifiedAt       DateTime?
@@ -70,6 +72,34 @@ model ChatLinkCode {
   @@index([codeHash])
   @@index([expiresAt])
   @@map("chat_link_codes")
+}
+
+/// One row per real chat-platform identity (a Telegram user id or WhatsApp
+/// wa_id), created/refreshed only when that person commits an action — e.g. an
+/// admin connects a chat, or a member makes a payment. We upsert on first sight
+/// and update lastSeenAt thereafter, so any later flow can look the person up by
+/// (platform, platformUserId) instead of copying their name around.
+///
+/// Stores: their platform handle (firstName + @username), and an optional link
+/// to a Talli account (appUserId) set if/when they sign up via the dashboard —
+/// which retroactively ties their past actions to that account.
+model PlatformUser {
+  id             String       @id @default(cuid())
+  platform       ChatPlatform
+  platformUserId String       /// telegram from.id  /  whatsapp wa_id
+  firstName      String?
+  username       String?      /// platform @handle, without the leading @
+  appUserId      String?      /// set when this identity is linked to a Talli account
+  appUser        User?        @relation("PlatformUserAccount", fields: [appUserId], references: [id], onDelete: SetNull)
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+
+  connectedChats LinkedChat[] @relation("ChatConnectedBy")
+
+  @@unique([platform, platformUserId])
+  @@index([appUserId])
+  @@map("platform_users")
 }
 
 model BotCommand {

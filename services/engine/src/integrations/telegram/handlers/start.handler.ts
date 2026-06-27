@@ -13,6 +13,12 @@ import { safeReply, isGroupChat, isSenderAdmin } from "./shared.js";
 export async function handleStart(ctx: TalliContext): Promise<void> {
   const code = ctx.match?.toString().trim();
   const inGroup = isGroupChat(ctx);
+  const isAdmin = await isSenderAdmin(ctx);
+
+  if (inGroup && !isAdmin) {
+    await safeReply(ctx, messages.groupAdminOnly);
+    return;
+  }
 
   if (!code) {
     await safeReply(
@@ -23,21 +29,29 @@ export async function handleStart(ctx: TalliContext): Promise<void> {
     return;
   }
 
-  if (inGroup && !(await isSenderAdmin(ctx))) {
-    await safeReply(ctx, messages.groupAdminOnly);
-    return;
-  }
-
   const result = await chatLinkService.linkChat(code, {
     platform: "telegram",
     platformChatId: String(ctx.chat!.id),
     platformUserId: String(ctx.from?.id ?? ctx.chat!.id),
     title: inGroup ? ctx.chat!.title : ctx.from?.first_name,
+    connector: { firstName: ctx.from?.first_name, username: ctx.from?.username },
   });
 
   if (!result.ok) {
-    await safeReply(ctx, messages.invalidCode);
+    await safeReply(
+      ctx,
+      result.reason === "already_linked"
+        ? messages.alreadyLinked(result.workspaceName)
+        : messages.invalidCode
+    );
     return;
   }
-  await safeReply(ctx, inGroup ? messages.groupLinked : messages.linked);
+
+  const { workspaceName, connectedBy } = result.info;
+  await safeReply(
+    ctx,
+    inGroup
+      ? messages.groupLinked(workspaceName, connectedBy)
+      : messages.linked(workspaceName, connectedBy)
+  );
 }

@@ -4,6 +4,8 @@ import logger from "../../lib/logger.js";
 import { TelegramClient } from "./client.js";
 import type { TalliContext } from "./types.js";
 import { handleStart } from "./handlers/start.handler.js";
+import { handleDisconnect } from "./handlers/disconnect.handler.js";
+import { handleInfo } from "./handlers/info.handler.js";
 import { handleMessage } from "./handlers/message.handler.js";
 import { handleCallback } from "./handlers/callback.handler.js";
 import { handleMyChatMember } from "./handlers/membership.handler.js";
@@ -14,6 +16,8 @@ export const bot = new Bot<TalliContext>(env.TELEGRAM_BOT_TOKEN);
 export const telegram = new TelegramClient(bot.api);
 
 bot.command("start", handleStart);
+bot.command("disconnect", handleDisconnect);
+bot.command("info", handleInfo);
 bot.on("my_chat_member", handleMyChatMember);
 bot.on("message", handleMessage);
 bot.on("callback_query:data", handleCallback);
