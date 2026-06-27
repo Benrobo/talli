@@ -17,7 +17,8 @@ occasionally disagree with the spec — those conflicts are called out inline wi
 
 | Area | Status |
 |---|---|
-| Auth, balance, bank lookup, bank codes, transactions, checkout create/fetch/cancel, virtual accounts, transfers | ✅ verified against OpenAPI 1.0.0 |
+| **Auth (token issue), balance, bank codes, bank lookup, checkout create** | ✅✅ **verified live against the sandbox** (real calls succeeded — see §3 note) |
+| Transactions, checkout fetch/cancel, virtual accounts, transfers | ✅ verified against OpenAPI 1.0.0 (not yet run live) |
 | Checkout **refund** | ❌ no such path in the spec — **prose only, do not assume** |
 | **Global Payout** (§10) | ❌ not in OpenAPI 1.0.0 — **prose only** |
 | Webhook event names + signing string (§9) | ⚠️ from prose/guides, not the OpenAPI spec — validate against a real sandbox webhook |
@@ -124,6 +125,22 @@ Content-Type: application/json      // on POST/PUT
 > **Talli:** cache the token in Redis keyed by env, with TTL = `expiresAt - now - 60s`.
 > The SDK (§11) handles fetch/cache/refresh transparently so callers never touch tokens.
 
+> ✅ **Verified live (sandbox).** `POST /v1/auth/token/issue` with the body creds
+> (no `Authorization` header) returns `code "00"` + an `access_token`. The TEST
+> creds work against `sandbox.nomba.com`; both TEST and LIVE creds also succeeded
+> against `api.nomba.com`, so the token endpoint is not host-strict.
+>
+> ⚠️ **Error shapes that look identical but aren't:**
+> - wrong/unknown `client_id` → `404 "Client record not found or client has been suspended"`
+> - known `client_id` + bad `client_secret` → `403 "Forbidden error"`
+> - missing `accountId` header → `400 "AccountId not passed in header."`
+> - any `Authorization` header on token issue → `400 "JWT strings must contain exactly 2 period characters"` (the endpoint takes **no** auth header)
+>
+> ⚠️ **`.env` gotcha:** the `NOMBA_PRIVATE_KEY` (client_secret) is base64-padded and
+> ends in `==`. A stray extra `=` (e.g. `…MPw===`) silently produces a `403` that is
+> indistinguishable from a wrong secret. Copy it exactly from
+> `docs/nomba-test-credentials.md`.
+
 ---
 
 ## 4. Accept Payments — Checkout
@@ -168,11 +185,17 @@ Response:
   "code": "00",
   "description": "Success",
   "data": {
-    "checkoutLink": "https://checkout.nomba.com/pay/...",
+    "success": true,
+    "message": "success",
+    "checkoutLink": "https://pay.nomba.com/sandbox/<token>",
     "orderReference": "<uuid>"
   }
 }
 ```
+
+> ✅ **Verified live (sandbox).** `data` also carries `success` + `message`, and
+> the link host is `pay.nomba.com/sandbox/…` (not `checkout.nomba.com`). Talli
+> only consumes `checkoutLink` + `orderReference`; the extra fields are harmless.
 
 `checkoutLink` = the hosted page Talli sends the payer to. `orderReference` =
 the key Talli stores on the `payments` row to reconcile the webhook.
@@ -278,8 +301,14 @@ Flow: fetch bank codes → lookup recipient name → confirm with user → trans
 `GET /v1/transfers/banks` →
 ```json
 { "code": "00", "description": "Success",
-  "data": { "results": [ { "code": "GTB", "name": "Guaranty Trust Bank" } ] } }
+  "data": [ { "name": "Access Bank", "code": "044" } ] }
 ```
+
+> ✅ **Verified live (sandbox).** `data` is a **plain array** of `{ name, code }`
+> — NOT `{ results: [...] }` as earlier drafts (and some prose) showed. `code`
+> is a **numeric NIBSS string** like `"044"`, NOT a mnemonic like `"GTB"`. The
+> sandbox returned 77 banks. Whatever you pass as `bankCode` in lookup/transfer
+> must be one of these numeric codes.
 
 Rarely changes — **cache it** (e.g. daily). The `code` is the `bankCode` used
 in lookup and transfer.
@@ -288,12 +317,13 @@ in lookup and transfer.
 
 `POST /v1/transfers/bank/lookup`
 ```json
-{ "accountNumber": "0123456789", "bankCode": "GTB" }
+{ "accountNumber": "0123456789", "bankCode": "044" }
 ```
 ```json
 { "code": "00", "description": "Success",
-  "accountNumber": "0123456789", "accountName": "M.A Animashaun" }
+  "data": { "accountNumber": "0123456789", "accountName": "M.A Animashaun" } }
 ```
+(Spec-verified: name is at `data.accountName`.)
 
 Always run this before a transfer and show `accountName` in the confirmation
 card (matches the PRD's parse-and-confirm rule).
@@ -307,7 +337,7 @@ OpenAPI 1.0.0 spec says `/v1`; confirm in sandbox before going live)
   "amount": 5000,
   "accountNumber": "0123456789",
   "accountName": "M.A Animashaun",
-  "bankCode": "GTB",
+  "bankCode": "044",
   "merchantTxRef": "<unique idempotency key>",
   "senderName": "Benaiah Football Club",
   "narration": "Saturday football payout"
@@ -317,15 +347,33 @@ OpenAPI 1.0.0 spec says `/v1`; confirm in sandbox before going live)
 **Required** (per spec): `amount`, `accountNumber`, `accountName`, `bankCode`,
 `merchantTxRef`, `senderName`. `narration` optional.
 
-Response (sync `200` or async `201`):
+Response (spec-verified `200`):
 ```json
-{ "code": "00", "description": "Success",
-  "data": { "status": "PENDING_BILLING", "transactionId": "...", "amount": 5000,
-            "fee": 10, "timestamp": "...", "sessionId": "..." } }
+{
+  "code": "00",
+  "description": "Success",
+  "data": {
+    "id": "API-TRANSFER-...",
+    "status": "PENDING_BILLING",
+    "type": "transfer",
+    "amount": 5000,
+    "fee": 10,
+    "timeCreated": "2026-03-08T19:26:34.657Z",
+    "meta": {
+      "merchantTxRef": "<your ref>",
+      "rrn": "230908202632",
+      "api_client_id": "...",
+      "api_account_id": "..."
+    }
+  }
+}
 ```
 
-- `status`: `SUCCESS` (done) · `PENDING_BILLING` (wait for webhook) · `REFUND`
+- `status` enum: `NEW | PENDING_PAYMENT | PAYMENT_SUCCESSFUL | PAYMENT_FAILED | PENDING_BILLING | SUCCESS | REFUND`.
+  For Talli: `SUCCESS` (done) · `PENDING_BILLING` (wait for webhook) · `REFUND`
   (failed, auto-refunded — safe to retry with a new ref).
+- Your `merchantTxRef` echoes back at `data.meta.merchantTxRef`; the NIBSS
+  `rrn` is at `data.meta.rrn`. The Nomba transaction id is `data.id`.
 - **The webhook is the authoritative final status.** NIBSS can take up to ~3 min.
 - `merchantTxRef` is the idempotency key — unique per transfer, never reuse for a new attempt.
 - Rate limit: max **5 transfers to the same recipient per minute**.
@@ -514,7 +562,9 @@ Returns `data.wtTransactionId`, `data.status` (`PROCESSING|COMPLETED|FAILED|PEND
 
 ## 11. Talli Nomba SDK (design)
 
-Goal: never call `fetch` by hand. A thin, typed, OOP client so callers write:
+Goal: never write a raw `fetch` to Nomba anywhere in the app. Instead, one small
+wrapper does all the talking to Nomba, so the rest of the code just calls
+methods like this:
 
 ```ts
 const { checkoutLink, orderReference } = await nomba.checkout.createOrder({ ... });
@@ -527,10 +577,11 @@ const ok = nomba.webhooks.verifySignature(rawBody, headers);
 
 ### 11.1 Location
 
-`services/engine/src/integrations/nomba/` — a **vendor client**, separate from
-`services/` (Talli business logic). Business rules (validation, role checks,
-persistence, idempotency) live in a future `services/payment.service.ts` that
-*calls* the SDK. This keeps the layering: controller → service → integration.
+`services/engine/src/integrations/nomba/` — this folder only knows how to talk to
+Nomba; it has no Talli rules in it. Talli's own rules (checking permissions,
+saving to the database, avoiding double-payments) live in a separate
+`services/payment.service.ts` later, which *calls* this Nomba wrapper. So the
+chain is: route → Talli service → Nomba wrapper.
 
 ### 11.2 Folder layout (one small file per concern)
 
@@ -554,19 +605,20 @@ integrations/nomba/
 No file should grow large — each resource class owns ~3-6 methods. If one does,
 split by sub-domain.
 
-### 11.3 Class responsibilities
+### 11.3 What each file does
 
-- **`NombaHttpClient`** — single `request<T>(method, path, { body, query, headers })`.
-  Resolves base URL from `NOMBA_ENV`, injects `Authorization`/`accountId`/
-  `Content-Type`, parses the `{ code, description, data }` envelope, throws
-  `NombaError` when `code !== "00"`, returns typed `data`. One place for retries
-  on `429`/`5xx` (reuse `async-retry` like `services/ai`).
-- **`NombaAuth`** — owns the token: fetch via `/v1/auth/token/issue`, cache in
-  Redis (via the existing `cacheAdapter`) keyed by env, refresh ~60s before
-  `expiresAt`. `NombaHttpClient` asks it for a valid token per request.
-- **Resource classes** — each takes the `NombaHttpClient` in its constructor and
-  exposes typed methods mapping 1:1 to §4–§10. They contain *no* business logic.
-- **`NombaSdk`** — constructs the client + auth once and composes the resources:
+- **`NombaHttpClient`** — the one place that actually sends requests. It picks the
+  right base URL (sandbox vs live), adds the auth + `accountId` headers, reads the
+  `{ code, description, data }` reply, throws a `NombaError` when `code` isn't
+  `"00"`, and retries on `429`/`5xx`. Nothing else makes raw HTTP calls.
+- **`NombaAuth`** — gets and remembers the access token. It fetches a token, caches
+  it in Redis, and refreshes it shortly before it expires, so callers never deal
+  with tokens.
+- **Resource files** (checkout, transfers, …) — one file per area. Each just maps
+  the endpoints in §4–§10 to simple methods (e.g. `transfers.toBank(...)`) and has
+  no Talli rules in it.
+- **`NombaSdk`** — wires the above together once and exposes them as `nomba.checkout`,
+  `nomba.transfers`, etc:
 
 ```ts
 class NombaSdk {
@@ -606,3 +658,274 @@ NOMBA_WEBHOOK_SECRET     // HMAC key for §9.4
   the existing `HttpException` family so `useCatchErrors` maps it cleanly.
 - Webhook verification is pure (no network) — easy to unit test.
 - The SDK throws on `code !== "00"`; callers/services decide retry vs. surface.
+
+---
+
+## 12. Knowing who paid, in a chat (brainstorm)
+
+Money moves on Nomba's rails; the people live in Telegram/WhatsApp. Nomba only
+echoes a reference back on the webhook — it has no concept of "Benaiah in the
+football group". So Talli owns the mapping `ref → chat identity` and resolves it
+when the webhook lands. Status: design notes, not final.
+
+### 12.1 The mapping
+
+Talli generates a unique ref per payment and stores who/what it belongs to in its
+own `payments` row. Nomba returns that ref on the webhook; Talli looks it up.
+
+- Checkout: `order.orderReference` (queryable via `/v1/transactions/accounts/single?orderReference=`).
+- Payout: `merchantTxRef` (echoed at `data.meta.merchantTxRef`).
+
+Don't pack identity into the ref string — it's just a key. The row holds the truth:
+
+```ts
+// payments row (the cross-reference)
+{
+  id: "pay_…",
+  ref: "talli_col_8af2_mem_19",   // == orderReference / merchantTxRef sent to Nomba
+  collectionId: "col_8af2",
+  collectionMemberId: "mem_19",
+  platform: "telegram",            // telegram | whatsapp
+  platformUserId: "555123",        // tg user id, or wa_id
+  amount: 3000,
+  status: "pending",               // pending → successful | failed
+}
+```
+
+### 12.2 Identity is per-platform, account is optional
+
+A group payer may never have DM'd Talli, so there may be no `users` row for them —
+only their Telegram id + display name from the message. Same human = a TG id in
+one chat, a phone number in another. So the stable key is the **platform id**, and
+`collection_members` carries both (per PRD):
+
+```ts
+collection_member {
+  id, collectionId,
+  platformUserId,   // telegram from.id  /  whatsapp wa_id   ← stable cross-ref
+  displayName,      // from the chat
+  appUserId?,       // nullable, linked only if/when they sign up
+  expectedAmount, paidAmount, status,
+}
+```
+
+### 12.3 The trusted identity = the button tap
+
+Telegram authenticates the tapper for us. A tap on an inline button delivers a
+`callback_query` whose `from.id` is the real TG user — nothing typed, nothing
+spoofable. We resolve the member here, *before* the browser opens, so the Nomba
+checkout page never has to self-report who it is.
+
+```ts
+// telegram update for a button press
+{
+  callback_query: {
+    id: "1122",
+    from: { id: 555123, first_name: "Benaiah", username: "benrobo" },
+    message: { chat: { id: -1009876, type: "supergroup" } },
+    data: "pay:col_8af2"          // what we set on the button
+  }
+}
+```
+
+### 12.4 Telegram buttons (chosen approach)
+
+Inline keyboard attached to the message — agreed. Two button types cover the flow:
+`callback_data` (tap → `callback_query`, no chat spam) and `url` (open the pay
+page). Mini Apps (`web_app`) are a later upgrade, not needed for MVP.
+
+```ts
+await bot.sendMessage(chatId, "Saturday football — ₦3,000 each. Paid: 0", {
+  reply_markup: {
+    inline_keyboard: [[{ text: "Pay ₦3,000", callback_data: "pay:col_8af2" }]],
+  },
+});
+```
+
+### 12.5 The flow, with code
+
+```ts
+// 1. button tapped → we know the member from from.id (no trust in the browser)
+bot.on("callback_query", async (q) => {
+  const [, collectionId] = q.data.split(":");            // "pay:col_8af2"
+
+  const member = await collectionService.upsertMember({
+    collectionId,
+    platform: "telegram",
+    platformUserId: String(q.from.id),
+    displayName: q.from.first_name,
+  });
+
+  // 2. create the Nomba order; ref ties the payment to this member
+  const ref = `talli_${collectionId}_${member.id}`;
+  const { checkoutLink } = await nomba.checkout.createOrder({
+    order: {
+      orderReference: ref,
+      amount: member.expectedAmount,
+      currency: "NGN",
+      customerEmail: member.email ?? "noreply@talli.app",
+      callbackUrl: `${API_URL}/api/nomba/webhook`,
+    },
+  });
+
+  await paymentService.create({ ref, collectionId, collectionMemberId: member.id,
+    platform: "telegram", platformUserId: String(q.from.id), amount: member.expectedAmount });
+
+  // 3. hand them a per-member link button to pay
+  await bot.answerCallbackQuery(q.id, { url: checkoutLink });
+});
+```
+
+```ts
+// 4. webhook lands → match by ref → credit that member → announce
+async function onNombaWebhook(event: NombaWebhookEvent) {
+  if (event.event_type !== "payment_success") return;
+  const ref = event.data.transaction.merchantTxRef;       // == orderReference we sent
+
+  const payment = await paymentService.findByRef(ref);     // the cross-ref row
+  if (!payment || payment.status === "successful") return; // idempotent
+
+  await paymentService.markSuccessful(payment.id);
+  const progress = await collectionService.creditMember(payment.collectionMemberId, event.data.transaction.amount);
+
+  await bot.sendMessage(progress.chatId,
+    `✅ ${progress.memberName} paid ₦${event.data.transaction.amount}. Paid: ${progress.paidCount}`);
+}
+```
+
+Member is fixed at step 1, so step 4 always credits the right person.
+
+### 12.6 The "everyone" problem (open)
+
+The Bot API can't enumerate a group's members, so "everyone" has no fixed roster
+at creation. Two models:
+
+- **Pay-to-enroll** — no roster; `upsertMember` runs on each first tap (the code
+  above). Gives "Paid: N", not "N/total".
+- **Named list** — admin passes `@tolu @ope @daniel`; members are pre-created, so
+  "1/3 paid, waiting on @ope @daniel" works.
+
+Lean: pay-to-enroll for MVP, named list when a real "who hasn't paid" count is
+needed. Flagging, not deciding.
+
+### 12.7 WhatsApp
+
+1:1, so identity = sender `wa_id`; no roster. Same `payments` mapping with
+`platform: "whatsapp"`. Interactive reply buttons exist, but the pay step is just
+a `url` to the hosted checkout.
+
+---
+
+## 13. DM authorization (linking a private chat)
+
+A DM must be tied to a Talli account before the bot does anything. Decisions:
+
+- **Gate up front** — an unlinked DM is blocked at the first message; nothing
+  works until the chat is linked.
+- **Deep link + code** — dashboard sends the user to
+  `t.me/<bot>?start=<code>`; the code arrives as `/start <code>`, no copy-paste.
+- **No auto-provisioning** — linking binds the chat to a *real* account created
+  via the dashboard (OTP email). No account is invented from the chat identity.
+
+This is the private-chat case of the PRD's chat-verification (§8.2). The group
+case (admin verifies a group) is separate; this section is the 1:1 DM.
+
+### 13.1 Data
+
+Reuses the PRD tables. `chat_link_codes` is the short-lived code; `linked_chats`
+is the resulting binding.
+
+```ts
+chat_link_code {
+  id, workspaceId, createdByUserId,
+  codeHash,            // store a hash, not the raw code
+  purpose: "private_link",
+  platform: "telegram",
+  expiresAt,           // ~15 min (CHAT_LINK_CODE_TTL_MINUTES)
+  usedAt?,             // one-time use
+}
+
+linked_chat {
+  id, workspaceId,
+  platform: "telegram",
+  chatType: "private",
+  platformChatId,      // the DM chat id
+  platformUserId,      // telegram from.id  — the link key
+  verifiedByUserId,
+  status: "active",
+}
+```
+
+### 13.2 Generate the code (dashboard)
+
+```ts
+// POST /api/workspaces/:workspaceId/link-codes  { platform: "telegram", purpose: "private_link" }
+const code = randomLinkCode();                       // e.g. "KOL-9281"
+await prisma.chatLinkCode.create({
+  data: {
+    workspaceId, createdByUserId: userId,
+    codeHash: sha256(code), purpose: "private_link", platform: "telegram",
+    expiresAt: addMinutes(now, env.CHAT_LINK_CODE_TTL_MINUTES),
+  },
+});
+// dashboard renders a button → https://t.me/<TELEGRAM_BOT_USERNAME>?start=KOL-9281
+```
+
+### 13.3 Bot side: link on `/start`, gate everything else
+
+```ts
+bot.on("message", async (msg) => {
+  const tgUserId = String(msg.from.id);
+
+  // /start <code> → attempt link
+  const startCode = msg.text?.match(/^\/start\s+(\S+)/)?.[1];
+  if (startCode) return linkPrivateChat(msg, startCode);
+
+  // any other message: require a linked chat first (gate up front)
+  const linked = await prisma.linkedChat.findFirst({
+    where: { platform: "telegram", platformUserId: tgUserId, status: "active" },
+  });
+  if (!linked) {
+    return bot.sendMessage(msg.chat.id,
+      "You need to authorize Talli first 👇", {
+        reply_markup: { inline_keyboard: [[
+          { text: "Connect Talli", url: `${WEB_APP_URL}/onboarding?connect=telegram` },
+        ]]},
+      });
+  }
+
+  return handleCommand(msg, linked);   // linked → normal flow
+});
+
+async function linkPrivateChat(msg, code) {
+  const record = await prisma.chatLinkCode.findFirst({
+    where: { codeHash: sha256(code), purpose: "private_link", platform: "telegram",
+             usedAt: null, expiresAt: { gt: new Date() } },
+  });
+  if (!record) {
+    return bot.sendMessage(msg.chat.id, "That code is invalid or expired. Generate a new one in the dashboard.");
+  }
+
+  await prisma.$transaction([
+    prisma.linkedChat.create({ data: {
+      workspaceId: record.workspaceId, platform: "telegram", chatType: "private",
+      platformChatId: String(msg.chat.id), platformUserId: String(msg.from.id),
+      verifiedByUserId: record.createdByUserId, status: "active",
+    }}),
+    prisma.chatLinkCode.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+  ]);
+
+  return bot.sendMessage(msg.chat.id, "✅ Talli is connected. Try: \"save ₦2,000 to my rent jar\".");
+}
+```
+
+### 13.4 Rules
+
+- Codes: hashed at rest, one-time (`usedAt`), expire in ~15 min, scoped to
+  workspace + platform (PRD §8.2).
+- After linking, `linked_chat.platformUserId` is the lookup key for every later
+  DM — and the same id used as `payments.platformUserId` in §12.
+- `/start` with no/invalid code → show the **Connect Talli** button (deep links
+  back to the dashboard, which re-issues a fresh `t.me/...?start=` link).
+- WhatsApp: no `/start` deep link — the dashboard shows the code and the user
+  sends it as the first message; same `linkPrivateChat` logic keyed on `wa_id`.

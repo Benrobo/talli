@@ -42,8 +42,10 @@ const envSchema = z.object({
   FEATURE_FLAGS: z.string().default(""),
 
   NOMBA_ENV: z.enum(["test", "live"]).default("test"),
-  NOMBA_CLIENT_ID: z.string().default(""),
-  NOMBA_PRIVATE_KEY: z.string().default(""),
+  NOMBA_TEST_CLIENT_ID: z.string().default(""),
+  NOMBA_TEST_PRIVATE_KEY: z.string().default(""),
+  NOMBA_LIVE_CLIENT_ID: z.string().default(""),
+  NOMBA_LIVE_PRIVATE_KEY: z.string().default(""),
   NOMBA_PARENT_ACCOUNT_ID: z.string().default(""),
   NOMBA_SUB_ACCOUNT_ID: z.string().default(""),
   NOMBA_WEBHOOK_SECRET: z.string().default(""),
@@ -72,3 +74,24 @@ export const env = parsed.data;
 export default env;
 
 export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Nomba config grouped by environment. Credentials are per-env (a test
+ * client_id/secret only works on sandbox, live only on production); the
+ * account ids and webhook secret are shared. The SDK reads from here so it
+ * can target either env in the same process.
+ */
+export const nombaConfig = {
+  env: env.NOMBA_ENV,
+  parentAccountId: env.NOMBA_PARENT_ACCOUNT_ID,
+  subAccountId: env.NOMBA_SUB_ACCOUNT_ID,
+  webhookSecret: env.NOMBA_WEBHOOK_SECRET,
+  test: {
+    clientId: env.NOMBA_TEST_CLIENT_ID,
+    privateKey: env.NOMBA_TEST_PRIVATE_KEY,
+  },
+  live: {
+    clientId: env.NOMBA_LIVE_CLIENT_ID,
+    privateKey: env.NOMBA_LIVE_PRIVATE_KEY,
+  },
+} as const;
