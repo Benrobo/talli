@@ -20,6 +20,10 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
   const linked = await chatLinkService.findActiveChat("telegram", chatId);
 
   if (isGroupChat(ctx)) {
+    console.log(JSON.stringify({
+      chat: ctx.chat,
+      message: ctx.message,
+    }, null, 2));
     if (!linked) {
       await safeReply(ctx, messages.groupNotLinked);
       return;
