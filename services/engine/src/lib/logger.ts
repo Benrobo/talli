@@ -5,8 +5,10 @@ const { combine, timestamp, printf } = format;
 
 const customFormat = printf(({ level, message, timestamp: ts }) => {
   if (typeof message === "object") {
+    console.log("")
     return `${ts} [${level}] : ${JSON.stringify(message)}`;
   }
+  console.log("")
   return `${ts} [${level}] : ${message}`;
 });
 

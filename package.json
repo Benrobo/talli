@@ -36,5 +36,8 @@
     "prettier": "^3.4.2",
     "turbo": "^2.5.0",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "grammy": "^1.44.0"
   }
 }
