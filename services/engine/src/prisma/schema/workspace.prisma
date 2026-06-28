@@ -29,6 +29,7 @@ model Workspace {
   payments      Payment[]
   savingsJars   SavingsJar[]
   beneficiaries Beneficiary[]
+  transfers     Transfer[]
   auditLogs     AuditLog[]
 
   @@index([ownerUserId])

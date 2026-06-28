@@ -77,8 +77,8 @@ export class TransferResource {
 
   async toBank(params: TransferToBankParams): Promise<TransferResult> {
     const path = params.subAccountId
-      ? `/v1/transfers/bank/${params.subAccountId}`
-      : "/v1/transfers/bank";
+      ? `/v2/transfers/bank/${params.subAccountId}`
+      : "/v2/transfers/bank";
     return this.http.request<TransferResult>({
       method: "POST",
       path,
@@ -91,6 +91,18 @@ export class TransferResource {
         senderName: params.senderName,
         narration: params.narration,
       },
+    });
+  }
+
+  /**
+   * Requery a transfer's final outcome by its merchant ref (the parent-account
+   * endpoint). Use to poll a PENDING_BILLING / NEW / 201 transfer until it
+   * settles to SUCCESS or REFUND, since the initial response is not authoritative.
+   */
+  async requery(transactionRef: string): Promise<TransferResult> {
+    return this.http.request<TransferResult>({
+      method: "GET",
+      path: `/v1/transactions/accounts/single?transactionRef=${encodeURIComponent(transactionRef)}`,
     });
   }
 

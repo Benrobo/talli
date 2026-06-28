@@ -40,6 +40,8 @@
     "jsonwebtoken": "^9.0.2",
     "node-cache": "^5.1.2",
     "node-cron": "^3.0.3",
+    "satori": "^0.26.0",
+    "sharp": "^0.35.2",
     "socket.io": "^4.8.0",
     "winston": "^3.17.0",
     "zod": "^3.24.0"

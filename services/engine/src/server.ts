@@ -8,6 +8,8 @@ import workspaceRoute from "./routes/workspace.route.js";
 import chatRoute from "./routes/chat.route.js";
 import collectionRoute from "./routes/collection.route.js";
 import walletRoute from "./routes/wallet.route.js";
+import transferRoute from "./routes/transfer.route.js";
+import receiptRoute from "./routes/receipt.route.js";
 import webhookRoute from "./routes/webhook.route.js";
 import { startSocketServer } from "./socket/server.js";
 import { startScheduler } from "./cron/scheduler.js";
@@ -15,7 +17,7 @@ import type { ServerType } from "@hono/node-server";
 
 const app = new App();
 
-app.initializeRoutes([healthRoute, authRoute, userRoute, workspaceRoute, chatRoute, collectionRoute, walletRoute, webhookRoute]);
+app.initializeRoutes([healthRoute, authRoute, userRoute, workspaceRoute, chatRoute, collectionRoute, walletRoute, transferRoute, receiptRoute, webhookRoute]);
 
 async function bootstrap() {
   const server = app.start();

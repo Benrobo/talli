@@ -1,3 +1,4 @@
+import { InputFile } from "grammy";
 import type { Api } from "grammy";
 import type { InlineKeyboard } from "grammy";
 import logger from "../../lib/logger.js";
@@ -22,6 +23,22 @@ export class TelegramClient {
       });
     } catch (err) {
       logger.error(`[telegram] sendMessage to ${chatId} failed: ${(err as Error).message}`);
+    }
+  }
+
+  async sendPhoto(
+    chatId: number | string,
+    photo: Buffer,
+    caption?: string,
+    filename = "receipt.png"
+  ): Promise<void> {
+    try {
+      await this.api.sendPhoto(chatId, new InputFile(photo, filename), {
+        caption,
+        parse_mode: "Markdown",
+      });
+    } catch (err) {
+      logger.error(`[telegram] sendPhoto to ${chatId} failed: ${(err as Error).message}`);
     }
   }
 
