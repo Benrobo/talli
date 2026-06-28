@@ -6,6 +6,7 @@ export const INTENTS = [
   "save_to_jar",
   "send_money",
   "status_query",
+  "help_query",
   "unknown",
 ] as const;
 
@@ -20,7 +21,10 @@ const opt = <T extends z.ZodTypeAny>(schema: T) =>
 export const intentSchema = z.object({
   intent: z.enum(INTENTS),
   status: z.enum(["ready", "needs_clarification"]),
+  /** A question asked when an action is missing info (status needs_clarification). */
   clarification: opt(z.string()),
+  /** A natural conversational reply for greetings, acknowledgments, or "unknown". */
+  reply: opt(z.string()),
   amount: opt(z.number().int().positive()),
   title: opt(z.string()),
   recipientName: opt(z.string()),
@@ -29,6 +33,9 @@ export const intentSchema = z.object({
   targetAmount: opt(z.number().int().positive()),
   deadline: opt(z.string()),
   target: opt(z.string()),
+  /** Filled by the dispatcher after a Nomba lookup — not produced by the LLM. */
+  resolvedAccountName: opt(z.string()),
+  resolvedBankCode: opt(z.string()),
 });
 
 export type Intent = z.infer<typeof intentSchema>;

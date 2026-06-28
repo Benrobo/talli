@@ -19,7 +19,12 @@ const PENDING_TTL_MINUTES = 10;
  * filled in over a couple of turns instead of starting over.
  */
 class BotCommandService {
-  async record(ctx: CommandContext, rawText: string, intent: Intent): Promise<BotCommand> {
+  async record(
+    ctx: CommandContext,
+    rawText: string,
+    intent: Intent,
+    replyText?: string
+  ): Promise<BotCommand> {
     return prisma.botCommand.create({
       data: {
         workspaceId: ctx.workspaceId,
@@ -27,6 +32,7 @@ class BotCommandService {
         platform: ctx.platform,
         senderPlatformId: ctx.senderPlatformId,
         rawText,
+        replyText,
         parsedIntent: intent as unknown as Prisma.InputJsonValue,
         status: intent.status === "ready" ? "parsed" : "received",
       },
@@ -38,7 +44,8 @@ class BotCommandService {
     ctx: CommandContext,
     rawText: string,
     intent: Intent,
-    clarifyMessageId: number | null
+    clarifyMessageId: number | null,
+    replyText?: string
   ): Promise<BotCommand> {
     return prisma.botCommand.create({
       data: {
@@ -47,6 +54,7 @@ class BotCommandService {
         platform: ctx.platform,
         senderPlatformId: ctx.senderPlatformId,
         rawText,
+        replyText,
         parsedIntent: intent as unknown as Prisma.InputJsonValue,
         status: "received",
         clarifyMessageId,
@@ -55,13 +63,70 @@ class BotCommandService {
     });
   }
 
+  /**
+   * Records a conversational turn that isn't a pending action — a greeting, an
+   * acknowledgment, a status read, or an "unknown" — together with Talli's reply,
+   * so the transcript stays complete for later context. Status is terminal here.
+   */
+  async recordConversational(
+    ctx: CommandContext,
+    rawText: string,
+    intent: Intent,
+    replyText: string
+  ): Promise<BotCommand> {
+    return prisma.botCommand.create({
+      data: {
+        workspaceId: ctx.workspaceId,
+        linkedChatId: ctx.linkedChatId,
+        platform: ctx.platform,
+        senderPlatformId: ctx.senderPlatformId,
+        rawText,
+        replyText,
+        parsedIntent: intent as unknown as Prisma.InputJsonValue,
+        status: "confirmed",
+      },
+    });
+  }
+
   async get(id: string): Promise<BotCommand | null> {
     return prisma.botCommand.findUnique({ where: { id } });
+  }
+
+  /**
+   * The recent back-and-forth in a chat (oldest-first) as a real transcript — what
+   * the user said and how Talli replied — for the parser to read the room and
+   * resolve short follow-ups ("ok", "do it again"). Uses stored reply text, not
+   * internal intent/status, so the model sees a conversation, not our schema.
+   * Read-only context: it must never re-trigger a past action on its own.
+   */
+  async recentHistory(linkedChatId: string, senderPlatformId: string, limit = 6): Promise<string[]> {
+    const rows = await prisma.botCommand.findMany({
+      where: { linkedChatId, senderPlatformId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { rawText: true, replyText: true },
+    });
+    return rows.reverse().flatMap((r) => {
+      const turn = [`User: ${r.rawText}`];
+      if (r.replyText) turn.push(`Talli: ${this.oneLine(r.replyText)}`);
+      return turn;
+    });
+  }
+
+  /** Collapses a multi-line bot reply to a single transcript line. */
+  private oneLine(text: string): string {
+    const flat = text.replace(/\s+/g, " ").trim();
+    return flat.length > 160 ? `${flat.slice(0, 157)}...` : flat;
   }
 
   /** Records the message id of the force_reply question so a group reply can be matched. */
   async setClarifyMessageId(id: string, clarifyMessageId: number): Promise<void> {
     await prisma.botCommand.update({ where: { id }, data: { clarifyMessageId } });
+  }
+
+  /** Stores Talli's reply text on a command so the transcript stays complete. */
+  async setReplyText(id: string, replyText: string): Promise<void> {
+    await prisma.botCommand.update({ where: { id }, data: { replyText } });
   }
 
   /**

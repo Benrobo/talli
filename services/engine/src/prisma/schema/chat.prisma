@@ -111,6 +111,7 @@ model BotCommand {
   platform         ChatPlatform
   senderPlatformId String
   rawText          String
+  replyText        String?          /// Talli's reply to this message — the bot side of the transcript
   parsedIntent     Json?
   confidence       Float?
   status           BotCommandStatus @default(received)
