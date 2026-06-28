@@ -6,6 +6,7 @@ import redis from "../lib/redis.js";
 import { randomOtp } from "../lib/utils.js";
 import { mailService } from "./mail.service.js";
 import { workspaceService } from "./workspace.service.js";
+import { walletService } from "./wallet.service.js";
 import {
   BadRequestException,
   UnauthorizedException,
@@ -53,6 +54,7 @@ class AuthService {
     });
 
     await workspaceService.ensureDefaultWorkspace(user.id);
+    await walletService.ensureWallet(user.id);
 
     const tokens = await this.createSession(user.id, user.email, context);
 

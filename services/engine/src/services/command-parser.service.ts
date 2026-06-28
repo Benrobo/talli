@@ -1,4 +1,5 @@
 import retry from "async-retry";
+import dayjs from "dayjs";
 import { ai } from "./ai/index.js";
 import { cleanLLMJson } from "../lib/clean-llm-json.js";
 import { commandParserPrompt } from "../data/prompts/command-parser.prompt.js";
@@ -7,11 +8,18 @@ import logger from "../lib/logger.js";
 
 export type ChatScope = "private" | "group";
 
+export interface PriorExchange {
+  originalMessage: string;
+  question: string;
+  answer: string;
+}
+
 export interface ParseContext {
   scope: ChatScope;
   workspaceName?: string;
   knownJars?: string[];
   knownBeneficiaries?: string[];
+  priorExchange?: PriorExchange;
 }
 
 const DM_ONLY: IntentName[] = ["send_money", "save_to_jar", "create_jar"];
@@ -25,16 +33,27 @@ const GROUP_OK: IntentName[] = ["create_collection", "status_query"];
  */
 class CommandParserService {
   async parse(message: string, context: ParseContext): Promise<Intent> {
+    const effectiveMessage = context.priorExchange
+      ? [
+          `Original request: "${context.priorExchange.originalMessage}"`,
+          `You asked: "${context.priorExchange.question}"`,
+          `They replied: "${context.priorExchange.answer}"`,
+          "Combine these into one complete intent.",
+        ].join("\n")
+      : message;
+
     const prompt = commandParserPrompt.replace({
-      message,
+      message: effectiveMessage,
       context: this.contextBlock(context),
       allowedIntents: this.allowedIntents(context.scope).join(", "),
     });
 
     return retry(
       async () => {
-        const raw = await ai.generate(prompt, { temperature: 0.1, maxTokens: 1024 });
-        const json = cleanLLMJson({ response: raw, requiredFields: ["intent", "status"] });
+        const { model, maxTokens } = await ai.getModelForFeature("ai.command.parse");
+        const raw = await ai.generate(prompt, { model, temperature: 0.1, maxTokens });
+        const json = cleanLLMJson({ response: raw, requiredFields: ["intent"] }) as Record<string, unknown>;
+        if (json.status !== "ready") json.status = "needs_clarification";
         return intentSchema.parse(json);
       },
       {
@@ -57,6 +76,7 @@ class CommandParserService {
 
   private contextBlock(context: ParseContext): string {
     const lines = [
+      `Today: ${dayjs().format("YYYY-MM-DD")}`,
       `Chat type: ${context.scope === "group" ? "group" : "private DM"}`,
     ];
     if (context.workspaceName) lines.push(`Workspace: ${context.workspaceName}`);

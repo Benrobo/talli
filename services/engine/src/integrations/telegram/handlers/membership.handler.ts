@@ -17,10 +17,7 @@ export async function handleMyChatMember(ctx: TalliContext): Promise<void> {
   const update = ctx.myChatMember!;
   const wasPresent = PRESENT.has(update.old_chat_member.status);
   const isPresent = PRESENT.has(update.new_chat_member.status);
-  if (wasPresent || !isPresent) {
-    console.log("myChatMember update ignored");
-    return
-  };
+  if (wasPresent || !isPresent) return;
 
   const linked = await chatLinkService.findActiveChat("telegram", String(ctx.chat!.id));
   await safeReply(ctx, linked ? messages.groupReconnected : messages.groupAdded);

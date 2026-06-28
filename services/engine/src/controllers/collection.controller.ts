@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import type { CollectionMemberStatus } from "@prisma/client";
 import sendResponse from "../lib/send-response.js";
 import { BadRequestException } from "../lib/exception.js";
 import { collectionService } from "../services/collection.service.js";
@@ -35,6 +36,29 @@ class CollectionController {
     const workspaceId = await this.workspaceId(ctx);
     const collection = await collectionService.getWithProgress(workspaceId, ctx.req.param("id"));
     return sendResponse.success(ctx, "Collection fetched", 200, collection);
+  }
+
+  async listMembers(ctx: Context) {
+    const workspaceId = await this.workspaceId(ctx);
+    const page = Number(ctx.req.query("page") ?? "1");
+    const pageSize = Number(ctx.req.query("pageSize") ?? "20");
+    const status = ctx.req.query("status") as CollectionMemberStatus | undefined;
+
+    const result = await collectionService.listMembers(workspaceId, ctx.req.param("id") ?? "", {
+      page: Number.isFinite(page) ? page : 1,
+      pageSize: Number.isFinite(pageSize) ? pageSize : 20,
+      status,
+    });
+
+    return sendResponse.success(ctx, "Members fetched", 200, {
+      members: result.members,
+      pagination: {
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.pageSize),
+      },
+    });
   }
 
   async addMember(ctx: Context) {

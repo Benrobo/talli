@@ -259,6 +259,53 @@
       ]
     },
     {
+      "name": "Wallet",
+      "description": "Internal wallet (v2). Balance is the wallet_transactions ledger sum. Top-up issues a flash account number to transfer into; the polling cron credits the wallet once it lands.",
+      "item": [
+        {
+          "name": "Get wallet balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/wallet", "host": ["{{baseUrl}}"], "path": ["wallet"] }
+          }
+        },
+        {
+          "name": "Wallet history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/wallet/history", "host": ["{{baseUrl}}"], "path": ["wallet", "history"] }
+          }
+        },
+        {
+          "name": "Start top-up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data) {",
+                  "  pm.collectionVariables.set('orderReference', res.data.orderReference);",
+                  "  pm.collectionVariables.set('flashAccountNumber', res.data.flashAccountNumber);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Hits LIVE Nomba — returns a real flash account number. Transfer to it from a bank app; the cron credits the wallet.",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 1000\n}" },
+            "url": { "raw": "{{baseUrl}}/wallet/topup", "host": ["{{baseUrl}}"], "path": ["wallet", "topup"] }
+          }
+        }
+      ]
+    },
+    {
       "name": "Users",
       "item": [
         {

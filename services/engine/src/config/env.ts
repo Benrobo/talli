@@ -41,7 +41,7 @@ const envSchema = z.object({
 
   FEATURE_FLAGS: z.string().default(""),
 
-  NOMBA_ENV: z.enum(["test", "live"]).default("test"),
+  NOMBA_ENV: z.enum(["test", "live"]).default("live"),
   NOMBA_TEST_CLIENT_ID: z.string().default(""),
   NOMBA_TEST_PRIVATE_KEY: z.string().default(""),
   NOMBA_LIVE_CLIENT_ID: z.string().default(""),

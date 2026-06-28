@@ -1,0 +1,88 @@
+enum WalletTransactionType {
+  credit
+  debit
+}
+
+enum WalletTransactionReason {
+  topup
+  savings_deposit
+  savings_withdrawal
+  collection
+  send
+  refund
+}
+
+enum PendingPaymentStatus {
+  pending
+  completed
+  expired
+  failed
+}
+
+enum PendingPaymentPurpose {
+  topup
+  collection
+}
+
+/// One internal wallet per user. `balance` caches the wallet_transactions ledger
+/// (the source of truth) and is updated atomically with each ledger row. Not a
+/// Nomba account; Nomba only funds it via flash-account top-ups.
+model Wallet {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance  Int    @default(0)
+  currency String @default("NGN")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+/// The ledger. Each credit/debit is one row; the wallet balance is their sum.
+/// Idempotent on `referenceId`; `balanceAfter` is the running balance per row.
+model WalletTransaction {
+  id           String                @id @default(cuid())
+  walletId     String
+  wallet       Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type         WalletTransactionType
+  amount       Int
+  reason       WalletTransactionReason
+  referenceId  String?               @unique
+  balanceAfter Int
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@map("wallet_transactions")
+}
+
+/// A queued inbound bank transfer reconciled by polling (not webhooks). Serves
+/// wallet top-ups (walletId) and collection payments (collectionMemberId). The
+/// flash account number is what the payer transfers to.
+model PendingPayment {
+  id                  String               @id @default(cuid())
+  orderRefId          String                @unique
+  purpose             PendingPaymentPurpose
+  walletId            String?
+  collectionId        String?
+  collectionMemberId  String?
+  payerPlatformUserId String?
+  amount              Int
+  flashAccountNumber  String?
+  flashBankName       String?
+  flashAccountName    String?
+  status              PendingPaymentStatus @default(pending)
+  pollAttempts        Int                  @default(0)
+  expiresAt           DateTime?
+  completedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("pending_payments")
+}

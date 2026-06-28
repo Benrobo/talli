@@ -1,0 +1,23 @@
+/// Saved transfer recipients per workspace — the "phone book". Created when a
+/// user completes a transfer (or adds one explicitly), so "send to Tolu" resolves
+/// to a known account instead of asking for the details every time. The account
+/// name is verified via Nomba bank lookup at save time.
+model Beneficiary {
+  id                      String    @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  alias                   String
+  accountName             String
+  accountNumber           String
+  bankCode                String
+  bankName                String?
+  createdByPlatformUserId String?
+  lastUsedAt              DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([workspaceId, alias])
+  @@index([workspaceId])
+  @@map("beneficiaries")
+}
