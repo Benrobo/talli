@@ -15,7 +15,7 @@ Status: plan, not yet built. Data model already exists
 ```
 admin creates a collection (dashboard, JWT)
    → bot shows it in chat with a "Pay ₦X" button
-   → member taps → bot asks engine to start a payment (internal token)
+   → member taps → handler calls payment.service directly (in-process)
        → payment.service creates a `payments` row (pending) + Nomba checkout order
        → member pays on the Nomba hosted page
    → Nomba fires payment_success webhook
@@ -25,30 +25,27 @@ admin creates a collection (dashboard, JWT)
 ```
 
 Two rails already exist (Nomba SDK, Telegram). This slice is the **business
-logic in the middle** plus the endpoints to drive it.
+logic in the middle** plus the dashboard endpoints to drive it.
 
 ---
 
 ## 2. Auth model — two kinds of caller
 
-Decided: **JWT for dashboard, internal token for bot/machine routes.**
+Decided: **JWT for the dashboard; the bot calls services in-process (no token).**
 
 | Caller | Auth | Used for |
 |---|---|---|
 | Dashboard (logged-in user) | existing `isAuthenticated` (JWT) | create/list/manage collections, jars |
-| Bot / internal services | **new internal token** | resolve a member on pay-tap, start a payment, internal status |
+| Bot (Telegram handlers) | none — **in-process function calls** | pay-tap → resolve member, start a payment |
 | Nomba | HMAC signature (already done) | the webhook only |
 
-### 2.1 Internal token
-
-- New env: `INTERNAL_API_TOKEN` (Zod, in `env.ts` + `.env.example`).
-- New middleware `isInternal` in `middleware/auth.ts`: checks header
-  `X-Internal-Token` against `env.INTERNAL_API_TOKEN` with a constant-time
-  compare (`safeEqual`). 401 on mismatch/missing. Returns 503 if the token is
-  unset, so a misconfig fails loud.
-- The Telegram handlers run **in-process** (same engine), so they can call the
-  services directly — but we still expose the internal HTTP endpoints so the bot
-  path is testable in isolation and ready if the bot ever moves out of process.
+**No internal token.** The bot runs inside the same engine process, so a pay-tap
+handler calls `paymentService.startCollectionPayment(...)` as a plain function —
+there's no HTTP request to authenticate. An internal token would only be needed
+if the bot were a separate service calling the engine over HTTP; it isn't, so we
+skip it. To exercise the payment-start path without tapping a real Telegram
+button, use a script that calls the service directly (like the smoke scripts) —
+not an HTTP test endpoint.
 
 ---
 
@@ -80,6 +77,7 @@ live here.
   4. return `{ checkoutLink, ref }`
 - `findByRef(ref)` / `markSuccessful(paymentId, paidAt)` / `markFailed`.
 - Idempotency: a ref that already has a successful payment is a no-op.
+- Called in-process by the bot pay-tap and by a test script — no HTTP route.
 - (Savings funding reuses the same create-order path with `savingsJarId` set
   instead of `collectionId` — add `startJarFunding` when we do savings.)
 
@@ -109,25 +107,14 @@ POST   /api/collections/:id/members     add a named member
 PATCH  /api/collections/:id             update status (close/cancel)
 ```
 
-### 4.2 Internal (bot/machine — `isInternal`, `X-Internal-Token`)
-```
-POST   /api/internal/collections/:id/members/resolve
-         body { platform, platformUserId, displayName }
-         → upsert member, return member + expectedAmount   (pay-to-enroll tap)
-POST   /api/internal/payments/checkout
-         body { collectionId, memberId, platform, platformUserId }
-         → start payment, return { checkoutLink, ref }
-GET    /api/internal/payments/:ref       payment status by ref (debug/poll)
-```
-
-### 4.3 Webhook (already mounted)
+### 4.2 Webhook (already mounted)
 ```
 POST   /api/webhook/nomba                Nomba → credit (HMAC verified)
 ```
 
-Files: `collection.controller.ts` + `collection.route.ts`,
-`payment.controller.ts` + `payment.route.ts` (internal), schemas under
-`schemas/`. Register both routers in `server.ts`.
+Files: `collection.controller.ts` + `collection.route.ts`, schemas under
+`schemas/`. Register the router in `server.ts`. No payment HTTP route — the
+payment service is driven by the bot (in-process) and the webhook.
 
 ---
 
@@ -139,41 +126,38 @@ Wire it to:
 2. `payment.startCollectionPayment(...)` → `checkoutLink`.
 3. `ctx.answerCallbackQuery({ url: checkoutLink })` to open the pay page.
 
-Because the bot is in-process it calls the services directly; the
-`/api/internal/*` endpoints mirror the same calls for isolated testing.
+The bot calls these services as plain functions — same process, no HTTP. To test
+the path in isolation, a script calls `paymentService.startCollectionPayment(...)`
+directly (no endpoint needed).
 
 ---
 
 ## 6. Build order (each step testable before the next)
 
-1. **Internal auth** — `INTERNAL_API_TOKEN` env + `isInternal` middleware. Test:
-   a dummy internal route returns 401 without the header, 200 with it.
-2. **collection.service + dashboard endpoints** — create/list/get. Test via
-   Postman with a JWT.
-3. **payment.service + internal checkout endpoint** — start a real sandbox
-   checkout, confirm a `payments` row + a real `checkoutLink` come back.
-4. **Wire the Nomba webhook** — `process` credits the member. Test by POSTing a
+1. **collection.service + dashboard endpoints** — create/list/get/add-member.
+   Test via Postman with a JWT.
+2. **payment.service** — `startCollectionPayment` creates a `payments` row + a
+   real sandbox checkout. Test with a script that calls it directly and confirms
+   the row + a real `checkoutLink`.
+3. **Wire the Nomba webhook** — `process` credits the member. Test by POSTing a
    signed `payment_success` (a script signs it with `NOMBA_WEBHOOK_SECRET`).
-5. **Bot pay-tap** — tapping the button in a linked chat returns a pay link.
-6. **Savings jars** (next slice) — create jar, fund (reuse checkout), withdraw
+4. **Bot pay-tap** — tapping the button in a linked chat returns a pay link.
+5. **Savings jars** (next slice) — create jar, fund (reuse checkout), withdraw
    (transfer). Same shape as collections.
 
 ---
 
 ## 7. Postman updates (kept in lockstep)
 
-Add to `postman/talli-engine.postman_collection.json`:
-- New collection variables: `internalToken`, `collectionId`, `memberId`,
-  `paymentRef`, `checkoutLink`.
+Add to `postman/talli-engine.postman_collection.json` and push via the Postman MCP:
+- New collection variables: `collectionId`, `memberId`.
 - New folders:
   - **Collections** (JWT): Create / List / Get / Add member / Update status —
     test scripts capture `collectionId`.
-  - **Internal** (`X-Internal-Token`): Resolve member, Start checkout (captures
-    `checkoutLink` + `paymentRef`), Get payment by ref.
   - **Webhook**: Nomba payment_success (a pre-request script signs the body with
     the webhook secret so it passes verification).
-- Update the environment file with `internalToken`.
-- Re-push to Postman via MCP after each milestone (as in handoff §3.4).
+- Re-push to Postman via MCP after each milestone. (The pay-tap/checkout path has
+  no endpoint, so it's not in Postman — it's tested by script.)
 
 ---
 

@@ -161,6 +161,8 @@ export const messages = {
     return `✅ ${name} paid ${formatNaira(amount)}. Paid: ${paidCount}`;
   },
 
+  payFailed: "⚠️ Couldn't start that payment right now. Please try again in a moment.",
+
   unrecognized: [
     "🤔 *I didn't quite catch that*",
     "",
