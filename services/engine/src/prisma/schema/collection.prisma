@@ -24,6 +24,11 @@ enum CollectionMemberStatus {
   manual_review
 }
 
+/// A pool of money gathered from a group — dues, a split bill, a contribution.
+/// Created from chat ("collect 5k from everyone") and tied to the `linkedChat` it
+/// runs in. Pay-to-enroll: people become members when they tap Pay, so completion
+/// is judged against `targetAmount`, not a fixed roster. `amountPerMember` is the
+/// per-head amount for `fixed_per_person`.
 model Collection {
   id              String           @id @default(cuid())
   workspaceId     String
@@ -54,6 +59,9 @@ model Collection {
   @@map("collections")
 }
 
+/// One participant in a collection, created on their first Pay tap (pay-to-enroll).
+/// `expectedAmount` is what they owe; `paidAmount` accrues as their transfers land.
+/// The link a payment reconciles back to — crediting bumps `paidAmount` + `status`.
 model CollectionMember {
   id             String                 @id @default(cuid())
   collectionId   String

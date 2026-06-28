@@ -48,6 +48,10 @@ What each intent means (classify the message into exactly one):
 - help_query: the user is asking what Talli can do or how to use it — "what can you
   do?", "help", "how does this work?", "what are my options?". Set status "ready";
   Talli shows a full capability guide (you don't need to write it).
+- pay_collection: the user wants to pay into a collection but isn't naming a clear
+  one to act on — "I want to pay for a collection", "let me pay my dues", "how do I
+  pay?", "pay". Set status "ready"; Talli lists this group's active collections with
+  buttons to pick one. You don't need amount or title for this.
 
 Fields:
 - intent: one of the allowed intents

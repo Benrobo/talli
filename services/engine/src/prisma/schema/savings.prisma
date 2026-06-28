@@ -18,6 +18,9 @@ enum SavingsTransactionStatus {
   failed
 }
 
+/// A personal savings goal funded from the user's wallet. `currentAmount` is the
+/// running total toward `targetAmount`; an optional `lockUntil` holds funds until
+/// a date. Saving to a jar debits the wallet and credits the jar.
 model SavingsJar {
   id            String           @id @default(cuid())
   workspaceId   String
@@ -43,6 +46,8 @@ model SavingsJar {
   @@map("savings_jars")
 }
 
+/// One deposit into (or withdrawal from) a savings jar — the jar's ledger,
+/// mirroring the matching wallet debit/credit.
 model SavingsTransaction {
   id           String                   @id @default(cuid())
   savingsJarId String
