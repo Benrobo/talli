@@ -22,6 +22,7 @@ async function main() {
     ownerUserId: ws.ownerUserId,
     workspaceName: ws.name,
     senderName: "Tester",
+    isGroupAdmin: true,
   };
 
   console.log(`\n=== 1. group, clear: "create a collection for jerseys at 5000 each" ===`);

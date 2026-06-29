@@ -28,7 +28,8 @@ export interface CreatedPending {
   pendingPayment: PendingPayment;
   flashAccountNumber: string;
   flashBankName: string;
-  flashAccountName?: string; 
+  flashAccountName?: string;
+  checkoutLink: string;
 }
 
 const FALLBACK_EMAIL = "noreply@talli.app";
@@ -77,6 +78,7 @@ class PendingPaymentService {
       flashAccountNumber: flash.accountNumber,
       flashBankName: flash.bankName,
       flashAccountName: flash.accountName,
+      checkoutLink: order.checkoutLink,
     };
   }
 

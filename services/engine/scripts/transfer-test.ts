@@ -95,6 +95,7 @@ async function tier2(): Promise<void> {
     ownerUserId: ws.ownerUserId,
     workspaceName: ws.name,
     senderName: "Transfer Test",
+    isGroupAdmin: true,
   };
 
   const intent: Intent = {
