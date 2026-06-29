@@ -19,6 +19,9 @@ const FALLBACK_MODELS: ModelInstance[] = [
   MODELS.anthropic.haiku,
 ];
 
+const VISION_MODEL: ModelInstance = MODELS.google.geminiFlash;
+const VISION_FALLBACK_MODELS: ModelInstance[] = [MODELS.google.geminiFlash, MODELS.openai.gpt4oMini];
+
 export interface AIOptions {
   model?: ModelInstance;
   temperature?: number;
@@ -141,6 +144,48 @@ export async function streamText(
   return result.textStream;
 }
 
-export const ai = { generate, streamText, getModelForFeature };
+/**
+ * Generate text from an image plus an instruction, with the same provider
+ * failover as {@link generate}. Used for vision tasks like reading the total off
+ * a photographed bill. Only vision-capable models are tried.
+ */
+export async function generateFromImage(
+  prompt: string,
+  image: Buffer,
+  options?: AIOptions
+): Promise<string> {
+  const primary = options?.model ?? VISION_MODEL;
+  const temperature = options?.temperature ?? 0.1;
+  const maxTokens = options?.maxTokens ?? DEFAULT_MAX_TOKENS;
+
+  const modelsToTry = [primary, ...VISION_FALLBACK_MODELS.filter((m) => m !== primary)];
+  let lastError: unknown;
+
+  for (const model of modelsToTry) {
+    try {
+      const result = await generateText({
+        model,
+        temperature,
+        maxOutputTokens: maxTokens,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image", image },
+            ],
+          },
+        ],
+      });
+      return result.text;
+    } catch (err) {
+      lastError = err;
+      logger.warn(`[ai] vision falling back from [${getModelId(model)}]: ${(err as Error)?.message}`);
+    }
+  }
+  throw lastError ?? new Error("AI vision generation exhausted all providers");
+}
+
+export const ai = { generate, generateFromImage, streamText, getModelForFeature };
 export { MODELS, DEFAULT_MODEL } from "./models.js";
 export { openrouter } from "./provider.js";
