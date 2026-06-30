@@ -43,16 +43,9 @@ export async function handlePhoto(ctx: TalliContext): Promise<void> {
   }
 
   const bill = await billParserService.parse(image);
-  if (!bill.total || !bill.confident) {
-    await safeReply(ctx, messages.billRejected(bill.reason));
-    return;
-  }
-
   const instruction = caption.replace(MENTION, "").trim();
-  const command = instruction
-    ? `${instruction} (the bill total is ${bill.total})`
-    : `split ${bill.total}`;
-  const result = await intentDispatcherService.handleMessage(command, dispatchCtx);
+
+  const result = await intentDispatcherService.handleBillPhoto(bill, instruction, dispatchCtx);
   await safeReply(ctx, result.text, result.keyboard);
 }
 

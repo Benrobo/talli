@@ -64,6 +64,12 @@ What each intent means (classify the message into exactly one):
     "by_count", amount 30000, count 3.
   Keep "me"/"myself" as a member named "me" (Talli resolves it to the sender). Give
   the collection a short title if one is implied ("for dinner" -> "Dinner"); else omit.
+- person_picker: the user wants each person to pick their own items from a receipt
+  and pay their computed share via a web link. Usually triggered with a bill photo
+  and a caption like "let everyone pick what they chose" or "each person selects
+  their items". Set status "ready" when a title is implied or can default to
+  "Receipt split"; items come from the receipt parser, not from you — omit "items".
+  Do NOT use this for even/custom/by_count splits — those are split_payment.
 
 Fields:
 - intent: one of the allowed intents
