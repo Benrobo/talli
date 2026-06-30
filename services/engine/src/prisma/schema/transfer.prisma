@@ -10,21 +10,21 @@ enum TransferStatus {
 /// SUCCESS marks it `sent` on the spot — otherwise the cron requeries until
 /// SUCCESS (sent) or REFUND (failed, wallet credited back).
 model Transfer {
-  id            String         @id @default(cuid())
-  workspaceId   String
-  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  merchantTxRef String         @unique /// idempotency key — stable across retries, never regenerated while pending
-  nombaTxId     String?        /// Nomba data.id, used to requery the outcome
-  walletRef     String         @unique /// references the wallet debit entry; basis for the refund ref
+  merchantTxRef String  @unique /// idempotency key — stable across retries, never regenerated while pending
+  nombaTxId     String? /// Nomba data.id, used to requery the outcome
+  walletRef     String  @unique /// references the wallet debit entry; basis for the refund ref
 
-  amount        Int
-  accountNumber String
-  accountName   String
-  bankCode      String
-  bankName      String?
-  narration     String?
-  senderName    String?
+  amount                  Int
+  accountNumber           String
+  accountName             String
+  bankCode                String
+  bankName                String?
+  narration               String?
+  senderName              String?
   createdByPlatformUserId String?
 
   status        TransferStatus @default(pending)

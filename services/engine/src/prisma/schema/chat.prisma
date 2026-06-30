@@ -30,20 +30,20 @@ enum BotCommandStatus {
 /// on that workspace's money. Created when someone redeems a `ChatLinkCode` via
 /// `/start <code>`; everything the bot does is scoped through this link.
 model LinkedChat {
-  id               String           @id @default(cuid())
-  workspaceId      String
-  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  platform         ChatPlatform
-  chatType         ChatType
-  platformChatId   String
-  platformUserId   String?
-  title            String?
+  id                        String           @id @default(cuid())
+  workspaceId               String
+  workspace                 Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform                  ChatPlatform
+  chatType                  ChatType
+  platformChatId            String
+  platformUserId            String?
+  title                     String?
   connectedByPlatformUserId String?
-  connectedBy               PlatformUser? @relation("ChatConnectedBy", fields: [connectedByPlatformUserId], references: [id], onDelete: SetNull)
-  verifiedByUserId String?
-  verifiedBy       User?            @relation("LinkedChatVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
-  verifiedAt       DateTime?
-  status           LinkedChatStatus @default(active)
+  connectedBy               PlatformUser?    @relation("ChatConnectedBy", fields: [connectedByPlatformUserId], references: [id], onDelete: SetNull)
+  verifiedByUserId          String?
+  verifiedBy                User?            @relation("LinkedChatVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verifiedAt                DateTime?
+  status                    LinkedChatStatus @default(active)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,10 +92,10 @@ model ChatLinkCode {
 model PlatformUser {
   id             String       @id @default(cuid())
   platform       ChatPlatform
-  platformUserId String       /// telegram from.id  /  whatsapp wa_id
+  platformUserId String /// telegram from.id  /  whatsapp wa_id
   firstName      String?
-  username       String?      /// platform @handle, without the leading @
-  appUserId      String?      /// set when this identity is linked to a Talli account
+  username       String? /// platform @handle, without the leading @
+  appUserId      String? /// set when this identity is linked to a Talli account
   appUser        User?        @relation("PlatformUserAccount", fields: [appUserId], references: [id], onDelete: SetNull)
 
   firstSeenAt DateTime @default(now())
@@ -122,7 +122,7 @@ model BotCommand {
   platform         ChatPlatform
   senderPlatformId String
   rawText          String
-  replyText        String?          /// Talli's reply to this message — the bot side of the transcript
+  replyText        String? /// Talli's reply to this message — the bot side of the transcript
   parsedIntent     Json?
   confidence       Float?
   status           BotCommandStatus @default(received)

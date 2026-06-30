@@ -5,13 +5,13 @@ enum UserRole {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String?
-  phone       String?
-  avatarUrl   String?
-  role        UserRole @default(user)
-  isVerified  Boolean  @default(false)
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  phone      String?
+  avatarUrl  String?
+  role       UserRole @default(user)
+  isVerified Boolean  @default(false)
 
   passwordHash String?
 
@@ -65,9 +65,9 @@ model Account {
 }
 
 model AuthSession {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   userAgent String?
   ipAddress String?
@@ -82,14 +82,14 @@ model AuthSession {
 }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessionId String
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([sessionId])
