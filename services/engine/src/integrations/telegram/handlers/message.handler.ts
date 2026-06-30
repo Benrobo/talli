@@ -8,6 +8,7 @@ import { messages } from "../ui/messages.js";
 import { connectTalli } from "../ui/keyboards.js";
 import type { TalliContext } from "../types.js";
 import { safeReply, safeReplyForceReply, isGroupChat, isSenderAdmin } from "./shared.js";
+import logger from "../../../lib/logger.js";
 
 const MENTION = new RegExp(`@${env.TELEGRAM_BOT_USERNAME}`, "gi");
 
@@ -67,8 +68,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     senderName: platformUserService.formatName(identity),
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };
-
-  console.log("dispatchCtx", JSON.stringify(dispatchCtx, null, 2));
 
   const pending = await botCommandService.findPendingForReply(
     linked.id,

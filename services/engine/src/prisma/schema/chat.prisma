@@ -48,8 +48,9 @@ model LinkedChat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  botCommands BotCommand[]
-  collections Collection[]
+  botCommands   BotCommand[]
+  collections   Collection[]
+  personPickers PersonPicker[]
 
   @@unique([platform, platformChatId])
   @@index([workspaceId])

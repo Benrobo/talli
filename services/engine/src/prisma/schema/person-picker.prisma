@@ -1,0 +1,73 @@
+enum PersonPickerStatus {
+  active
+  closed
+  expired
+  cancelled
+}
+
+/// A receipt-driven split where each payer picks item quantities on a web page.
+/// Backed by a `named_members` collection; selections become members with
+/// computed `expectedAmount` at checkout time.
+model PersonPicker {
+  id              String             @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  linkedChatId    String?
+  linkedChat      LinkedChat?        @relation(fields: [linkedChatId], references: [id], onDelete: SetNull)
+  collectionId    String             @unique
+  collection      Collection         @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User               @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  title           String
+  token           String             @unique
+  status          PersonPickerStatus @default(active)
+  currency        String             @default("NGN")
+  subtotal        Int?
+  total           Int?
+  expiresAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items      PersonPickerItem[]
+  selections PersonPickerSelection[]
+
+  @@index([workspaceId])
+  @@index([linkedChatId])
+  @@index([status])
+  @@map("person_pickers")
+}
+
+model PersonPickerItem {
+  id          String       @id @default(cuid())
+  pickerId    String
+  picker      PersonPicker @relation(fields: [pickerId], references: [id], onDelete: Cascade)
+  label       String
+  unitPrice   Int
+  maxQuantity Int          @default(99)
+  sortOrder   Int          @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([pickerId])
+  @@map("person_picker_items")
+}
+
+model PersonPickerSelection {
+  id                   String           @id @default(cuid())
+  pickerId             String
+  picker               PersonPicker     @relation(fields: [pickerId], references: [id], onDelete: Cascade)
+  collectionMemberId   String           @unique
+  collectionMember     CollectionMember @relation(fields: [collectionMemberId], references: [id], onDelete: Cascade)
+  payerName            String
+  selections           Json
+  amount               Int
+  checkoutLink         String?
+  pendingPaymentId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pickerId])
+  @@map("person_picker_selections")
+}
