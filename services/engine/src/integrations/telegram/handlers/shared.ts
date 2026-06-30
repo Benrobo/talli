@@ -4,6 +4,7 @@ import prisma from "../../../prisma/index.js";
 import { chatLinkService } from "../../../services/chat-link.service.js";
 import { platformUserService } from "../../../services/platform-user.service.js";
 import type { DispatchContext } from "../../../services/intent-dispatcher.service.js";
+import { GROUP_TELEGRAM_CHAT_TYPES } from "../../../constants/chat-capabilities.js";
 import type { TalliContext } from "../types.js";
 
 /**
@@ -110,7 +111,8 @@ export async function safeReplyWithPhoto(
 }
 
 export function isGroupChat(ctx: TalliContext): boolean {
-  return ctx.chat?.type === "group" || ctx.chat?.type === "supergroup";
+  const type = ctx.chat?.type;
+  return !!type && (GROUP_TELEGRAM_CHAT_TYPES as readonly string[]).includes(type);
 }
 
 /**

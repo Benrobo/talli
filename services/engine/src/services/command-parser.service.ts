@@ -5,9 +5,10 @@ import { cleanLLMJson } from "../lib/clean-llm-json.js";
 import { debugInDev } from "../lib/utils.js";
 import { commandParserPrompt } from "../data/prompts/command-parser.prompt.js";
 import { intentSchema, type Intent, type IntentName } from "../schemas/intent.schema.js";
+import { allowedIntents, isAllowedIntent, type ChatScope } from "../constants/chat-capabilities.js";
 import logger from "../lib/logger.js";
 
-export type ChatScope = "private" | "group";
+export type { ChatScope };
 
 export interface PriorExchange {
   originalMessage: string;
@@ -23,9 +24,6 @@ export interface ParseContext {
   recentHistory?: string[];
   priorExchange?: PriorExchange;
 }
-
-const DM_ONLY: IntentName[] = ["send_money", "save_to_jar", "create_jar"];
-const GROUP_OK: IntentName[] = ["create_collection", "status_query", "help_query", "pay_collection", "split_payment"];
 
 /**
  * Turns a chat message into one structured intent using the LLM. Parses and
@@ -75,11 +73,11 @@ class CommandParserService {
   }
 
   allowedIntents(scope: ChatScope): IntentName[] {
-    return scope === "group" ? GROUP_OK : [...GROUP_OK, ...DM_ONLY];
+    return allowedIntents(scope);
   }
 
   isAllowed(scope: ChatScope, intent: IntentName): boolean {
-    return this.allowedIntents(scope).includes(intent);
+    return isAllowedIntent(scope, intent);
   }
 
   private contextBlock(context: ParseContext): string {
