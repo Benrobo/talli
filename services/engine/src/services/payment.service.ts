@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import type { PendingPayment, PendingPaymentPurpose } from "@prisma/client";
+import type { PendingPayment, PendingPaymentPurpose, Payment } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import env from "../config/env.js";
 import { randomToken } from "../lib/utils.js";
@@ -37,12 +37,14 @@ const EXPIRY_MINUTES = 60;
 const MAX_POLL_ATTEMPTS = 90;
 
 /**
- * Inbound bank-transfer payments reconciled by polling, not webhooks. Creates a
- * Nomba checkout order, fetches its flash account number for the payer to
- * transfer to, and (via `reconcile`, run by the cron) credits the wallet or
- * collection once the transfer lands. Idempotent: a settled order credits once.
+ * Inbound bank-transfer payments. A pending payment is the in-flight
+ * reconciliation record: a Nomba checkout order whose flash account number the
+ * payer transfers to, polled by the cron until the money lands. On settlement it
+ * is promoted to a permanent {@link Payment} row (the system of record) and the
+ * destination is credited. Idempotent: a settled order credits once and writes
+ * one Payment.
  */
-class PendingPaymentService {
+class PaymentService {
   async create(input: CreatePendingInput): Promise<CreatedPending> {
     const order = await nomba.checkout.createOrder({
       orderReference: `talli_${input.purpose}_${randomToken(10)}`,
@@ -113,17 +115,11 @@ class PendingPaymentService {
     let receivedAmount = pending.amount;
     try {
       const receipt = await nomba.checkout.confirmReceipt(pending.orderRefId);
-
-      // for debugging purposes
-      console.log(JSON.stringify({
-        receipt,
-      }, null, 2));
-
       paid = receipt.status === true;
       const received = this.toNaira(receipt.order?.amount);
       if (received !== null) receivedAmount = received;
     } catch (err) {
-      logger.warn(`[pending] reconcile ${pending.orderRefId} poll failed: ${(err as Error).message}`);
+      logger.warn(`[payment] reconcile ${pending.orderRefId} poll failed: ${(err as Error).message}`);
     } finally {
       await prisma.pendingPayment.update({
         where: { id: pending.id },
@@ -153,11 +149,10 @@ class PendingPaymentService {
       });
       if (claim.count === 0) return;
 
-      console.log(`✅ Collection ${pending.collectionMemberId} credited with ${amount}`);
-
       let credit;
       try {
         credit = await collectionService.creditMember(pending.collectionMemberId, amount);
+        await this.recordCollectionPayment(pending, amount);
       } catch (err) {
         await prisma.pendingPayment.update({
           where: { id: pending.id },
@@ -173,6 +168,47 @@ class PendingPaymentService {
     await prisma.pendingPayment.update({
       where: { id: pending.id },
       data: { status: "completed", completedAt: new Date() },
+    });
+  }
+
+  /**
+   * Promotes a settled collection pending payment to the permanent ledger: writes
+   * one {@link Payment} row and credits the workspace owner's wallet. Both halves
+   * are idempotent on the Nomba order reference — the Payment is keyed on
+   * `providerOrderId` and the wallet ledger dedupes on `referenceId` — so a replay
+   * (cron retry or backfill) never doubles the money or the record. Shared by the
+   * live settle path and the backfill script.
+   */
+  async recordCollectionPayment(pending: PendingPayment, amount: number): Promise<Payment> {
+    if (!pending.collectionId || !pending.collectionMemberId) {
+      throw new BadRequestException("Collection payment is missing its collection or member");
+    }
+
+    const collection = await prisma.collection.findUniqueOrThrow({
+      where: { id: pending.collectionId },
+      select: { workspaceId: true, workspace: { select: { ownerUserId: true } } },
+    });
+
+    const wallet = await walletService.ensureWallet(collection.workspace.ownerUserId);
+    await walletService.credit(wallet.id, amount, "collection", pending.orderRefId);
+
+    const existing = await prisma.payment.findFirst({
+      where: { providerOrderId: pending.orderRefId },
+    });
+    if (existing) return existing;
+
+    return prisma.payment.create({
+      data: {
+        workspaceId: collection.workspaceId,
+        collectionId: pending.collectionId,
+        collectionMemberId: pending.collectionMemberId,
+        payerPlatformId: pending.payerPlatformUserId,
+        amount,
+        provider: "nomba",
+        providerOrderId: pending.orderRefId,
+        status: "successful",
+        paidAt: pending.completedAt ?? new Date(),
+      },
     });
   }
 
@@ -213,7 +249,7 @@ class PendingPaymentService {
       });
       await telegram.sendPhoto(credit.chatId, receipt, caption);
     } catch (err) {
-      logger.warn(`[pending] receipt render failed, sending text: ${(err as Error).message}`);
+      logger.warn(`[payment] receipt render failed, sending text: ${(err as Error).message}`);
       await telegram.sendMessage(credit.chatId, caption);
     }
   }
@@ -226,10 +262,9 @@ class PendingPaymentService {
   }
 
   private async mark(id: string, status: "expired" | "failed"): Promise<void> {
-    console.log(`🔄 Pending payment ${id} marked as ${status}`);
     await prisma.pendingPayment.update({ where: { id }, data: { status } });
   }
 }
 
-export const pendingPaymentService = new PendingPaymentService();
-export default pendingPaymentService;
+export const paymentService = new PaymentService();
+export default paymentService;

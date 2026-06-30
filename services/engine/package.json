@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "db:backfill:collection-payments": "tsx scripts/backfill-collection-payments.ts",
     "trigger:dev": "trigger.dev dev",
     "trigger:deploy": "trigger.dev deploy"
   },

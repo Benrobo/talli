@@ -1,4 +1,4 @@
-import { pendingPaymentService } from "../services/pending-payment.service.js";
+import { paymentService } from "../services/payment.service.js";
 import logger from "../lib/logger.js";
 
 /**
@@ -7,13 +7,13 @@ import logger from "../lib/logger.js";
  * failure doesn't stop the batch.
  */
 export async function reconcilePayments(): Promise<void> {
-  const pending = await pendingPaymentService.listPollable();
+  const pending = await paymentService.listPollable();
   if (pending.length === 0) return;
 
   let settled = 0;
   for (const item of pending) {
     try {
-      const done = await pendingPaymentService.reconcile(item.id);
+      const done = await paymentService.reconcile(item.id);
       if (done) settled += 1;
     } catch (err) {
       logger.error(`[cron] reconcile ${item.orderRefId} failed: ${(err as Error).message}`);
