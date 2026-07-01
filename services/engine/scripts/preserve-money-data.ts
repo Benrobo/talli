@@ -4,8 +4,8 @@ import prisma from "../src/prisma/index.js";
 
 /**
  * Preserves the money data (wallet + wallet transactions + payments + topup
- * pending payments) for a specific user across a `prisma migrate reset`, which
- * wipes the whole dev DB.
+ * pending payments + collections/members + savings jars/transactions) for a
+ * specific user across a `prisma migrate reset`, which wipes the whole dev DB.
  *
  *   bun run scripts/preserve-money-data.ts export   # BEFORE the reset — dumps to JSON
  *   <run prisma migrate reset>                       # DB wiped + migrations replayed
@@ -54,6 +54,40 @@ interface Backup {
     completedAt: string | null;
     createdAt: string;
   }[];
+  collections: {
+    title: string;
+    purpose: string;
+    collectionType: string;
+    amountPerMember: number | null;
+    targetAmount: number | null;
+    currency: string;
+    deadline: string | null;
+    status: string;
+    createdAt: string;
+    members: {
+      displayName: string;
+      platformUserId: string | null;
+      expectedAmount: number;
+      paidAmount: number;
+      status: string;
+      createdAt: string;
+    }[];
+  }[];
+  savingsJars: {
+    name: string;
+    targetAmount: number | null;
+    currentAmount: number;
+    currency: string;
+    lockUntil: string | null;
+    status: string;
+    createdAt: string;
+    transactions: {
+      amount: number;
+      type: string;
+      status: string;
+      createdAt: string;
+    }[];
+  }[];
 }
 
 async function exportData(): Promise<void> {
@@ -81,6 +115,18 @@ async function exportData(): Promise<void> {
         orderBy: { createdAt: "asc" },
       })
     : [];
+
+  const workspaceIds = workspaces.map((w) => w.id);
+  const collections = await prisma.collection.findMany({
+    where: { workspaceId: { in: workspaceIds } },
+    orderBy: { createdAt: "asc" },
+    include: { members: { orderBy: { createdAt: "asc" } } },
+  });
+  const savingsJars = await prisma.savingsJar.findMany({
+    where: { workspaceId: { in: workspaceIds } },
+    orderBy: { createdAt: "asc" },
+    include: { transactions: { orderBy: { createdAt: "asc" } } },
+  });
 
   const backup: Backup = {
     email: EMAIL,
@@ -114,13 +160,48 @@ async function exportData(): Promise<void> {
       completedAt: p.completedAt?.toISOString() ?? null,
       createdAt: p.createdAt.toISOString(),
     })),
+    collections: collections.map((c) => ({
+      title: c.title,
+      purpose: c.purpose,
+      collectionType: c.collectionType,
+      amountPerMember: c.amountPerMember,
+      targetAmount: c.targetAmount,
+      currency: c.currency,
+      deadline: c.deadline?.toISOString() ?? null,
+      status: c.status,
+      createdAt: c.createdAt.toISOString(),
+      members: c.members.map((m) => ({
+        displayName: m.displayName,
+        platformUserId: m.platformUserId,
+        expectedAmount: m.expectedAmount,
+        paidAmount: m.paidAmount,
+        status: m.status,
+        createdAt: m.createdAt.toISOString(),
+      })),
+    })),
+    savingsJars: savingsJars.map((j) => ({
+      name: j.name,
+      targetAmount: j.targetAmount,
+      currentAmount: j.currentAmount,
+      currency: j.currency,
+      lockUntil: j.lockUntil?.toISOString() ?? null,
+      status: j.status,
+      createdAt: j.createdAt.toISOString(),
+      transactions: j.transactions.map((t) => ({
+        amount: t.amount,
+        type: t.type,
+        status: t.status,
+        createdAt: t.createdAt.toISOString(),
+      })),
+    })),
   };
 
   writeFileSync(BACKUP_FILE, JSON.stringify(backup, null, 2));
   console.log(
     `✅ exported → ${BACKUP_FILE}\n   wallet: ${backup.wallet ? "yes" : "no"}, ` +
       `tx: ${backup.walletTransactions.length}, payments: ${backup.payments.length}, ` +
-      `topups: ${backup.pendingTopups.length}`
+      `topups: ${backup.pendingTopups.length}, collections: ${backup.collections.length}, ` +
+      `jars: ${backup.savingsJars.length}`
   );
 }
 
@@ -213,10 +294,79 @@ async function importData(): Promise<void> {
     topupRestored++;
   }
 
+  // Collections + savings jars need a workspace too. Re-created fresh under the
+  // user's workspace with brand-new ids. Idempotent: wipe this workspace's
+  // collections/jars first so re-running import never duplicates them.
+  let collectionsRestored = 0;
+  let jarsRestored = 0;
+  if (workspaceId) {
+    const backupCollections = backup.collections ?? [];
+    const backupJars = backup.savingsJars ?? [];
+    // Only wipe when the backup actually carries these, so an older backup
+    // (pre-collections) doesn't nuke a freshly-seeded workspace.
+    if (backupCollections.length > 0) await prisma.collection.deleteMany({ where: { workspaceId } });
+    if (backupJars.length > 0) await prisma.savingsJar.deleteMany({ where: { workspaceId } });
+
+    for (const c of backupCollections) {
+      await prisma.collection.create({
+        data: {
+          workspaceId,
+          createdByUserId: user.id,
+          title: c.title,
+          purpose: c.purpose,
+          collectionType: c.collectionType as never,
+          amountPerMember: c.amountPerMember,
+          targetAmount: c.targetAmount,
+          currency: c.currency,
+          deadline: c.deadline ? new Date(c.deadline) : null,
+          status: c.status as never,
+          createdAt: new Date(c.createdAt),
+          members: {
+            create: c.members.map((m) => ({
+              displayName: m.displayName,
+              platformUserId: m.platformUserId,
+              expectedAmount: m.expectedAmount,
+              paidAmount: m.paidAmount,
+              status: m.status as never,
+              createdAt: new Date(m.createdAt),
+            })),
+          },
+        },
+      });
+      collectionsRestored++;
+    }
+
+    for (const j of backupJars) {
+      await prisma.savingsJar.create({
+        data: {
+          workspaceId,
+          ownerUserId: user.id,
+          name: j.name,
+          targetAmount: j.targetAmount,
+          currentAmount: j.currentAmount,
+          currency: j.currency,
+          lockUntil: j.lockUntil ? new Date(j.lockUntil) : null,
+          status: j.status as never,
+          createdAt: new Date(j.createdAt),
+          transactions: {
+            create: j.transactions.map((t) => ({
+              amount: t.amount,
+              type: t.type as never,
+              status: t.status as never,
+              createdAt: new Date(t.createdAt),
+            })),
+          },
+        },
+      });
+      jarsRestored++;
+    }
+  }
+
   console.log(
     `✅ imported for ${backup.email}\n   wallet balance: ${wallet.balance}, ` +
-      `tx restored: ${txRestored}/${backup.walletTransactions.length}, ` +
-      `payments: ${payRestored}/${backup.payments.length}, topups: ${topupRestored}/${backup.pendingTopups.length}`
+      `tx restored: ${txRestored}/${backup.walletTransactions?.length ?? 0}, ` +
+      `payments: ${payRestored}/${backup.payments?.length ?? 0}, topups: ${topupRestored}/${backup.pendingTopups?.length ?? 0}, ` +
+      `collections: ${collectionsRestored}/${backup.collections?.length ?? 0}, jars: ${jarsRestored}/${backup.savingsJars?.length ?? 0}`
   );
 }
 

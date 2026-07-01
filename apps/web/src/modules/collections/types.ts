@@ -1,8 +1,3 @@
-/**
- * Types for the Collections module. All money values are integer minor units
- * (kobo); render them through the helpers in "@/lib/format".
- */
-
 export type CollectionStatus = "live" | "closed" | "draft";
 
 export type CollectionType = "fixed_per_person" | "open_contribution" | "named_members";

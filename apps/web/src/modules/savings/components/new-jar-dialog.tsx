@@ -33,7 +33,7 @@ export function NewJarDialog({ trigger }: NewJarDialogProps) {
       unlockDate: "",
     },
     onSubmit: async ({ value }) => {
-      const targetAmount = Number(value.target) * 100;
+      const targetAmount = Number(value.target);
       try {
         const payload = createSavingsJarSchema.parse({
           name: value.name.trim(),

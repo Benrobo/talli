@@ -70,7 +70,7 @@ export function JarPayPage() {
 
     setError(null);
     try {
-      const payload = depositToSavingsJarSchema.parse({ amount: numericAmount * 100 });
+      const payload = depositToSavingsJarSchema.parse({ amount: numericAmount });
       const result = await deposit.mutateAsync(payload);
       setCheckout({
         amount: result.data.amount,
@@ -174,7 +174,7 @@ export function JarPayPage() {
             {deposit.isPending
               ? "Setting up…"
               : amountInput
-                ? `Pay ${formatNaira(Number(amountInput) * 100)}`
+                ? `Pay ${formatNaira(Number(amountInput))}`
                 : "Enter an amount"}
           </Button>
           <CheckoutSecureFooter note="Secured by Nomba · money goes into your jar" />

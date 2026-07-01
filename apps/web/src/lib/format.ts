@@ -1,22 +1,17 @@
-/**
- * Money is stored everywhere as integer minor units (kobo). 100 kobo = ₦1.
- * These helpers are the only place that knows about that conversion, so the
- * UI always renders human-facing Naira from raw minor-unit values.
- */
 const NAIRA = "\u20A6";
 
-/** Render minor units (kobo) as a grouped Naira string, e.g. 300000 -> "₦3,000". */
-export function formatNaira(minorUnits: number): string {
-  const naira = Math.round(minorUnits) / 100;
+/** Render a Naira amount as a grouped string, e.g. 3000 -> "₦3,000". */
+export function formatNaira(amount: number): string {
+  const naira = Math.round(amount);
   return `${NAIRA}${naira.toLocaleString("en-NG", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: naira % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 0,
   })}`;
 }
 
-/** Compact Naira for tight spaces, e.g. 4400000 -> "₦44k", 20000000 -> "₦200k". */
-export function formatNairaShort(minorUnits: number): string {
-  const naira = Math.round(minorUnits) / 100;
+/** Compact Naira for tight spaces, e.g. 44000 -> "₦44k", 200000 -> "₦200k". */
+export function formatNairaShort(amount: number): string {
+  const naira = Math.round(amount);
   if (naira >= 1_000_000) return `${NAIRA}${trimZero(naira / 1_000_000)}m`;
   if (naira >= 1_000) return `${NAIRA}${trimZero(naira / 1_000)}k`;
   return `${NAIRA}${naira.toLocaleString("en-NG")}`;

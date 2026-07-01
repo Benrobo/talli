@@ -1,8 +1,3 @@
-/**
- * Types for the Savings jars screens. All money values are integer minor
- * units (kobo); render them through the helpers in "@/lib/format".
- */
-
 export type JarStatus = "active" | "locked";
 
 export interface Deposit {

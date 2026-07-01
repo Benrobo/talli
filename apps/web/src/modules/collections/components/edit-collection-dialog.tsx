@@ -39,18 +39,18 @@ export function EditCollectionDialog({ collection, trigger }: EditCollectionDial
       title: collection.title,
       purpose: collection.purpose,
       amount: isPerPerson
-        ? String(Math.round(collection.perPersonMinor / 100))
-        : String(Math.round(collection.targetMinor / 100)),
+        ? String(Math.round(collection.perPersonMinor))
+        : String(Math.round(collection.targetMinor)),
       due: toDateInput(collection.deadline),
     },
     onSubmit: async ({ value }) => {
-      const amountMinor = Number(value.amount) * 100;
+      const amount = Number(value.amount);
       try {
         const payload = updateCollectionSchema.parse({
           title: value.title.trim(),
           purpose: value.purpose.trim(),
-          amountPerMember: isPerPerson && collection.canEditAmounts ? amountMinor : undefined,
-          targetAmount: !isPerPerson && collection.canEditAmounts ? amountMinor : undefined,
+          amountPerMember: isPerPerson && collection.canEditAmounts ? amount : undefined,
+          targetAmount: !isPerPerson && collection.canEditAmounts ? amount : undefined,
           deadline: value.due ? new Date(value.due) : null,
         });
         await updateCollection.mutateAsync(payload);
@@ -81,8 +81,8 @@ export function EditCollectionDialog({ collection, trigger }: EditCollectionDial
           form.setFieldValue(
             "amount",
             isPerPerson
-              ? String(Math.round(collection.perPersonMinor / 100))
-              : String(Math.round(collection.targetMinor / 100))
+              ? String(Math.round(collection.perPersonMinor))
+              : String(Math.round(collection.targetMinor))
           );
           form.setFieldValue("due", toDateInput(collection.deadline));
         }

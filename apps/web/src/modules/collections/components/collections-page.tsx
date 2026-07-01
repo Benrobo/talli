@@ -15,6 +15,7 @@ import {
   Pressable,
 } from "@/components/ui";
 import { useCollections, useUpdateCollectionStatus } from "@/api/http/v1/collections/collections.hooks";
+import { CollectionsSkeleton } from "@/components/skeleton-loaders";
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowRight01Icon,
@@ -56,6 +57,10 @@ export function CollectionsPage() {
     .filter((collection) => toViewStatus(collection.status) === "live")
     .reduce((sum, collection) => sum + collectedOf(collection), 0);
   const totalCollected = collections.reduce((sum, collection) => sum + collectedOf(collection), 0);
+
+  if (isLoading) {
+    return <CollectionsSkeleton />;
+  }
 
   return (
     <div>
@@ -101,13 +106,7 @@ export function CollectionsPage() {
         </Stagger>
       ) : null}
 
-      {isLoading ? (
-        <EmptyState
-          icon={UserGroupIcon}
-          title="Loading collections…"
-          description="Fetching your latest collections and progress."
-        />
-      ) : isError ? (
+      {isError ? (
         <EmptyState
           icon={UserGroupIcon}
           title="Couldn't load collections"

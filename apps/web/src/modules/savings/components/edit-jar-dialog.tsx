@@ -38,7 +38,7 @@ export function EditJarDialog({ jar, trigger }: EditJarDialogProps) {
   const form = useForm({
     defaultValues: {
       name: jar.name,
-      target: jar.targetAmountMinor ? String(Math.round(jar.targetAmountMinor / 100)) : "",
+      target: jar.targetAmountMinor ? String(Math.round(jar.targetAmountMinor)) : "",
       locked,
       unlockDate: toDateInput(jar.lockUntil),
     },
@@ -47,7 +47,7 @@ export function EditJarDialog({ jar, trigger }: EditJarDialogProps) {
         const payload = updateSavingsJarSchema.parse({
           name: value.name.trim(),
           targetAmount:
-            jar.canEditAmounts && value.target ? Number(value.target) * 100 : undefined,
+            jar.canEditAmounts && value.target ? Number(value.target) : undefined,
           lockUntil: value.locked && value.unlockDate ? new Date(value.unlockDate) : null,
         });
         await updateJar.mutateAsync(payload);
@@ -76,7 +76,7 @@ export function EditJarDialog({ jar, trigger }: EditJarDialogProps) {
           form.setFieldValue("name", jar.name);
           form.setFieldValue(
             "target",
-            jar.targetAmountMinor ? String(Math.round(jar.targetAmountMinor / 100)) : ""
+            jar.targetAmountMinor ? String(Math.round(jar.targetAmountMinor)) : ""
           );
           form.setFieldValue("locked", jar.status === "locked" || !!jar.lockUntil);
           form.setFieldValue("unlockDate", toDateInput(jar.lockUntil));

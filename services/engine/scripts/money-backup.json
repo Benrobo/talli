@@ -124,6 +124,14 @@
       "referenceId": "bd913bf1-f7a2-473e-a28e-88024973daf0",
       "balanceAfter": 2110,
       "createdAt": "2026-06-30T18:51:02.504Z"
+    },
+    {
+      "type": "credit",
+      "amount": 40,
+      "reason": "collection",
+      "referenceId": "2adb7abc-2da8-414b-ba1c-a51765fa37e1",
+      "balanceAfter": 40,
+      "createdAt": "2026-07-01T05:38:50.398Z"
     }
   ],
   "payments": [
@@ -181,6 +189,17 @@
       "payerPlatformId": null,
       "paidAt": "2026-06-30T15:07:55.894Z",
       "createdAt": "2026-06-30T18:51:02.508Z"
+    },
+    {
+      "amount": 40,
+      "currency": "NGN",
+      "provider": "nomba",
+      "providerReference": null,
+      "providerOrderId": "2adb7abc-2da8-414b-ba1c-a51765fa37e1",
+      "status": "successful",
+      "payerPlatformId": null,
+      "paidAt": "2026-07-01T05:38:50.404Z",
+      "createdAt": "2026-07-01T05:38:50.405Z"
     }
   ],
   "pendingTopups": [
@@ -194,5 +213,41 @@
       "completedAt": "2026-06-28T01:56:01.225Z",
       "createdAt": "2026-06-28T01:55:08.025Z"
     }
-  ]
+  ],
+  "collections": [
+    {
+      "title": "Bill split",
+      "purpose": "bill_split",
+      "collectionType": "named_members",
+      "amountPerMember": null,
+      "targetAmount": 100,
+      "currency": "NGN",
+      "deadline": null,
+      "status": "active",
+      "createdAt": "2026-07-01T04:59:46.078Z",
+      "members": []
+    },
+    {
+      "title": "Bill split",
+      "purpose": "bill_split",
+      "collectionType": "named_members",
+      "amountPerMember": null,
+      "targetAmount": 100,
+      "currency": "NGN",
+      "deadline": null,
+      "status": "partially_paid",
+      "createdAt": "2026-07-01T05:04:49.082Z",
+      "members": [
+        {
+          "displayName": "Benaiah",
+          "platformUserId": null,
+          "expectedAmount": 40,
+          "paidAmount": 40,
+          "status": "paid",
+          "createdAt": "2026-07-01T05:37:25.676Z"
+        }
+      ]
+    }
+  ],
+  "savingsJars": []
 }

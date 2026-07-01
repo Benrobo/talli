@@ -48,7 +48,6 @@ export function getJar(id: string): Jar | undefined {
   return jars.find((jar) => jar.id === id);
 }
 
-/** Total saved across every jar, in minor units. */
 export const totalSavedMinor = jars.reduce((sum, jar) => sum + jar.savedMinor, 0);
 
 /** Roll-up figures for the savings overview hero. */

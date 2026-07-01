@@ -1,8 +1,3 @@
-/**
- * Types for the Receipts module. All money values are integer minor units
- * (kobo); render them through the helpers in "@/lib/format".
- */
-
 export type ReceiptKind = "collection" | "send" | "savings";
 
 export type ReceiptLink =

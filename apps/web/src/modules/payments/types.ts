@@ -1,8 +1,3 @@
-/**
- * Types for the Payments module. All money values are integer minor units
- * (kobo); render them through the helpers in "@/lib/format".
- */
-
 export type PayMethod = "bank" | "card" | "ussd";
 
 export interface PaymentRequest {

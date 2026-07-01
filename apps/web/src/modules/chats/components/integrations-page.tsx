@@ -30,6 +30,7 @@ import {
   useCreateLinkCode,
   useDisconnectChat,
 } from "@/api/http/v1/chat/chat.hooks";
+import { IntegrationsSkeleton } from "@/components/skeleton-loaders";
 import type { ConnectedChat, CreateLinkCodePayload, LinkCodeData } from "@/api/http/v1/chat/chat.types";
 import { PlatformTile } from "@/modules/chats/components/platform-tile";
 import type { ChatPlatform } from "@/modules/chats/types";
@@ -119,6 +120,10 @@ export function IntegrationsPage() {
     (chat) => chat.platform === "telegram" && chat.status === "active"
   );
   const whatsapp = INTEGRATIONS.find((integration) => integration.platform === "whatsapp")!;
+
+  if (isLoading) {
+    return <IntegrationsSkeleton />;
+  }
 
   return (
     <div className="mx-auto max-w-[860px]">

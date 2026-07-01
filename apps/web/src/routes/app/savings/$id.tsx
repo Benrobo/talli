@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { MoneySavingJarIcon } from "@benrobo/iconary/core/duotone-rounded";
 import { useSavingsJar } from "@/api/http/v1/savings/savings.hooks";
 import { JarDetailPage } from "@/modules/savings/components/jar-detail-page";
+import { NotFoundState } from "@/components/empty-states";
+import { JarDetailSkeleton } from "@/components/skeleton-loaders";
 import type { Jar } from "@/modules/savings/types";
 
 export const Route = createFileRoute("/app/savings/$id")({
@@ -12,11 +15,7 @@ function JarDetailRoute() {
   const { data: response, isLoading, isError } = useSavingsJar(id);
 
   if (isLoading) {
-    return (
-      <div className="py-20 text-center text-[14px] text-content-muted">
-        Loading jar…
-      </div>
-    );
+    return <JarDetailSkeleton />;
   }
 
   const source = response?.data;
@@ -42,9 +41,13 @@ function JarDetailRoute() {
 
   if (isError || !jar) {
     return (
-      <div className="py-20 text-center text-[14px] text-content-muted">
-        Jar not found
-      </div>
+      <NotFoundState
+        icon={MoneySavingJarIcon}
+        title="Savings jar not found"
+        description="This jar may have been closed or deleted, or the link is out of date."
+        backTo="/app/savings"
+        backLabel="Back to savings"
+      />
     );
   }
 

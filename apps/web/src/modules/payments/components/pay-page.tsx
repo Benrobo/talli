@@ -154,7 +154,7 @@ export function PayPage() {
       setError("Enter an amount greater than zero");
       return;
     }
-    submit({ ...pendingCheckout, amount: numericAmount * 100 });
+    submit({ ...pendingCheckout, amount: numericAmount });
   }
 
   if (stage === "pay" && checkout) {
@@ -219,7 +219,7 @@ export function PayPage() {
         footer={
           <div>
             <Button block size="lg" disabled={submitting || !amountInput} onClick={continueFromAmount}>
-              {amountInput ? `Pay ${formatNaira(Number(amountInput) * 100)}` : "Enter an amount"}
+              {amountInput ? `Pay ${formatNaira(Number(amountInput))}` : "Enter an amount"}
             </Button>
             <CheckoutSecureFooter note="Secured by Nomba · money goes straight to the group" />
           </div>

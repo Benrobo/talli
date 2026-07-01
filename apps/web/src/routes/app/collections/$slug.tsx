@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CollectionDetailPage } from "@/modules/collections/components/collection-detail-page";
 import { useCollection, useCollectionMembers } from "@/api/http/v1/collections/collections.hooks";
+import { NotFoundState } from "@/components/empty-states";
+import { CollectionDetailSkeleton } from "@/components/skeleton-loaders";
+import { UserGroupIcon } from "@benrobo/iconary/core/duotone-rounded";
 import type { Collection, MemberStatus } from "@/modules/collections/types";
 
 export const Route = createFileRoute("/app/collections/$slug")({
@@ -13,18 +16,18 @@ function CollectionDetailRoute() {
   const { data: membersResponse } = useCollectionMembers(slug, { pageSize: 50 });
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center text-[13.5px] text-content-muted">
-        Loading collection…
-      </div>
-    );
+    return <CollectionDetailSkeleton />;
   }
 
   if (isError || !collectionResponse?.data) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-[13.5px] text-content-muted">
-        Collection not found
-      </div>
+      <NotFoundState
+        icon={UserGroupIcon}
+        title="Collection not found"
+        description="This collection may have been closed or deleted, or the link is out of date."
+        backTo="/app/collections"
+        backLabel="Back to collections"
+      />
     );
   }
 

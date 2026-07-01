@@ -23,6 +23,7 @@ import {
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira } from "@/lib/format";
 import { usePayments } from "@/api/http/v1/payments/payments.hooks";
+import { SentSkeleton } from "@/components/skeleton-loaders";
 import type { SentPayment } from "@/api/http/v1/payments/payments.types";
 
 const PAGE_SIZE = 10;
@@ -77,11 +78,7 @@ export function SentPage() {
   const pagination = data?.data.pagination;
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center text-[13.5px] text-content-muted">
-        Loading transfers…
-      </div>
-    );
+    return <SentSkeleton />;
   }
 
   if (isError || !summary || !pagination) {

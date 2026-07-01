@@ -15,6 +15,7 @@ import {
   Coins01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, toPercent } from "@/lib/format";
+import { SavingsSkeleton } from "@/components/skeleton-loaders";
 import { useSavingsJars } from "@/api/http/v1/savings/savings.hooks";
 import { JarCard } from "@/modules/savings/components/jar-card";
 import { NewJarDialog } from "@/modules/savings/components/new-jar-dialog";
@@ -59,6 +60,10 @@ export function SavingsPage() {
     />
   );
 
+  if (isLoading) {
+    return <SavingsSkeleton />;
+  }
+
   return (
     <div>
       <PageHeader
@@ -68,15 +73,7 @@ export function SavingsPage() {
         actions={jars.length > 0 ? newJar : null}
       />
 
-      {isLoading ? (
-        <FadeIn delay={0.05}>
-          <EmptyState
-            icon={MoneySavingJarIcon}
-            title="Loading jars…"
-            description="Fetching your latest savings jars."
-          />
-        </FadeIn>
-      ) : isError ? (
+      {isError ? (
         <FadeIn delay={0.05}>
           <EmptyState
             icon={MoneySavingJarIcon}

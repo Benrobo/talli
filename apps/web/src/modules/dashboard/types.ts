@@ -1,8 +1,3 @@
-/**
- * Types for the dashboard Home screen. All money values are integer minor
- * units (kobo); render them through the helpers in "@/lib/format".
- */
-
 export type ActivityKind = "paid" | "sent" | "saved";
 
 export type ActivityLink =

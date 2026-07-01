@@ -18,6 +18,7 @@ import {
   PlusSignIcon,
   ReceiptDollarIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { SkeletonCard, SkeletonGrid } from "@/components/skeleton-loaders";
 import { useBillSplits } from "@/api/http/v1/bill-splits/bill-splits.hooks";
 import type { BillSplitSummary } from "@/api/http/v1/bill-splits/bill-splits.types";
 import { BillUploadWidget } from "@/modules/bill-split/components/bill-upload-widget";
@@ -71,7 +72,11 @@ export function SplitPage() {
         }
       />
 
-      {query.isPending ? <SplitGridLoading /> : null}
+      {query.isPending ? (
+        <SkeletonGrid count={4} cols="sm:grid-cols-2">
+          {() => <SkeletonCard lines={2} />}
+        </SkeletonGrid>
+      ) : null}
 
       {query.isError ? (
         <EmptyState
@@ -172,25 +177,3 @@ function SplitCard({ split, onOpen }: { split: BillSplitSummary; onOpen: () => v
   );
 }
 
-function SplitGridLoading() {
-  return (
-    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-      {[0, 1, 2].map((item) => (
-        <div
-          key={item}
-          className="h-[142px] animate-pulse rounded-[18px] border border-hairline bg-card p-4 shadow-card"
-        >
-          <div className="flex items-center gap-3">
-            <span className="size-10 rounded-xl bg-inset" />
-            <div className="flex-1">
-              <div className="h-3.5 w-2/3 rounded-full bg-inset" />
-              <div className="mt-2 h-2.5 w-1/3 rounded-full bg-inset" />
-            </div>
-          </div>
-          <div className="mt-5 h-px bg-hairline-soft" />
-          <div className="mt-4 h-4 w-1/4 rounded-full bg-inset" />
-        </div>
-      ))}
-    </div>
-  );
-}

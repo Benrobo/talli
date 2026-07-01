@@ -446,15 +446,14 @@ class PaymentService {
     return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
   }
 
-  /** Talli stores money in kobo; Nomba checkout amounts are naira. */
-  private toNombaAmount(minorUnits: number): number {
-    return minorUnits / 100;
+  private toNombaAmount(amount: number): number {
+    return Math.round(amount);
   }
 
   private fromNombaAmount(value: unknown): number | null {
     const naira = this.toNaira(value);
     if (naira === null) return null;
-    return Math.round(naira * 100);
+    return naira;
   }
 
   private async mark(id: string, status: "expired" | "failed"): Promise<void> {

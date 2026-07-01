@@ -40,15 +40,13 @@ export function NewCollectionDialog({ trigger }: NewCollectionDialogProps) {
     const numericAmount = Number(amount);
     if (!trimmed || !numericAmount || Number.isNaN(numericAmount)) return;
 
-    const amountMinor = numericAmount * 100;
-
     try {
       await createCollection.mutateAsync({
         title: trimmed,
         purpose: "",
         collectionType: mode === "per_person" ? "fixed_per_person" : "open_contribution",
-        amountPerMember: mode === "per_person" ? amountMinor : undefined,
-        targetAmount: mode === "open" ? amountMinor : undefined,
+        amountPerMember: mode === "per_person" ? numericAmount : undefined,
+        targetAmount: mode === "open" ? numericAmount : undefined,
         deadline: due ? new Date(due) : undefined,
       });
       toast.success("Collection created");

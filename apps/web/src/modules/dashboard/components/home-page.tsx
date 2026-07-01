@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { useMe } from "@/api/http/v1/auth/auth.hooks";
 import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
+import { HomeSkeleton } from "@/components/skeleton-loaders";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
@@ -87,8 +88,12 @@ function transactionToActivity(transaction: {
 
 export function HomePage() {
   const { data: meResponse } = useMe();
-  const { data: metricsResponse } = useWalletMetrics();
+  const { data: metricsResponse, isLoading: metricsLoading } = useWalletMetrics();
   const metrics = metricsResponse?.data;
+
+  if (metricsLoading && !metrics) {
+    return <HomeSkeleton />;
+  }
   const activity = (metrics?.recentTransactions ?? []).map(transactionToActivity);
   const jars = metrics?.topJars ?? [];
   const activeCollection = metrics?.activeCollection;
