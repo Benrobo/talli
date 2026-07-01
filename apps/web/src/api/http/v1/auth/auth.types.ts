@@ -16,6 +16,17 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1).optional(),
 });
 
+export const authEmailFieldSchema = z.string().email("A valid email is required");
+export const authNameFieldSchema = z.string().trim().min(1, "What should we call you?").max(80);
+export const authCodeFieldSchema = z.string().regex(/^\d{6}$/u, "Code must be 6 digits");
+
+export type AuthFormValues = {
+  mode: "login" | "signup";
+  name: string;
+  email: string;
+  code: string;
+};
+
 export type RequestOtpPayload = z.infer<typeof requestOtpSchema>;
 export type VerifyOtpPayload = z.infer<typeof verifyOtpSchema>;
 export type RefreshTokenPayload = z.infer<typeof refreshTokenSchema>;
