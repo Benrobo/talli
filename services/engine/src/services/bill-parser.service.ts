@@ -46,14 +46,14 @@ Rules:
 
 class BillParserService {
   async parse(image: Buffer): Promise<ParsedBill> {
-    const model = await ai.getModelForFeature("ai.bill.parse");
+    const model = await ai.getModelForFeature("ai.bill.parse", "google/gemini-3.5-flash");
     const raw = await ai.generateFromImage(PROMPT, image, {
       model: model.model,
       temperature: model.temperature,
     });
 
     debugInDev((_, saveToFile) => saveToFile("bill-parser-response.txt", raw));
-    
+
     try {
       const json = cleanLLMJson({ response: raw, requiredFields: ["total", "items"] }) as Record<
         string,

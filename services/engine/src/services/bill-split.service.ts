@@ -230,17 +230,44 @@ class BillSplitService {
   }
 
   async list(workspaceId: string) {
-    return prisma.billSplit.findMany({
+    const billSplits = await prisma.billSplit.findMany({
       where: { workspaceId },
       orderBy: { createdAt: "desc" },
-      include: {
-        collection: { select: { status: true, targetAmount: true } },
-        _count: { select: { selections: true, items: true } },
+      select: {
+        id: true,
+        token: true,
+        title: true,
+        status: true,
+        currency: true,
+        subtotal: true,
+        total: true,
+        expiresAt: true,
+        createdAt: true,
+        collection: { select: { status: true } },
+        items: {
+          where: { status: "claimed" },
+          select: { id: true },
+        },
+        _count: { select: { items: true } },
       },
     });
+
+    return billSplits.map((billSplit) => ({
+      id: billSplit.id,
+      token: billSplit.token,
+      title: billSplit.title,
+      status: this.displayStatus(billSplit),
+      currency: billSplit.currency,
+      total: billSplit.total ?? billSplit.subtotal ?? 0,
+      itemCount: billSplit._count.items,
+      paidItemCount: billSplit.items.length,
+      shareUrl: this.billUrl(billSplit.token),
+      expiresAt: billSplit.expiresAt?.toISOString() ?? null,
+      createdAt: billSplit.createdAt.toISOString(),
+    }));
   }
 
-  async getProgress(workspaceId: string, billSplitId: string) {
+  async getDetail(workspaceId: string, billSplitId: string) {
     const billSplit = await prisma.billSplit.findFirst({
       where: { id: billSplitId, workspaceId },
       include: {
@@ -253,7 +280,7 @@ class BillSplitService {
             },
           },
         },
-        collection: { select: { targetAmount: true } },
+        collection: { select: { targetAmount: true, status: true } },
       },
     });
     if (!billSplit) throw new NotFoundException("Bill split not found");
@@ -263,12 +290,47 @@ class BillSplitService {
       .reduce((sum, s) => sum + s.amount, 0);
 
     return {
-      billSplit,
-      items: billSplit.items,
-      selections: billSplit.selections,
+      id: billSplit.id,
+      token: billSplit.token,
+      title: billSplit.title,
+      status: this.displayStatus(billSplit),
+      currency: billSplit.currency,
+      subtotal: billSplit.subtotal,
+      total: billSplit.total ?? billSplit.subtotal ?? 0,
       collected,
-      targetAmount: billSplit.collection.targetAmount,
+      targetAmount: billSplit.collection.targetAmount ?? billSplit.total ?? 0,
+      itemCount: billSplit.items.length,
+      paidItemCount: billSplit.items.filter((item) => item.status === "claimed").length,
+      shareUrl: this.billUrl(billSplit.token),
+      expiresAt: billSplit.expiresAt?.toISOString() ?? null,
+      createdAt: billSplit.createdAt.toISOString(),
+      items: billSplit.items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        unitPrice: item.unitPrice,
+        status: item.status,
+        paidByName: item.paidByName,
+      })),
+      selections: billSplit.selections.map((selection) => ({
+        id: selection.id,
+        payerName: selection.payerName,
+        amount: selection.amount,
+        paid: selection.paid,
+        createdAt: selection.createdAt.toISOString(),
+      })),
     };
+  }
+
+  private displayStatus(billSplit: {
+    status: BillSplit["status"];
+    expiresAt: Date | null;
+    collection: { status: string };
+  }): BillSplit["status"] {
+    if (billSplit.status !== "active") return billSplit.status;
+    if (billSplit.expiresAt && dayjs().isAfter(billSplit.expiresAt)) return "expired";
+    if (billSplit.collection.status === "cancelled") return "cancelled";
+    if (["paid", "closed"].includes(billSplit.collection.status)) return "closed";
+    return "active";
   }
 
   private async discardCollection(collectionId: string): Promise<void> {

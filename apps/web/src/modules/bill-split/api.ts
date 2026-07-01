@@ -40,6 +40,36 @@ export interface CreateBillSplitResult {
   token: string;
 }
 
+export type BillSplitStatus = "active" | "closed" | "expired" | "cancelled";
+
+export interface BillSplitSummary {
+  id: string;
+  token: string;
+  title: string;
+  status: BillSplitStatus;
+  currency: string;
+  total: number;
+  itemCount: number;
+  paidItemCount: number;
+  shareUrl: string;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface BillSplitDetail extends BillSplitSummary {
+  subtotal: number | null;
+  collected: number;
+  targetAmount: number;
+  items: BillItem[];
+  selections: {
+    id: string;
+    payerName: string;
+    amount: number;
+    paid: boolean;
+    createdAt: string;
+  }[];
+}
+
 export const billSplitApi = {
   async createFromImage(image: File, title?: string): Promise<CreateBillSplitResult> {
     const form = new FormData();
@@ -59,6 +89,16 @@ export const billSplitApi = {
     payload: { payerName: string; itemIds: string[] }
   ): Promise<BillCheckoutResult> {
     const res = await apiClient.post(`/api/bill-splits/by-token/${token}/checkout`, payload);
+    return res.data.data;
+  },
+
+  async list(): Promise<BillSplitSummary[]> {
+    const res = await apiClient.get("/api/bill-splits");
+    return res.data.data.billSplits;
+  },
+
+  async getDetail(id: string): Promise<BillSplitDetail> {
+    const res = await apiClient.get(`/api/bill-splits/${id}`);
     return res.data.data;
   },
 };

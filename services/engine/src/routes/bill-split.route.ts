@@ -31,6 +31,6 @@ router.post(
 
 router.get("/bill-splits", useCatchErrors(isAuthenticated(c.list.bind(c))));
 
-router.get("/bill-splits/:id/progress", useCatchErrors(isAuthenticated(c.progress.bind(c))));
+router.get("/bill-splits/:id", useCatchErrors(isAuthenticated(c.detail.bind(c))));
 
 export default router;

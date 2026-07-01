@@ -14,9 +14,9 @@ export function PaymentReceiptPage() {
     <MobileScreen
       footer={
         <div className="flex flex-col gap-3">
-          <Link to="/app/home">
+          <Link to="/app/receipts">
             <Button block size="lg">
-              Back to chat
+              Go back to receipts
             </Button>
           </Link>
           <Button
@@ -31,7 +31,7 @@ export function PaymentReceiptPage() {
     >
       <div className="flex flex-col items-center pt-6 text-center">
         <span className="mb-6 flex size-[74px] items-center justify-center rounded-full bg-emerald-soft text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_10px_24px_-8px_rgba(47,163,107,0.5)]">
-          <Icon icon={Tick02Icon} size={34} />
+          <Icon icon={Tick02Icon} size={34} strokeWidth={2.75} />
         </span>
         <h1 className="mb-2 text-[28px] font-extrabold leading-none tracking-[-0.03em]">
           Payment confirmed

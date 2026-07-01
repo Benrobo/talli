@@ -5,14 +5,22 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@app/ui";
 import { Button, Card, Input } from "@/components/ui";
 import { Icon } from "@benrobo/iconary/react";
-import { AlertCircleIcon, Cancel01Icon, ImageAdd01Icon, Invoice01Icon, SparklesIcon } from "@benrobo/iconary/core/duotone-rounded";
+import {
+  AlertCircleIcon,
+  Cancel01Icon,
+  ImageAdd01Icon,
+  Invoice01Icon,
+  SparklesIcon,
+  TickDouble02Icon,
+  UserGroupIcon,
+} from "@benrobo/iconary/core/duotone-rounded";
 import { billSplitApi } from "../api";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
 type Phase = "idle" | "ready" | "processing";
 
-export function BillUploadWidget() {
+export function BillUploadWidget({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -27,19 +35,16 @@ export function BillUploadWidget() {
     };
   }, []);
 
-  const onDrop = useCallback((accepted: File[], rejections: FileRejection[]) => {
-    setError(null);
-    if (rejections.length > 0) {
-      const code = rejections[0].errors[0]?.code;
-      setError(
-        code === "file-too-large"
-          ? "That image is over 8MB — try a smaller photo."
-          : "That file isn't a supported image."
-      );
+  const acceptFile = useCallback((next: File) => {
+    if (!next.type.startsWith("image/")) {
+      setError("That file isn't a supported image.");
       return;
     }
-    const next = accepted[0];
-    if (!next) return;
+    if (next.size > MAX_BYTES) {
+      setError("That image is over 8MB — try a smaller photo.");
+      return;
+    }
+    setError(null);
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     const url = URL.createObjectURL(next);
     previewRef.current = url;
@@ -47,6 +52,38 @@ export function BillUploadWidget() {
     setPreview(url);
     setPhase("ready");
   }, []);
+
+  const onDrop = useCallback(
+    (accepted: File[], rejections: FileRejection[]) => {
+      if (rejections.length > 0) {
+        const code = rejections[0].errors[0]?.code;
+        setError(
+          code === "file-too-large"
+            ? "That image is over 8MB — try a smaller photo."
+            : "That file isn't a supported image."
+        );
+        return;
+      }
+      if (accepted[0]) acceptFile(accepted[0]);
+    },
+    [acceptFile]
+  );
+
+  useEffect(() => {
+    if (phase === "processing") return;
+    const onPaste = (event: ClipboardEvent) => {
+      const image = Array.from(event.clipboardData?.items ?? []).find((item) =>
+        item.type.startsWith("image/")
+      );
+      if (!image) return;
+      const file = image.getAsFile();
+      if (!file) return;
+      event.preventDefault();
+      acceptFile(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [acceptFile, phase]);
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
@@ -82,16 +119,25 @@ export function BillUploadWidget() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg">
-      <div className="mb-8 text-center">
-        <span className="mb-4 inline-flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
-          <Icon icon={Invoice01Icon} size={24} />
-        </span>
-        <h1 className="font-display text-[26px] font-bold leading-tight tracking-[-0.02em]">Split a bill</h1>
-        <p className="mt-2 text-[14px] text-content-muted">
-          Snap the receipt — everyone picks what they had and pays for it.
-        </p>
-      </div>
+    <div className={compact ? "w-full" : "mx-auto w-full max-w-lg"}>
+      {compact ? (
+        <div className="mb-4">
+          <h2 className="font-display text-[18px] font-bold tracking-[-0.02em] text-foreground">Split a bill</h2>
+          <p className="mt-0.5 text-[13px] text-content-muted">
+            Snap the receipt — everyone pays for what they had.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-8 text-center">
+          <span className="mb-4 inline-flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
+            <Icon icon={Invoice01Icon} size={24} />
+          </span>
+          <h1 className="font-display text-[26px] font-bold leading-tight tracking-[-0.02em]">Split a bill</h1>
+          <p className="mt-2 text-[14px] text-content-muted">
+            Snap the receipt — everyone picks what they had and pays for it.
+          </p>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {!preview ? (
@@ -99,17 +145,18 @@ export function BillUploadWidget() {
             <div
               {...getRootProps()}
               className={cn(
-                "flex cursor-pointer flex-col items-center justify-center rounded-2xl bg-card px-6 py-14 text-center outline-dashed outline-2 outline-offset-[-2px] outline-hairline transition-colors",
+                "group flex cursor-pointer flex-col items-center justify-center rounded-2xl text-center outline-dashed outline-2 outline-offset-[-2px] outline-hairline transition-colors hover:bg-iris-soft/45 hover:outline-iris/30",
+                compact ? "min-h-[292px] bg-inset px-5 py-8" : "bg-card px-6 py-14",
                 isDragActive && "bg-iris-soft outline-iris",
                 isDragReject && "bg-destructive/5 outline-destructive"
               )}
             >
               <input {...getInputProps()} />
               <motion.span
-                animate={{ y: isDragActive ? -6 : 0 }}
-                transition={{ duration: 0.2 }}
+                animate={{ y: isDragActive ? -6 : 0, scale: isDragActive ? 1.06 : 1 }}
+                transition={{ type: "spring", stiffness: 420, damping: 26 }}
                 className={cn(
-                  "mb-4 flex size-14 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep transition-colors",
+                  "mb-4 flex size-14 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep shadow-soft transition-colors",
                   isDragActive && "bg-iris text-white"
                 )}
               >
@@ -118,7 +165,37 @@ export function BillUploadWidget() {
               <div className="text-[15px] font-medium">
                 {isDragActive ? "Drop the receipt" : "Drag a receipt here"}
               </div>
-              <div className="mt-1 text-[13px] text-content-muted">or tap to choose a photo · max 8MB</div>
+              <div className="mt-1 text-[13px] text-content-muted">
+                Tap to choose, drag, or paste · max 8MB
+              </div>
+              {/* {compact ? (
+                <div className="mt-6 grid w-full grid-cols-3 gap-2 border-t border-hairline pt-5">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="flex size-8 items-center justify-center rounded-[10px] bg-card text-iris-deep shadow-soft">
+                      <Icon icon={SparklesIcon} size={15} />
+                    </span>
+                    <span className="text-[10.5px] font-medium leading-[1.25] text-content-muted">
+                      Receipt becomes items
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="flex size-8 items-center justify-center rounded-[10px] bg-emerald-soft text-emerald-deep shadow-soft">
+                      <Icon icon={UserGroupIcon} size={15} />
+                    </span>
+                    <span className="text-[10.5px] font-medium leading-[1.25] text-content-muted">
+                      Everyone picks theirs
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="flex size-8 items-center justify-center rounded-[10px] bg-amber-soft text-amber-deep shadow-soft">
+                      <Icon icon={TickDouble02Icon} size={15} />
+                    </span>
+                    <span className="text-[10.5px] font-medium leading-[1.25] text-content-muted">
+                      Payments stay tracked
+                    </span>
+                  </div>
+                </div>
+              ) : null} */}
             </div>
           </motion.div>
         ) : (
@@ -183,8 +260,8 @@ export function BillUploadWidget() {
       </AnimatePresence>
 
       {preview ? (
-        <Button block size="lg" className="mt-5" disabled={phase === "processing"} onClick={createSplit}>
-          {phase === "processing" ? "Setting up the split…" : "Create the split"}
+        <Button block size="lg" className="mt-5" loading={phase === "processing"} onClick={createSplit}>
+          Create the split
         </Button>
       ) : null}
     </div>
