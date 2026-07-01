@@ -71,8 +71,6 @@ Top-level scripts in root `package.json`:
 | `bun lint` / `type-check` | Run via Turbo. |
 | `bun format` | Prettier write. |
 | `bun db:generate` / `db:push` / `db:migrate` / `db:studio` | Prisma. |
-| `bun icons:add <slug>` | Vendor an icon from `~/projects/design-icons/`. |
-| `bun icons:list` | List available icons in a style. |
 | `bun skills:install` | Symlink bundled skills into `~/.agents/skills/`. |
 
 ## Git

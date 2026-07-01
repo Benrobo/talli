@@ -60,7 +60,7 @@ class CommandParserService {
 
         const json = cleanLLMJson({ response: raw, requiredFields: ["intent"] }) as Record<string, unknown>;
         if (json.status !== "ready") json.status = "needs_clarification";
-        if (json.intent !== "person_picker") delete json.items;
+        if (json.intent !== "bill_split") delete json.items;
         return intentSchema.parse(json);
       },
       {

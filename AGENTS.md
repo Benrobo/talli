@@ -21,7 +21,7 @@ the relevant memory files:
 | Adding an AI call | `memory/patterns.md` (recipe 5), `services/engine/src/services/ai/index.ts` |
 | Adding a notification | `services/engine/src/lib/notification-queue.ts`, `memory/patterns.md` (recipe 8) |
 | Touching the web router | `apps/web/src/routes/__root.tsx`, `memory/patterns.md` |
-| Adding an icon | `packages/icons/README.md`, the duotone vs twotone notes below |
+| Adding an icon | the `benrobo-iconary` skill + the Icons section below |
 | Editing styles / tokens | `packages/tailwind-config/globals.css`, `memory/conventions.md` |
 
 ## Hard rules
@@ -43,8 +43,14 @@ the relevant memory files:
 - **Authenticated routes use `useCatchErrors(isAuthenticated(handler))`.**
   In that order. Skipping the wrap means errors return as 500s with stack
   traces, which is a security problem.
-- **Don't paste raw SVG into components.** Run
-  `bun icons:add <slug>` first.
+- **Don't paste raw SVG into components.** Icons come from `@benrobo/iconary`
+  (see the `benrobo-iconary` skill): `import { Icon } from "@benrobo/iconary/react"`
+  + icon data from `@benrobo/iconary/core/<style>`, rendered as
+  `<Icon icon={Home01Icon} color="currentColor" />`. Never use the old
+  `@app/icons` package or `bun icons:add`.
+- **`@benrobo/iconary` is a private GitHub Packages dependency.** Installing it
+  needs `GITHUB_TOKEN` (scope `read:packages`) in your env — the root `.npmrc`
+  reads it as `${GITHUB_TOKEN}`. No token is committed. See `.env.example`.
 
 ## Available patterns
 
@@ -62,34 +68,28 @@ router.post(
 
 ## Icons (very important)
 
-This project ships a curated subset of icons from
-`~/projects/design-icons/icons/<style>/`. Two styles are supported:
+Icons come from **`@benrobo/iconary`** — a private package on GitHub Packages,
+not a local folder. Install needs `GITHUB_TOKEN` (see Hard rules). The old
+`@app/icons` package and `bun icons:add` CLI are **removed**.
 
-- **`duotone-rounded`** — two-tone filled icons. The opacity layer is
-  themable through the `--icon-tone` CSS variable (set via the `tone` prop
-  on `<Icon />`). This is the default for product UI.
-- **`twotone-rounded`** — distinct two-color stroke icons. Use for brand
-  glyphs (GitHub, X, Discord) and anywhere you want a flatter look.
-
-Add a new icon:
-
-```bash
-bun icons:add home01                   # default style is duotone-rounded
-bun icons:add github --style twotone-rounded
-bun icons:add user --as PersonIcon     # rename on import
-bun icons:list --style duotone-rounded # browse what's available
-```
-
-Use it:
+The model is **icon data + one renderer**: import the `Icon` renderer once, import
+the icon data from `core/<style>`, and pass it as `icon`.
 
 ```tsx
-import { Icon, Home01Icon } from "@app/icons";
-<Icon data={Home01Icon} size={20} tone="oklch(76% 0.12 80)" />
+import { Icon } from "@benrobo/iconary/react";
+import { Home01Icon } from "@benrobo/iconary/core/duotone-rounded";
+
+<Icon icon={Home01Icon} size={20} color="currentColor" />
 ```
 
-When the icon you want isn't in `~/projects/design-icons/`, add it
-**there** first (run `bun extract` in that repo), then run `bun icons:add`
-here.
+Styles: **`duotone-rounded`** is the default for product UI;
+**`twotone-rounded`** for brand glyphs (GitHub, X, Discord). Verify exact export
+names via autocomplete on `@benrobo/iconary/core/<style>` — don't guess.
+
+Full rules, props, and naming are in the **`benrobo-iconary`** skill
+(`.agents/skills/benrobo-iconary/SKILL.md`). New icons are added in
+`~/projects/design-icons` and released from `~/projects/iconary` (see its
+README) — never vendored into this repo.
 
 ## Available skills
 

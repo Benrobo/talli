@@ -21,11 +21,11 @@ class AuthController {
   }
 
   async verifyOtp(ctx: Context) {
-    const { email, code } = ctx.get("validatedData") as VerifyOtpInput;
+    const { email, code, name } = ctx.get("validatedData") as VerifyOtpInput;
     const { user, tokens } = await authService.verifyOtp(email, code, {
       userAgent: ctx.req.header("user-agent") ?? null,
       ipAddress: ctx.req.header("x-forwarded-for") ?? null,
-    });
+    }, name);
     this.setAuthCookies(ctx, tokens);
     return sendResponse.success(ctx, "Signed in", 200, { user, ...tokens });
   }

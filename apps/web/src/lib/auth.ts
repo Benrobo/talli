@@ -29,7 +29,7 @@ export const authApi = {
     );
     return data.data;
   },
-  async verifyOtp(payload: { email: string; code: string }) {
+  async verifyOtp(payload: { email: string; code: string; name?: string }) {
     const { data } = await apiClient.post<VerifyOtpResponse>(
       "/api/auth/verify-otp",
       payload

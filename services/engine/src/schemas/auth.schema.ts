@@ -8,6 +8,7 @@ export const requestOtpSchema = z.object({
 export const verifyOtpSchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/u, "Code must be 6 digits"),
+  name: z.string().trim().min(1).max(80).optional(),
 });
 
 export const refreshSchema = z.object({

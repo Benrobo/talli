@@ -1,0 +1,72 @@
+import type { Context } from "hono";
+import sendResponse from "../lib/send-response.js";
+import { BadRequestException } from "../lib/exception.js";
+import { billSplitService } from "../services/bill-split.service.js";
+import { billParserService } from "../services/bill-parser.service.js";
+import { workspaceService } from "../services/workspace.service.js";
+import type { BillSplitCheckoutInput } from "../schemas/bill-split.schema.js";
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+class BillSplitController {
+  private async workspaceId(ctx: Context): Promise<string> {
+    const userId = ctx.get("userId") as string;
+    const workspaceId = await workspaceService.getActiveWorkspaceId(userId);
+    if (!workspaceId) throw new BadRequestException("No active workspace");
+    return workspaceId;
+  }
+
+  async createFromImage(ctx: Context) {
+    const userId = ctx.get("userId") as string;
+    const workspaceId = await this.workspaceId(ctx);
+
+    const body = await ctx.req.parseBody();
+    const file = body.image;
+    if (!(file instanceof File)) throw new BadRequestException("Attach a photo of the bill");
+    if (file.size > MAX_IMAGE_BYTES) throw new BadRequestException("That image is too large (max 8MB)");
+    if (!file.type.startsWith("image/")) throw new BadRequestException("Upload an image of the bill");
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const bill = await billParserService.parse(buffer);
+    if (!bill.confident || bill.items.length === 0) {
+      throw new BadRequestException(bill.reason ?? "I couldn't read the items on that bill. Try a clearer photo.");
+    }
+
+    const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Bill split";
+    const { url, billSplit } = await billSplitService.createFromItems({
+      workspaceId,
+      ownerUserId: userId,
+      source: "web",
+      title,
+      items: bill.items.map((item) => ({ name: item.name, unitPrice: item.unitPrice })),
+      total: bill.total,
+    });
+
+    return sendResponse.success(ctx, "Bill split created", 201, { url, token: billSplit.token });
+  }
+
+  async getByToken(ctx: Context) {
+    const billSplit = await billSplitService.getByToken(ctx.req.param("token"));
+    return sendResponse.success(ctx, "Bill split fetched", 200, billSplit);
+  }
+
+  async checkout(ctx: Context) {
+    const input = ctx.get("validatedData") as BillSplitCheckoutInput;
+    const result = await billSplitService.checkout(ctx.req.param("token"), input);
+    return sendResponse.success(ctx, "Checkout created", 201, result);
+  }
+
+  async list(ctx: Context) {
+    const workspaceId = await this.workspaceId(ctx);
+    const billSplits = await billSplitService.list(workspaceId);
+    return sendResponse.success(ctx, "Bill splits fetched", 200, { billSplits });
+  }
+
+  async progress(ctx: Context) {
+    const workspaceId = await this.workspaceId(ctx);
+    const progress = await billSplitService.getProgress(workspaceId, ctx.req.param("id"));
+    return sendResponse.success(ctx, "Bill split progress fetched", 200, progress);
+  }
+}
+
+export const billSplitController = new BillSplitController();

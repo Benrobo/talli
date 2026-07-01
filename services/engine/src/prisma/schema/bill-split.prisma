@@ -1,0 +1,88 @@
+enum BillSplitStatus {
+  active
+  closed
+  expired
+  cancelled
+}
+
+enum BillSplitSource {
+  telegram
+  web
+}
+
+enum BillSplitItemStatus {
+  available
+  claimed
+}
+
+model BillSplit {
+  id              String          @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  linkedChatId    String?
+  linkedChat      LinkedChat?     @relation(fields: [linkedChatId], references: [id], onDelete: SetNull)
+  collectionId    String          @unique
+  collection      Collection      @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User            @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  title           String
+  token           String          @unique
+  source          BillSplitSource @default(telegram)
+  status          BillSplitStatus @default(active)
+  currency        String          @default("NGN")
+  subtotal        Int?
+  total           Int?
+  knownNames      String[]        @default([])
+  expiresAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items      BillSplitItem[]
+  selections BillSplitSelection[]
+
+  @@index([workspaceId])
+  @@index([linkedChatId])
+  @@index([status])
+  @@map("bill_splits")
+}
+
+model BillSplitItem {
+  id          String              @id @default(cuid())
+  billSplitId String
+  billSplit   BillSplit           @relation(fields: [billSplitId], references: [id], onDelete: Cascade)
+  label       String
+  unitPrice   Int
+  sortOrder   Int                 @default(0)
+  status      BillSplitItemStatus @default(available)
+  paidByName  String?
+  claimedBySelectionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([billSplitId])
+  @@map("bill_split_items")
+}
+
+model BillSplitSelection {
+  id                 String           @id @default(cuid())
+  billSplitId        String
+  billSplit          BillSplit        @relation(fields: [billSplitId], references: [id], onDelete: Cascade)
+  collectionMemberId String           @unique
+  collectionMember   CollectionMember @relation(fields: [collectionMemberId], references: [id], onDelete: Cascade)
+  payerName          String
+  itemIds            String[]
+  amount             Int
+  checkoutLink       String?
+  pendingPaymentId   String?          @unique
+  paid               Boolean          @default(false)
+  conflicted         Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([billSplitId])
+  @@index([pendingPaymentId])
+  @@map("bill_split_selections")
+}

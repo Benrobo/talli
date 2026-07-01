@@ -1,11 +1,64 @@
 {
   "version": 1,
-  "updatedAt": "2026-05-23",
   "skills": {
-    "frontend-design": {
+    "agents-sdk": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "babysit": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    },
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "create-rule": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    },
+    "create-skill": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    },
+    "durable-objects": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "find-skills": {
       "source": "anthropics/skills",
       "sourceType": "github",
       "scope": "agents"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "4eabc66183767153e404b39d1b839b1c37f2d82d86f0a0d7e880a579d8d62336"
+    },
+    "karpathy-guidelines": {
+      "source": "multica-ai/andrej-karpathy-skills",
+      "sourceType": "github",
+      "scope": "agents",
+      "sourcePath": "skills/karpathy-guidelines",
+      "sourceCommit": "2c606141936f1eeef17fa3043a72095b4765b9c2",
+      "contentSha256": "6e22cc54cb02a5e98ae42d06d9d7292db0c1b43894831b32879beb0166b2aea7"
+    },
+    "sandbox-sdk": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "split-to-prs": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
     },
     "tanstack-router-best-practices": {
       "source": "anthropics/skills",
@@ -26,59 +79,6 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "scope": "agents"
-    },
-    "agents-sdk": {
-      "source": "cloudflare/skills",
-      "sourceType": "github",
-      "scope": "agents"
-    },
-    "cloudflare": {
-      "source": "cloudflare/skills",
-      "sourceType": "github",
-      "scope": "agents"
-    },
-    "durable-objects": {
-      "source": "cloudflare/skills",
-      "sourceType": "github",
-      "scope": "agents"
-    },
-    "sandbox-sdk": {
-      "source": "cloudflare/skills",
-      "sourceType": "github",
-      "scope": "agents"
-    },
-    "find-skills": {
-      "source": "anthropics/skills",
-      "sourceType": "github",
-      "scope": "agents"
-    },
-    "karpathy-guidelines": {
-      "source": "multica-ai/andrej-karpathy-skills",
-      "sourceType": "github",
-      "scope": "agents",
-      "sourcePath": "skills/karpathy-guidelines",
-      "sourceCommit": "2c606141936f1eeef17fa3043a72095b4765b9c2",
-      "contentSha256": "6e22cc54cb02a5e98ae42d06d9d7292db0c1b43894831b32879beb0166b2aea7"
-    },
-    "create-rule": {
-      "source": "cursor/skills",
-      "sourceType": "github",
-      "scope": "cursor"
-    },
-    "create-skill": {
-      "source": "cursor/skills",
-      "sourceType": "github",
-      "scope": "cursor"
-    },
-    "split-to-prs": {
-      "source": "cursor/skills",
-      "sourceType": "github",
-      "scope": "cursor"
-    },
-    "babysit": {
-      "source": "cursor/skills",
-      "sourceType": "github",
-      "scope": "cursor"
     }
   }
 }

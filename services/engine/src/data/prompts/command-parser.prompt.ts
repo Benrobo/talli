@@ -52,25 +52,14 @@ What each intent means (classify the message into exactly one):
   one to act on — "I want to pay for a collection", "let me pay my dues", "how do I
   pay?", "pay". Set status "ready"; Talli lists this group's active collections with
   buttons to pick one. You don't need amount or title for this.
-- split_payment: the user wants to SPLIT a bill/amount across specific people or a
-  number of ways. Choose a splitMode:
-  - "even": a total divided equally among named people. "split 30k between Tolu, Ada
-    and me" -> splitMode "even", amount 30000, members [{name:"Tolu"},{name:"Ada"},
-    {name:"me"}]. Talli divides; don't fill per-member amounts.
-  - "custom": each person owes a stated amount. "Tolu 10k, Ada 5k, Bola 15k" ->
-    splitMode "custom", members [{name:"Tolu",amount:10000},{name:"Ada",amount:5000},
-    {name:"Bola",amount:15000}]. Omit the top-level amount.
-  - "by_count": a total split N ways with no names. "split 30k 3 ways" -> splitMode
-    "by_count", amount 30000, count 3.
-  Keep "me"/"myself" as a member named "me" (Talli resolves it to the sender). Give
-  the collection a short title if one is implied ("for dinner" -> "Dinner"); else omit.
-- person_picker: the user wants each person to pick their own items from a receipt
-  and pay their computed share via a web link. Usually triggered with a bill photo
-  and a caption like "let everyone pick what they chose" or "each person selects
-  their items". Set status "ready" when a title is implied or can default to
-  "Receipt split"; items come from the receipt parser, not from you — omit "items".
-  "Identify the quantity of each item that is on the receipt and if that does not exist set it to 1"
-  Do NOT use this for even/custom/by_count splits — those are split_payment.
+- bill_split: the user wants to SPLIT a bill — everyone pays for the items they
+  had. This is the ONLY splitting flow. It needs a receipt: it's normally triggered
+  by a bill photo, and the items come from the receipt parser, not from you — omit
+  "items". Give a short title if one is implied ("dinner at Bukka" -> "Dinner"),
+  else it defaults to "Bill split". If the user names who's paying ("Tolu, Ada and
+  me are splitting this"), put those names in "payerNames" (keep "me" as "me").
+  If someone says "split this" with NO receipt photo, still use bill_split with
+  status "ready" and no items — Talli will ask them to send the bill photo.
 
 Fields:
 - intent: one of the allowed intents
@@ -92,10 +81,8 @@ Fields:
 - recipientName: the name of who to send to (e.g. "Tolu"), for send_money
 - accountNumber, bankName: only if the user explicitly stated them
 - target: what a status_query is about
-- splitMode: "even" | "custom" | "by_count", for split_payment only
-- count: integer, for split_payment "by_count" only (how many ways)
-- members: array of { name, amount? } for split_payment "even" (names only) and
-  "custom" (each with their amount)
+- payerNames: array of names, for bill_split only — who's paying, if the user says.
+  Optional; omit if not stated.
 
 Rules:
 - Return ONLY valid JSON. No markdown, no commentary.

@@ -1,11 +1,15 @@
 import { cn } from "@app/ui";
 import type { ReactNode } from "react";
+import { Icon } from "@benrobo/iconary/react";
+import type { IconData } from "@benrobo/iconary/core";
 
 interface StatCardProps {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
-  tone?: "light" | "night";
+  icon?: IconData;
+  delta?: { value: string; direction: "up" | "down" };
+  tone?: "light" | "filled" | "night";
   className?: string;
   children?: ReactNode;
 }
@@ -14,44 +18,67 @@ export function StatCard({
   label,
   value,
   sub,
+  icon,
+  delta,
   tone = "light",
   className,
   children,
 }: StatCardProps) {
+  const filled = tone === "filled";
+  const night = tone === "night";
+  const dark = filled || night;
+
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[15px] p-5",
+        "rounded-[16px] p-5",
         tone === "light" && "border border-hairline bg-card shadow-card",
-        tone === "night" && "bg-night text-white",
+        filled && "bg-primary text-white",
+        night && "bg-night text-white",
         className
       )}
     >
-      {tone === "night" ? (
-        <div className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[radial-gradient(circle,oklch(0.52_0.21_285/0.45),transparent_70%)]" />
-      ) : null}
-      <div className="relative">
-        <div
-          className={cn(
-            "mb-3 text-[12.5px]",
-            tone === "night" ? "text-on-night" : "text-content-muted"
-          )}
-        >
+      <div className="mb-3 flex items-center justify-between">
+        <span className={cn("text-[13px] font-medium", dark ? "text-white/70" : "text-content-muted")}>
           {label}
-        </div>
-        <div className="tabular text-[27px] font-bold tracking-[-0.02em]">{value}</div>
-        {sub ? (
-          <div
+        </span>
+        {icon ? (
+          <span
             className={cn(
-              "mt-2.5 text-[11.5px]",
-              tone === "night" ? "text-[#c9b7ff]" : "text-content-muted"
+              "flex size-8 items-center justify-center rounded-[10px]",
+              dark ? "bg-white/12 text-white" : "bg-iris-soft text-iris-deep"
             )}
           >
-            {sub}
-          </div>
+            <Icon icon={icon} size={16} />
+          </span>
         ) : null}
-        {children}
       </div>
+
+      <div className="tabular text-[28px] font-bold tracking-[-0.02em]">{value}</div>
+
+      {delta || sub ? (
+        <div className="mt-3 flex items-center gap-2">
+          {delta ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+                dark
+                  ? "bg-white/15 text-white"
+                  : delta.direction === "up"
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-rose-soft/30 text-rose"
+              )}
+            >
+              {delta.value}
+              {delta.direction === "up" ? " ↑" : " ↓"}
+            </span>
+          ) : null}
+          {sub ? (
+            <span className={cn("text-[12px]", dark ? "text-white/70" : "text-content-muted")}>{sub}</span>
+          ) : null}
+        </div>
+      ) : null}
+      {children}
     </div>
   );
 }

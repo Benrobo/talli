@@ -3,15 +3,13 @@ import jwtService from "../lib/jwt.js";
 import prisma from "../prisma/index.js";
 import logger from "../lib/logger.js";
 
-/**
- * Socket.IO auth gate. Reads `auth.token` from the handshake, verifies the
- * JWT, confirms the session row in Postgres, and attaches `userId` and
- * `sessionId` onto `socket.data`.
- */
 export function authMiddleware(socket: Socket, next: (err?: Error) => void) {
   try {
     const token = socket.handshake.auth?.token as string | undefined;
-    if (!token) return next(new Error("Authentication required"));
+    if (!token) {
+      socket.data.anonymous = true;
+      return next();
+    }
 
     let payload;
     try {

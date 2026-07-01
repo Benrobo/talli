@@ -1,5 +1,6 @@
 import { cn } from "@app/ui";
-import { Icon, TelegramIcon, WhatsappIcon } from "@app/icons";
+import { Icon } from "@benrobo/iconary/react";
+import { TelegramIcon, WhatsappIcon } from "@benrobo/iconary/core/duotone-rounded";
 import type { ChatPlatform } from "@/modules/chats/types";
 
 interface PlatformTileProps {
@@ -7,7 +8,6 @@ interface PlatformTileProps {
   className?: string;
 }
 
-/** Rounded brand-colored square holding a platform glyph. */
 export function PlatformTile({ platform, className }: PlatformTileProps) {
   return (
     <span
@@ -18,7 +18,7 @@ export function PlatformTile({ platform, className }: PlatformTileProps) {
       )}
     >
       <Icon
-        data={platform === "whatsapp" ? WhatsappIcon : TelegramIcon}
+        icon={platform === "whatsapp" ? WhatsappIcon : TelegramIcon}
         size={21}
         className="text-white"
       />

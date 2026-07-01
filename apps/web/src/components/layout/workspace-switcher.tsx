@@ -18,13 +18,8 @@ import {
   useWorkspaces,
 } from "@/modules/workspaces/hooks/use-workspaces";
 import type { Workspace } from "@app/shared";
-import {
-  ArrowUpDownIcon,
-  Icon,
-  LayoutGridIcon,
-  PlusSignIcon,
-  Tick02Icon,
-} from "@app/icons";
+import { Icon } from "@benrobo/iconary/react";
+import { ArrowUpDownIcon, LayoutGridIcon, PlusSignIcon, Tick02Icon } from "@benrobo/iconary/core/duotone-rounded";
 import { initials } from "@/lib/format";
 
 function WorkspaceAvatar({
@@ -57,9 +52,6 @@ function displayName(user: { name: string | null; email: string }) {
   return user.email.split("@")[0] ?? "User";
 }
 
-/**
- * Top-of-sidebar workspace header — list, switch, and create via the engine API.
- */
 export function WorkspaceSwitcher() {
   const router = useRouter();
   const { data: user } = useQuery({
@@ -125,27 +117,23 @@ export function WorkspaceSwitcher() {
   };
 
   return (
-    <div className="flex w-full shrink-0 items-center gap-2 border-b border-sidebar-border px-2 py-2.5">
+    <div className="flex w-full shrink-0 items-center gap-2 border-y border-hairline px-3.5 py-2.5">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <button
             type="button"
             disabled={isLoading && !activeWorkspace}
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-sidebar-border px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent disabled:opacity-60"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-hairline px-2.5 py-2 text-left transition-colors hover:bg-muted/50 disabled:opacity-60"
           >
-            <WorkspaceAvatar name={activeWorkspace?.name ?? "W"} />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-sidebar-accent-foreground">
+            <WorkspaceAvatar name={activeWorkspace?.name ?? "W"} tone="popover" />
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
               {isLoading
                 ? "Loading…"
                 : activeWorkspace
                   ? truncateName(activeWorkspace.name)
                   : "Select workspace"}
             </span>
-            <Icon
-              data={ArrowUpDownIcon}
-              size={12}
-              className="shrink-0 text-sidebar-foreground/60"
-            />
+            <Icon icon={ArrowUpDownIcon} size={12} className="shrink-0 text-content-faint" />
           </button>
         </PopoverTrigger>
 
@@ -155,7 +143,7 @@ export function WorkspaceSwitcher() {
           className="w-[280px] border-sidebar-border bg-card text-foreground"
         >
           <div className="flex items-center gap-2 border-b border-hairline-soft px-3 py-2">
-            <Icon data={LayoutGridIcon} size={12} className="text-muted-foreground" />
+            <Icon icon={LayoutGridIcon} size={12} className="text-muted-foreground" />
             <span className="font-mono text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
               Workspaces · {workspaces.length}
             </span>
@@ -205,7 +193,7 @@ export function WorkspaceSwitcher() {
                       </span>
                     </span>
                     {isActive ? (
-                      <Icon data={Tick02Icon} size={13} className="shrink-0 text-primary" />
+                      <Icon icon={Tick02Icon} size={13} className="shrink-0 text-primary" />
                     ) : null}
                   </button>
                 );
@@ -255,7 +243,7 @@ export function WorkspaceSwitcher() {
                 className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/50 disabled:opacity-50"
               >
                 <span className="flex size-4 items-center justify-center border border-hairline">
-                  <Icon data={PlusSignIcon} size={10} className="text-muted-foreground" />
+                  <Icon icon={PlusSignIcon} size={10} className="text-muted-foreground" />
                 </span>
                 <span className="text-[13px] text-muted-foreground">
                   Create workspace
@@ -272,12 +260,7 @@ export function WorkspaceSwitcher() {
         onClick={() => router.navigate({ to: "/settings" })}
         className="shrink-0 transition-opacity hover:opacity-80"
       >
-        <Avatar
-          name={userLabel}
-          size="sm"
-          tone="muted"
-          className="rounded-full bg-sidebar-accent text-sidebar-accent-foreground"
-        />
+        <Avatar name={userLabel} size="sm" tone="iris" className="rounded-full" />
       </button>
     </div>
   );

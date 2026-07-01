@@ -50,7 +50,7 @@ model LinkedChat {
 
   botCommands   BotCommand[]
   collections   Collection[]
-  personPickers PersonPicker[]
+  billSplits    BillSplit[]
 
   @@unique([platform, platformChatId])
   @@index([workspaceId])

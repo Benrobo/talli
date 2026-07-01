@@ -68,9 +68,12 @@ before the first deploy and never change it. Use namespaces (`render.image`,
 ## Don't paste icons inline in components
 
 Once an icon appears inline in a file, every other component that wants the
-same icon will re-paste the SVG. Run `bun icons:add <slug>` first; if the
-icon doesn't exist in `design-icons` yet, add it there before bringing it
-into the package. The single import point keeps tone overrides consistent.
+same icon will re-paste the SVG. Import from `@benrobo/iconary` instead:
+`import { Icon } from "@benrobo/iconary/react"` + data from
+`@benrobo/iconary/core/<style>`, rendered `<Icon icon={X} />`. If the icon
+doesn't exist yet, add it in `~/projects/design-icons` and release a new
+iconary version — never vendor SVGs into this repo. See the `benrobo-iconary`
+skill.
 
 ## Metro `projectRoot` for monorepo Expo
 

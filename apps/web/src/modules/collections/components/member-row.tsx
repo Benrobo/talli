@@ -1,11 +1,11 @@
 import { cn } from "@app/ui";
-import { Avatar, Badge } from "@/components/ui";
+import { Avatar, StatusPill } from "@/components/ui";
 import type { Member, MemberStatus } from "@/modules/collections/types";
 
-const BADGE: Record<MemberStatus, { tone: "iris" | "amber" | "neutral"; label: string }> = {
-  paid: { tone: "iris", label: "PAID" },
-  paying: { tone: "amber", label: "PAYING" },
-  unpaid: { tone: "neutral", label: "UNPAID" },
+const STATUS: Record<MemberStatus, { status: "success" | "pending" | "neutral"; label: string }> = {
+  paid: { status: "success", label: "Paid" },
+  paying: { status: "pending", label: "Paying" },
+  unpaid: { status: "neutral", label: "Unpaid" },
 };
 
 interface MemberRowProps {
@@ -13,12 +13,11 @@ interface MemberRowProps {
   className?: string;
 }
 
-/** A single member line: avatar, name + note, and a status badge. */
 export function MemberRow({ member, className }: MemberRowProps) {
-  const badge = BADGE[member.status];
+  const badge = STATUS[member.status];
   return (
     <div className={cn("flex items-center gap-3 px-[19px] py-[13px]", className)}>
-      <Avatar name={member.name} tone={member.status === "paid" ? "iris" : "muted"} />
+      <Avatar name={member.name} tone="muted" />
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-medium">{member.name}</div>
         {member.note ? (
@@ -32,7 +31,9 @@ export function MemberRow({ member, className }: MemberRowProps) {
           </div>
         ) : null}
       </div>
-      <Badge tone={badge.tone}>{badge.label}</Badge>
+      <StatusPill status={badge.status} dot={member.status === "paying"}>
+        {badge.label}
+      </StatusPill>
     </div>
   );
 }

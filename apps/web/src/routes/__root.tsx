@@ -7,7 +7,12 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { authApi } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/", "/auth", "/pay"];
+const PUBLIC_PREFIXES = ["/auth", "/pay", "/bill"];
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -15,8 +20,7 @@ export interface RouterContext {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location, context }) => {
-    const isPublic = PUBLIC_PATHS.some((p) => location.pathname.startsWith(p));
-    if (isPublic) return { user: null };
+    if (isPublicPath(location.pathname)) return { user: null };
 
     try {
       const user = await context.queryClient.fetchQuery({

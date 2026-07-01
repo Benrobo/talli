@@ -1,4 +1,4 @@
-import type { Transfer } from "@/modules/transfers/types";
+import type { Transfer, TransfersSummary } from "@/modules/transfers/types";
 
 export const transfers: Transfer[] = [
   {
@@ -28,3 +28,11 @@ export const transfers: Transfer[] = [
 ];
 
 export const sentThisMonthMinor = 2_850_000;
+
+/** Header roll-up for the money-sent ledger. */
+export const transfersSummary: TransfersSummary = {
+  sentThisMonthMinor,
+  monthLabel: "June",
+  transferCount: transfers.length,
+  recipientCount: new Set(transfers.map((t) => t.recipient)).size,
+};

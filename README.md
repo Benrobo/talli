@@ -9,9 +9,24 @@ Postgres · Nomba Checkout · Telegram / WhatsApp bots.
 Full product spec: [`docs/talli-prd.md`](docs/talli-prd.md)  
 Task tracker: [`docs/todos.md`](docs/todos.md)
 
+## Prerequisites
+
+Icons come from **`@benrobo/iconary`**, a private package on **GitHub Packages**.
+`bun install` will fail without a token, so set one **before installing**:
+
+```bash
+# a GitHub token with the `read:packages` scope
+export GITHUB_TOKEN=ghp_your_read_packages_token
+```
+
+The repo's root [`.npmrc`](.npmrc) reads it as `${GITHUB_TOKEN}` — no secret is
+committed. In CI / Vercel, add `GITHUB_TOKEN` as an environment variable. See the
+`benrobo-iconary` skill for how to use icons.
+
 ## Quick start
 
 ```bash
+export GITHUB_TOKEN=...   # see Prerequisites (needed for @benrobo/iconary)
 bun install
 
 cp .env.example .env

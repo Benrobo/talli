@@ -1,19 +1,33 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { authApi } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
-  Badge,
+  Button,
   Card,
   ProgressBar,
+  SectionCard,
   StatCard,
+  StatusPill,
+  Stagger,
+  StaggerItem,
+  FadeIn,
+  Pressable,
 } from "@/components/ui";
+import { Icon } from "@benrobo/iconary/react";
+import type { IconData } from "@benrobo/iconary/core";
 import {
   ArrowUpRight01Icon,
+  ArrowRight01Icon,
   CheckmarkCircle02Icon,
-  Icon,
+  Coins01Icon,
+  MoneySavingJarIcon,
+  MoneySend01Icon,
   PlusSignIcon,
-} from "@app/icons";
-import type { IconData } from "@app/icons";
+  Search01Icon,
+  Wallet01Icon,
+} from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
 import { homeData } from "@/data/mock/dashboard";
 import type { ActivityItem, ActivityKind } from "@/modules/dashboard/types";
@@ -24,13 +38,18 @@ const ACTIVITY_ICONS: Record<ActivityKind, IconData> = {
   saved: PlusSignIcon,
 };
 
-/** Dashboard Home — everything at a glance (screen 2a). */
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export function HomePage() {
   const {
     savedAcrossJars,
     activeJars,
     collectingNow,
-    collectingTarget,
     collectionsCount,
     sentThisMonth,
     transfersCount,
@@ -39,133 +58,196 @@ export function HomePage() {
     activity,
   } = homeData;
 
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: authApi.me, staleTime: 5 * 60 * 1000 });
+  const firstName = me?.name?.trim().split(/\s+/)[0] || "there";
+
+  const totalMoving = savedAcrossJars + collectingNow;
+
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="mb-1.5 font-serif text-[31px] font-normal leading-none">
-            Hi, Benaiah
-          </h1>
-          <div className="text-[13.5px] text-muted-foreground">
-            Here's where your money is today.
+      <FadeIn className="mb-6 flex flex-wrap items-center justify-between gap-4" y={8}>
+        <div className="flex items-center gap-3">
+          <Avatar name={me?.name ?? "Talli"} tone="iris" size="lg" />
+          <div>
+            <div className="text-[12.5px] font-medium text-content-faint">{greeting()}</div>
+            <h1 className="text-[24px] font-bold leading-tight tracking-[-0.02em]">
+              Welcome back, {firstName}
+            </h1>
           </div>
         </div>
-        <Avatar name="Benaiah" tone="iris" size="lg" />
-      </div>
+        <div className="flex items-center gap-2.5">
+          <label className="hidden items-center gap-2 rounded-[10px] border border-hairline bg-card px-3 shadow-card sm:flex">
+            <Icon icon={Search01Icon} size={16} className="text-content-faint" />
+            <input
+              placeholder="Search"
+              className="h-9 w-40 bg-transparent text-[13px] text-foreground placeholder:text-content-faint focus:outline-none"
+            />
+          </label>
+          <Link to="/collections">
+            <Button leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>New collection</Button>
+          </Link>
+        </div>
+      </FadeIn>
 
-      <div className="mb-4 grid grid-cols-3 gap-3.5">
-        <Link to="/savings" className="block transition-opacity hover:opacity-95">
+      <Stagger className="mb-4 grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-4">
+        <StaggerItem>
           <StatCard
-            tone="night"
+            tone="filled"
+            label="Total balance"
+            value={formatNaira(totalMoving)}
+            icon={Wallet01Icon}
+            delta={{ value: "+3.2%", direction: "up" }}
+            sub="vs last month"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
             label="Saved across jars"
             value={formatNaira(savedAcrossJars)}
+            icon={MoneySavingJarIcon}
+            delta={{ value: "+4.5%", direction: "up" }}
             sub={`${activeJars} active jars`}
           />
-        </Link>
-        <Link to="/collections" className="block transition-opacity hover:opacity-95">
+        </StaggerItem>
+        <StaggerItem>
           <StatCard
             label="Collecting now"
             value={formatNaira(collectingNow)}
-            sub={`of ${formatNaira(collectingTarget)} · ${collectionsCount} collection`}
+            icon={Coins01Icon}
+            delta={{ value: "+12%", direction: "up" }}
+            sub={`${collectionsCount} collection`}
           />
-        </Link>
-        <Link to="/sent" className="block transition-opacity hover:opacity-95">
+        </StaggerItem>
+        <StaggerItem>
           <StatCard
             label="Sent this month"
             value={formatNaira(sentThisMonth)}
+            icon={MoneySend01Icon}
+            delta={{ value: "-2.1%", direction: "down" }}
             sub={`${transfersCount} transfer`}
           />
-        </Link>
-      </div>
+        </StaggerItem>
+      </Stagger>
 
-      <div className="grid grid-cols-[1.4fr_1fr] gap-3.5">
-        <Link
-          to="/collections/$slug"
-          params={{ slug: activeCollection.slug }}
-          className="block transition-opacity hover:opacity-95"
+      <FadeIn delay={0.12} className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.35fr_1fr]">
+        <Pressable className="h-full">
+          <Link
+            to="/collections/$slug"
+            params={{ slug: activeCollection.slug }}
+            className="block h-full"
+          >
+            <Card className="h-full">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-[13px] font-medium text-content-muted">Active collection</span>
+                <StatusPill status="info" dot>
+                  Live
+                </StatusPill>
+              </div>
+              <div className="mb-1 text-[20px] font-bold leading-tight tracking-[-0.01em]">
+                {activeCollection.title}
+              </div>
+              <div className="mb-5 text-[12.5px] text-content-muted">
+                {formatNaira(activeCollection.perPerson)} / person · due {activeCollection.due}
+              </div>
+              <div className="mb-2.5 flex items-baseline justify-between">
+                <span className="tabular text-[24px] font-bold tracking-[-0.02em]">
+                  {formatNaira(activeCollection.collected)}
+                </span>
+                <span className="tabular text-[12px] text-content-muted">
+                  of {formatNaira(activeCollection.target)}
+                </span>
+              </div>
+              <ProgressBar
+                value={toPercent(activeCollection.collected, activeCollection.target)}
+                className="h-2"
+              />
+              <div className="mt-4 flex items-center justify-between border-t border-hairline-soft pt-4">
+                <span className="inline-flex items-center gap-1.5 text-[12.5px] text-content-muted">
+                  <Icon icon={CheckmarkCircle02Icon} size={15} className="text-emerald-600" />
+                  {activeCollection.paid} of {activeCollection.members} paid
+                </span>
+                <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-iris-deep">
+                  View collection
+                  <Icon icon={ArrowRight01Icon} size={15} />
+                </span>
+              </div>
+            </Card>
+          </Link>
+        </Pressable>
+
+        <SectionCard
+          title="Your jars"
+          action={
+            <Link
+              to="/savings"
+              className="inline-flex items-center gap-0.5 text-[12px] font-medium text-iris-deep"
+            >
+              All jars
+              <Icon icon={ArrowRight01Icon} size={13} />
+            </Link>
+          }
         >
-          <Card className="h-full">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-[13.5px] font-medium">Active collection</span>
-              <Badge tone="iris">LIVE</Badge>
-            </div>
-            <div className="mb-1 text-[15px] font-medium">{activeCollection.title}</div>
-            <div className="mb-3.5 text-[12.5px] text-muted-foreground">
-              {formatNaira(activeCollection.perPerson)} / person · due {activeCollection.due}
-            </div>
-            <div className="mb-2 flex items-baseline justify-between">
-              <span className="tabular text-[18px] font-bold">
-                {formatNaira(activeCollection.collected)}
-              </span>
-              <span className="tabular text-[12px] text-muted-foreground">
-                Paid {activeCollection.paid} / {activeCollection.members}
-              </span>
-            </div>
-            <ProgressBar
-              value={toPercent(activeCollection.collected, activeCollection.target)}
-            />
-          </Card>
-        </Link>
-
-        <Card>
-          <div className="mb-4 text-[13.5px] font-medium">Your jars</div>
-          <div className="flex flex-col gap-3.5">
-            {jars.map((jar) => (
-              <Link
-                key={jar.id}
-                to="/savings/$id"
-                params={{ id: jar.id }}
-                className="block rounded-lg transition-colors hover:bg-muted/40"
-              >
-                <div className="mb-1.5 flex justify-between text-[13px]">
-                  <span className="font-medium">{jar.name}</span>
-                  <span className="tabular text-muted-foreground">
-                    {formatNairaShort(jar.saved)} / {formatNairaShort(jar.target)}
-                  </span>
-                </div>
-                <ProgressBar value={toPercent(jar.saved, jar.target)} className="h-1.5" />
-              </Link>
-            ))}
+          <div className="flex flex-col gap-4">
+            {jars.map((jar) => {
+              const pct = toPercent(jar.saved, jar.target);
+              return (
+                <Link
+                  key={jar.id}
+                  to="/savings/$id"
+                  params={{ id: jar.id }}
+                  className="group block rounded-lg"
+                >
+                  <div className="mb-1.5 flex items-center justify-between text-[13px]">
+                    <span className="font-medium transition-colors group-hover:text-iris-deep">
+                      {jar.name}
+                    </span>
+                    <span className="tabular text-content-muted">
+                      {formatNairaShort(jar.saved)} / {formatNairaShort(jar.target)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <ProgressBar value={pct} className="h-1.5 flex-1" />
+                    <span className="tabular w-8 text-right text-[11px] font-medium text-content-faint">
+                      {pct}%
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-        </Card>
-      </div>
+        </SectionCard>
+      </FadeIn>
 
-      <Card padded={false} className="mt-3.5 overflow-hidden">
-        <div className="border-b border-hairline-soft px-[17px] py-[13px] text-[13.5px] font-medium">
-          Recent activity
-        </div>
-        {activity.map((item, index) => (
-          <ActivityRow
-            key={item.text}
-            item={item}
-            last={index === activity.length - 1}
-          />
-        ))}
-      </Card>
+      <FadeIn delay={0.18} className="mt-3.5">
+        <SectionCard
+          title="Recent activity"
+          action={<span className="text-[12px] text-content-faint">Last 24 hours</span>}
+          flush
+        >
+          {activity.map((item, index) => (
+            <ActivityRow key={item.text} item={item} last={index === activity.length - 1} />
+          ))}
+        </SectionCard>
+      </FadeIn>
     </div>
   );
 }
 
-interface ActivityRowProps {
-  item: ActivityItem;
-  last: boolean;
-}
-
-function ActivityRow({ item, last }: ActivityRowProps) {
+function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
   return (
     <Link
       to={item.link.to}
       params={"params" in item.link ? item.link.params : undefined}
       className={cn(
-        "flex items-center gap-3 px-[17px] py-[11px] transition-colors hover:bg-muted/30",
+        "flex items-center gap-3 px-[18px] py-3.5 transition-colors hover:bg-muted/30",
         !last && "border-b border-hairline-soft"
       )}
     >
-      <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-        <Icon data={ACTIVITY_ICONS[item.kind]} size={16} />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-muted text-content-muted">
+        <Icon icon={ACTIVITY_ICONS[item.kind]} size={16} />
       </span>
       <div className="flex-1 text-[13.5px]">{renderActivityText(item)}</div>
-      <div className="text-[12px] text-muted-foreground">{item.when}</div>
+      <div className="text-[12px] text-content-faint">{item.when}</div>
     </Link>
   );
 }
@@ -176,7 +258,7 @@ function renderActivityText({ text, who }: ActivityItem) {
   return (
     <>
       {text.slice(0, index)}
-      <b className="font-medium">{who}</b>
+      <b className="font-semibold">{who}</b>
       {text.slice(index + who.length)}
     </>
   );

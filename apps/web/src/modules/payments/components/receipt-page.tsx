@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@app/ui";
 import { Button, Card } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
-import { Download01Icon, Icon, Tick02Icon } from "@app/icons";
+import { Icon } from "@benrobo/iconary/react";
+import { Download01Icon, Tick02Icon } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira } from "@/lib/format";
 import { paymentReceipt } from "@/data/mock/payments";
 
@@ -23,7 +24,7 @@ export function PaymentReceiptPage() {
           <Button
             block
             variant="secondary"
-            leadingIcon={<Icon data={Download01Icon} size={16} />}
+            leadingIcon={<Icon icon={Download01Icon} size={16} />}
           >
             Download receipt
           </Button>
@@ -32,7 +33,7 @@ export function PaymentReceiptPage() {
     >
       <div className="flex flex-col items-center pt-6 text-center">
         <span className="mb-6 flex size-[74px] items-center justify-center rounded-full bg-iris text-white">
-          <Icon data={Tick02Icon} size={34} />
+          <Icon icon={Tick02Icon} size={34} />
         </span>
         <h1 className="mb-2 font-serif text-[31px] font-normal leading-none">
           Payment confirmed
