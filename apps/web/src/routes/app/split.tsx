@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BillUploadWidget } from "@/modules/bill-split/components/bill-upload-widget";
 
-export const Route = createFileRoute("/_app/split")({
+export const Route = createFileRoute("/app/split")({
   component: SplitPage,
 });
 

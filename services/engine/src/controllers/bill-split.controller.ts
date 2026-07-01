@@ -28,6 +28,7 @@ class BillSplitController {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const bill = await billParserService.parse(buffer);
+    
     if (!bill.confident || bill.items.length === 0) {
       throw new BadRequestException(bill.reason ?? "I couldn't read the items on that bill. Try a clearer photo.");
     }

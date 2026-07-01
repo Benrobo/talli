@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getJar } from "@/data/mock/savings";
 import { JarDetailPage } from "@/modules/savings/components/jar-detail-page";
 
-export const Route = createFileRoute("/_app/savings/$id")({
+export const Route = createFileRoute("/app/savings/$id")({
   component: JarDetailRoute,
 });
 

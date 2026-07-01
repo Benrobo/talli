@@ -16,7 +16,7 @@ export function JarCard({ jar }: JarCardProps) {
 
   return (
     <Pressable className="h-full">
-      <Link to="/savings/$id" params={{ id: jar.id }} className="block h-full">
+      <Link to="/app/savings/$id" params={{ id: jar.id }} className="block h-full">
         <Card className="group h-full gap-0">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-[15px] font-semibold text-foreground">{jar.name}</span>

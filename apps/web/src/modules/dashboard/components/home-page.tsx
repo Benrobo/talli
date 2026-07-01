@@ -90,7 +90,7 @@ export function HomePage() {
               className="h-10 w-44 bg-transparent text-[13px] text-foreground placeholder:text-content-faint focus:outline-none"
             />
           </label>
-          <Link to="/collections">
+          <Link to="/app/collections">
             <Button leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>New collection</Button>
           </Link>
         </div>
@@ -139,7 +139,7 @@ export function HomePage() {
       <FadeIn delay={0.12} className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.35fr_1fr]">
         <Pressable className="h-full">
           <Link
-            to="/collections/$slug"
+            to="/app/collections/$slug"
             params={{ slug: activeCollection.slug }}
             className="block h-full"
           >
@@ -186,7 +186,7 @@ export function HomePage() {
           title="Your jars"
           action={
             <Link
-              to="/savings"
+              to="/app/savings"
               className="inline-flex items-center gap-0.5 text-[12px] font-medium text-iris-deep"
             >
               All jars
@@ -200,9 +200,9 @@ export function HomePage() {
               return (
                 <Link
                   key={jar.id}
-                  to="/savings/$id"
+                  to="/app/savings/$id"
                   params={{ id: jar.id }}
-                  className="group block rounded-lg"
+                  className="block rounded-lg"
                 >
                   <div className="mb-1.5 flex items-center justify-between text-[13px]">
                     <span className="font-medium">{jar.name}</span>

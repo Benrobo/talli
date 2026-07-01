@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CollectionDetailPage } from "@/modules/collections/components/collection-detail-page";
 import { getCollection } from "@/data/mock/collections";
 
-export const Route = createFileRoute("/_app/collections/$slug")({
+export const Route = createFileRoute("/app/collections/$slug")({
   component: CollectionDetailRoute,
 });
 
