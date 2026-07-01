@@ -12,7 +12,7 @@ import type {
 export const walletQueryKeys = {
   all: ["wallet"] as const,
   balance: () => [...walletQueryKeys.all, "balance"] as const,
-  metrics: () => [...walletQueryKeys.all, "metrics"] as const,
+  metrics: (workspaceId?: string) => [...walletQueryKeys.all, "metrics", workspaceId ?? "none"] as const,
   history: () => [...walletQueryKeys.all, "history"] as const,
 };
 
@@ -23,10 +23,11 @@ export const useWalletBalance = () => {
   });
 };
 
-export const useWalletMetrics = () => {
+export const useWalletMetrics = (workspaceId?: string) => {
   return useQuery<WalletMetricsResponse, AxiosError>({
-    queryKey: walletQueryKeys.metrics(),
+    queryKey: walletQueryKeys.metrics(workspaceId),
     queryFn: WALLET_API.GET_METRICS,
+    enabled: !!workspaceId,
   });
 };
 
