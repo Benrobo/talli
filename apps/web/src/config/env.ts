@@ -3,8 +3,8 @@
  * any other env var is unavailable in the browser by design.
  */
 export const env = {
-  ENGINE_API_URL: import.meta.env.VITE_ENGINE_API_URL ?? "http://localhost:6590",
-  SOCKET_URL: import.meta.env.VITE_SOCKET_URL ?? "http://localhost:6591",
+  ENGINE_API_URL: import.meta.env.VITE_ENGINE_API_URL ?? "http://localhost:7191",
+  SOCKET_URL: import.meta.env.VITE_SOCKET_URL ?? "http://localhost:7192",
 };
 
 export default env;

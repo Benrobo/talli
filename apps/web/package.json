@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5173",
+    "dev": "vite --port 7193",
     "build": "tsc && vite build",
-    "preview": "vite preview --port 4173",
+    "preview": "vite preview --port 7194",
     "type-check": "tsc --noEmit",
     "lint": "echo 'no lint configured'",
     "clean": "rm -rf dist .turbo"
