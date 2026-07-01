@@ -4,8 +4,11 @@ import { intentDispatcherService } from "../../../services/intent-dispatcher.ser
 import { botCommandService } from "../../../services/bot-command.service.js";
 import { platformUserService } from "../../../services/platform-user.service.js";
 import { messages } from "../ui/messages.js";
+import type { Intent } from "../../../schemas/intent.schema.js";
 import type { TalliContext } from "../types.js";
-import { safeReply, isGroupChat } from "./shared.js";
+import { safeReply, isGroupChat, isSenderAdmin } from "./shared.js";
+
+const ADMIN_ONLY_IN_GROUP: Intent["intent"][] = ["create_collection", "split_payment"];
 
 /** Confirm / Cancel taps on an intent's parse-and-confirm card. */
 export async function handleConfirm(
@@ -22,6 +25,12 @@ export async function handleConfirm(
   if (decision === "cancel") {
     const result = await intentDispatcherService.cancel(commandId);
     await safeReply(ctx, result.text);
+    return;
+  }
+
+  const intent = command ? (command.parsedIntent as Intent | null) : null;
+  if (intent && isGroupChat(ctx) && ADMIN_ONLY_IN_GROUP.includes(intent.intent) && !(await isSenderAdmin(ctx))) {
+    await ctx.answerCallbackQuery({ text: "Only a group admin can do this." }).catch(() => {});
     return;
   }
 
@@ -53,6 +62,7 @@ export async function handleConfirm(
     ownerUserId: workspace.ownerUserId,
     workspaceName: workspace.name,
     senderName: platformUserService.formatName(identity),
+    isGroupAdmin: true,
   });
 
   if (result.checkoutUrl) {

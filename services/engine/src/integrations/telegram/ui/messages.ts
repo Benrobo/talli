@@ -113,6 +113,8 @@ export const messages = {
 
   groupAdminOnly: "🔒 Only a *group admin* can connect this group to Talli.",
 
+  adminOnlyCreate: "🔒 Only a *group admin* can start a collection or split in this group.",
+
   disconnectAdminOnly: "🔒 Only a *group admin* can disconnect this group from Talli.",
 
   alreadyLinked(workspaceName: string): string {
@@ -281,6 +283,11 @@ export const messages = {
       "_“collect ₦5,000 from everyone for jerseys”_",
       "_“raise 200k for the party, 10k each, by July 20”_",
       "",
+      "✂️ *Split a bill*",
+      "Even, custom, or by count — each person gets a pay link, no account needed.",
+      "_“split ₦30k between Tolu, Ada and me”_",
+      "_“Tolu 10k, Ada 5k, Bola 15k”_",
+      "",
       "📊 *Check progress*",
       "_“how much have we raised?”_",
       "_“status of the jersey collection”_",
@@ -334,6 +341,39 @@ export const messages = {
     ]
       .filter(Boolean)
       .join("\n");
+  },
+
+  confirmSplit(plan: {
+    title: string;
+    total: number;
+    mode: string;
+    perHead?: number;
+    count?: number;
+    shares: { name: string; amount: number }[];
+  }): string {
+    const lines = [`✂️ *Split — ${escapeMarkdown(plan.title)}*`, "", `Total: *${formatNaira(plan.total)}*`, ""];
+    if (plan.mode === "by_count") {
+      lines.push(`Split *${plan.count}* ways — *${formatNaira(plan.perHead ?? 0)}* each.`);
+    } else {
+      plan.shares.forEach((s) => lines.push(`• ${escapeMarkdown(s.name)} — *${formatNaira(s.amount)}*`));
+    }
+    lines.push("", "*Should I set it up?*");
+    return lines.join("\n");
+  },
+
+  splitCreated(title: string, links: { name: string; amount: number; checkoutLink: string }[]): string {
+    const lines = [`✂️ *${escapeMarkdown(title)}* is set up!`, "", "Send each person their pay link:", ""];
+    links.forEach((l) => lines.push(`• *${escapeMarkdown(l.name)}* — ${formatNaira(l.amount)}\n  ${l.checkoutLink}`));
+    lines.push("", "_Anyone can pay their link — no Talli account needed. I'll confirm here as each lands._");
+    return lines.join("\n");
+  },
+
+  splitByCountCreated(title: string, amount: number, count: number): string {
+    return [
+      `✂️ *${escapeMarkdown(title)}* is live — split *${count}* ways.`,
+      "",
+      `Each share is *${formatNaira(amount)}*. Tap below to pay yours.`,
+    ].join("\n");
   },
 
   confirmCreateJar(name: string, target: number): string {

@@ -8,8 +8,12 @@ export const INTENTS = [
   "status_query",
   "help_query",
   "pay_collection",
+  "split_payment",
   "unknown",
 ] as const;
+
+export const SPLIT_MODES = ["even", "custom", "by_count"] as const;
+export type SplitMode = (typeof SPLIT_MODES)[number];
 
 /**
  * Optional field that also tolerates an explicit `null` from the model (LLMs
@@ -37,6 +41,16 @@ export const intentSchema = z.object({
   /** Filled by the dispatcher after a Nomba lookup — not produced by the LLM. */
   resolvedAccountName: opt(z.string()),
   resolvedBankCode: opt(z.string()),
+  splitMode: opt(z.enum(SPLIT_MODES)),
+  count: opt(z.number().int().positive()),
+  members: opt(
+    z.array(
+      z.object({
+        name: z.string(),
+        amount: opt(z.number().int().positive()),
+      })
+    )
+  ),
 });
 
 export type Intent = z.infer<typeof intentSchema>;

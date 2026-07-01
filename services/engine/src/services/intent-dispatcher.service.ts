@@ -6,6 +6,7 @@ import type { InlineKeyboard } from "grammy";
 import { commandParserService, type ChatScope } from "./command-parser.service.js";
 import { botCommandService, type CommandContext } from "./bot-command.service.js";
 import { collectionService } from "./collection.service.js";
+import { splitService } from "./split.service.js";
 import { savingsService } from "./savings.service.js";
 import { balanceService } from "./balance.service.js";
 import { walletService } from "./wallet.service.js";
@@ -30,7 +31,10 @@ export interface DispatchContext extends CommandContext {
   ownerUserId: string;
   workspaceName?: string;
   senderName: string;
+  isGroupAdmin: boolean;
 }
+
+const ADMIN_ONLY_IN_GROUP: Intent["intent"][] = ["create_collection", "split_payment"];
 
 /**
  * Turns a chat message into a bot action: parse → gate by chat type → either
@@ -66,6 +70,10 @@ class IntentDispatcherService {
     if (!commandParserService.isAllowed(ctx.scope, intent.intent)) {
       await botCommandService.recordConversational(ctx, text, intent, messages.dmOnly);
       return { text: messages.dmOnly };
+    }
+    if (ctx.scope === "group" && ADMIN_ONLY_IN_GROUP.includes(intent.intent) && !ctx.isGroupAdmin) {
+      await botCommandService.recordConversational(ctx, text, intent, messages.adminOnlyCreate);
+      return { text: messages.adminOnlyCreate };
     }
     if (intent.intent === "status_query") {
       const result = await this.runStatusQuery(ctx);
@@ -120,8 +128,28 @@ class IntentDispatcherService {
         if (!jar) return { clarify: messages.jarNotFound(intent.title), intent };
         return { intent };
       }
+      case "split_payment":
+        return this.prepareSplit(intent, ctx);
       default:
         return { intent };
+    }
+  }
+
+  /**
+   * Resolves "me" in a split to the sender's name and validates the share maths up
+   * front, so the stored intent is self-contained and a bad split is caught before
+   * any confirm card. Returns a clarification when the split can't be planned.
+   */
+  private prepareSplit(intent: Intent, ctx: DispatchContext): { clarify?: string; intent: Intent } {
+    const members = intent.members?.map((m) =>
+      ["me", "myself", "i"].includes(m.name.trim().toLowerCase()) ? { ...m, name: ctx.senderName } : m
+    );
+    const resolved: Intent = { ...intent, members };
+    try {
+      splitService.plan(resolved);
+      return { intent: resolved };
+    } catch (err) {
+      return { clarify: (err as Error).message, intent: resolved };
     }
   }
 
@@ -193,6 +221,10 @@ class IntentDispatcherService {
       },
     });
 
+    if (ctx.scope === "group" && ADMIN_ONLY_IN_GROUP.includes(intent.intent) && !ctx.isGroupAdmin) {
+      return { text: messages.adminOnlyCreate };
+    }
+
     const prepared = await this.prepareIntent(intent, ctx);
     if (intent.status === "needs_clarification" || prepared.clarify) {
       if (rounds + 1 >= MAX_CLARIFY_ROUNDS) {
@@ -260,6 +292,8 @@ class IntentDispatcherService {
           }),
           keyboard,
         };
+      case "split_payment":
+        return { text: messages.confirmSplit(splitService.plan(intent)), keyboard };
       case "status_query":
         return { text: messages.unrecognized };
       default:
@@ -277,6 +311,8 @@ class IntentDispatcherService {
         return this.runSaveToJar(intent, ctx);
       case "send_money":
         return this.runSend(intent, ctx);
+      case "split_payment":
+        return this.runSplit(intent, ctx);
       default:
         return { text: messages.actionFailed };
     }
@@ -298,6 +334,21 @@ class IntentDispatcherService {
         ? payButton(collection.id, collection.amountPerMember)
         : undefined;
     return { text: messages.collectionCreated(collection.title), keyboard };
+  }
+
+  private async runSplit(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
+    const result = await splitService.create(intent, {
+      workspaceId: ctx.workspaceId,
+      ownerUserId: ctx.ownerUserId,
+      linkedChatId: ctx.linkedChatId,
+    });
+
+    if (result.plan.mode === "by_count") {
+      const amount = result.collection.amountPerMember ?? 0;
+      return { text: messages.splitByCountCreated(result.collection.title, amount, result.plan.count ?? 0), keyboard: payButton(result.collection.id, amount) };
+    }
+
+    return { text: messages.splitCreated(result.collection.title, result.links) };
   }
 
   private async runCreateJar(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
