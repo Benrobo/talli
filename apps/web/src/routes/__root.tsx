@@ -37,11 +37,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       meta: [
         {
           title: "Talli",
-          description: "Talli is a platform for creating and managing collections.",
+          description: "Talli is an AI-powered group treasurer that helps people collect, split, save, send, and track money directly inside their chats.",
         },
         {
           name: "description",
-          content: "Talli is a platform for creating and managing collections.",
+          content: "Talli is an AI-powered group treasurer that helps people collect, split, save, send, and track money directly inside their chats.",
         },
         {
           property: "og:title",
@@ -49,7 +49,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         },
         {
           property: "og:description",
-          content: "Talli is a platform for creating and managing collections.",
+          content: "Talli is an AI-powered group treasurer that helps people collect, split, save, send, and track money directly inside their chats.",
         },
         {
           property: "og:image",
