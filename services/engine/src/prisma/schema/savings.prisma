@@ -1,0 +1,61 @@
+enum SavingsJarStatus {
+  active
+  locked
+  completed
+  cancelled
+  withdrawn
+}
+
+enum SavingsTransactionType {
+  deposit
+  withdrawal
+  adjustment
+}
+
+enum SavingsTransactionStatus {
+  pending
+  completed
+  failed
+}
+
+model SavingsJar {
+  id            String           @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ownerUserId   String
+  owner         User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Int?
+  currentAmount Int              @default(0)
+  currency      String           @default("NGN")
+  lockUntil     DateTime?
+  status        SavingsJarStatus @default(active)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments     Payment[]
+  transactions SavingsTransaction[]
+
+  @@index([workspaceId])
+  @@index([ownerUserId])
+  @@index([status])
+  @@map("savings_jars")
+}
+
+model SavingsTransaction {
+  id           String                   @id @default(cuid())
+  savingsJarId String
+  savingsJar   SavingsJar               @relation(fields: [savingsJarId], references: [id], onDelete: Cascade)
+  paymentId    String?
+  payment      Payment?                 @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  amount       Int
+  type         SavingsTransactionType
+  status       SavingsTransactionStatus @default(pending)
+
+  createdAt DateTime @default(now())
+
+  @@index([savingsJarId])
+  @@index([paymentId])
+  @@map("savings_transactions")
+}

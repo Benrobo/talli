@@ -7,9 +7,9 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { authApi } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/", "/auth"];
+const PUBLIC_PATHS = ["/", "/auth", "/pay"];
 
-interface RouterContext {
+export interface RouterContext {
   queryClient: QueryClient;
 }
 

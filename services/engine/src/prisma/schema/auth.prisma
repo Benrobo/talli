@@ -8,6 +8,7 @@ model User {
   id          String   @id @default(cuid())
   email       String   @unique
   name        String?
+  phone       String?
   avatarUrl   String?
   role        UserRole @default(user)
   isVerified  Boolean  @default(false)
@@ -17,9 +18,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts     Account[]
-  sessions     AuthSession[]
-  refreshTokens RefreshToken[]
+  activeWorkspaceId String?
+
+  accounts              Account[]
+  sessions              AuthSession[]
+  refreshTokens         RefreshToken[]
+  ownedWorkspaces       Workspace[]        @relation("WorkspaceOwner")
+  workspaceMemberships  WorkspaceMember[]
+  verifiedLinkedChats   LinkedChat[]       @relation("LinkedChatVerifier")
+  chatLinkCodesCreated  ChatLinkCode[]
+  collectionsCreated    Collection[]
+  collectionMemberships CollectionMember[]
+  savingsJars           SavingsJar[]
+  paymentsAsPayer       Payment[]          @relation("PaymentPayer")
+  auditLogs             AuditLog[]
 
   @@map("users")
 }

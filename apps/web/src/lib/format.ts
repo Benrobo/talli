@@ -1,0 +1,50 @@
+/**
+ * Money is stored everywhere as integer minor units (kobo). 100 kobo = ₦1.
+ * These helpers are the only place that knows about that conversion, so the
+ * UI always renders human-facing Naira from raw minor-unit values.
+ */
+const NAIRA = "\u20A6";
+
+/** Render minor units (kobo) as a grouped Naira string, e.g. 300000 -> "₦3,000". */
+export function formatNaira(minorUnits: number): string {
+  const naira = Math.round(minorUnits) / 100;
+  return `${NAIRA}${naira.toLocaleString("en-NG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: naira % 1 === 0 ? 0 : 2,
+  })}`;
+}
+
+/** Compact Naira for tight spaces, e.g. 4400000 -> "₦44k", 20000000 -> "₦200k". */
+export function formatNairaShort(minorUnits: number): string {
+  const naira = Math.round(minorUnits) / 100;
+  if (naira >= 1_000_000) return `${NAIRA}${trimZero(naira / 1_000_000)}m`;
+  if (naira >= 1_000) return `${NAIRA}${trimZero(naira / 1_000)}k`;
+  return `${NAIRA}${naira.toLocaleString("en-NG")}`;
+}
+
+function trimZero(value: number): string {
+  return Number(value.toFixed(1)).toString();
+}
+
+/** Percentage 0-100 (clamped) from a raised/target pair in the same unit. */
+export function toPercent(raised: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((raised / target) * 100)));
+}
+
+/** Uppercase initials from a name, e.g. "Opeyemi" -> "OP", "Benaiah FC" -> "BF". */
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** Short date like "Jun 26" or with time "Jun 22, 4:08 PM". */
+export function formatDate(value: Date | string | number, withTime = false): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const opts: Intl.DateTimeFormatOptions = withTime
+    ? { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+    : { month: "short", day: "numeric" };
+  return date.toLocaleString("en-NG", opts);
+}

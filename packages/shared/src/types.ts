@@ -23,6 +23,19 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  currency: string;
+  status: string;
+  isActive: boolean;
+  isOwner: boolean;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthSession {
   id: string;
   userId: string;

@@ -60,3 +60,7 @@ services/engine/.debug/
 # Generated files
 src/routeTree.gen.ts
 **/routeTree.gen.ts
+
+
+/docs/nomba-test-credentials.md
+/docs/talli-artifacts

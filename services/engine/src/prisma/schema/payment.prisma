@@ -1,0 +1,45 @@
+enum PaymentProvider {
+  nomba
+}
+
+enum PaymentStatus {
+  pending
+  successful
+  failed
+  cancelled
+}
+
+model Payment {
+  id                 String            @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  collectionId       String?
+  collection         Collection?       @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  collectionMemberId String?
+  collectionMember   CollectionMember? @relation(fields: [collectionMemberId], references: [id], onDelete: SetNull)
+  savingsJarId       String?
+  savingsJar         SavingsJar?       @relation(fields: [savingsJarId], references: [id], onDelete: SetNull)
+  payerUserId        String?
+  payer              User?             @relation("PaymentPayer", fields: [payerUserId], references: [id], onDelete: SetNull)
+  payerPlatformId    String?
+  amount             Int
+  currency           String            @default("NGN")
+  provider           PaymentProvider   @default(nomba)
+  providerReference  String?
+  providerOrderId    String?
+  status             PaymentStatus     @default(pending)
+  paidAt             DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  savingsTransactions SavingsTransaction[]
+
+  @@index([workspaceId])
+  @@index([collectionId])
+  @@index([savingsJarId])
+  @@index([providerReference])
+  @@index([providerOrderId])
+  @@index([status])
+  @@map("payments")
+}

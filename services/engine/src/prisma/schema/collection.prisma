@@ -1,0 +1,78 @@
+enum CollectionType {
+  fixed_per_person
+  open_contribution
+  named_members
+}
+
+enum CollectionStatus {
+  draft
+  active
+  paid
+  partially_paid
+  expired
+  cancelled
+  closed
+}
+
+enum CollectionMemberStatus {
+  not_paid
+  pending
+  paid
+  underpaid
+  overpaid
+  refunded
+  manual_review
+}
+
+model Collection {
+  id              String           @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  linkedChatId    String?
+  linkedChat      LinkedChat?      @relation(fields: [linkedChatId], references: [id], onDelete: SetNull)
+  title           String
+  purpose         String
+  collectionType  CollectionType
+  amountPerMember Int?
+  targetAmount    Int?
+  currency        String           @default("NGN")
+  deadline        DateTime?
+  status          CollectionStatus @default(draft)
+  createdByUserId String
+  createdBy       User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  CollectionMember[]
+  payments Payment[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([status])
+  @@index([linkedChatId])
+  @@map("collections")
+}
+
+model CollectionMember {
+  id             String                 @id @default(cuid())
+  collectionId   String
+  collection     Collection             @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  displayName    String
+  platformUserId String?
+  appUserId      String?
+  appUser        User?                  @relation(fields: [appUserId], references: [id], onDelete: SetNull)
+  expectedAmount Int
+  paidAmount     Int                    @default(0)
+  status         CollectionMemberStatus @default(not_paid)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([collectionId])
+  @@index([collectionId, platformUserId])
+  @@index([appUserId])
+  @@map("collection_members")
+}

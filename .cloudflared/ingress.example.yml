@@ -1,0 +1,10 @@
+# Engine-only Cloudflare Tunnel (p<port>.benlabtest.space)
+#
+# Add to ~/.cloudflared/config.yml under `ingress:`, before http_status:404.
+# Web app stays on localhost — no tunnel for WEB_APP_URL / CLIENT_URL.
+#
+# Then run: bash scripts/tunnel-push.sh
+
+ingress:
+  - hostname: p7291.benlabtest.space
+    service: http://localhost:7291

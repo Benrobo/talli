@@ -1,0 +1,6 @@
+{
+  "name": "talli",
+  "apps": {
+    ".": { "name": "talli" }
+  }
+}

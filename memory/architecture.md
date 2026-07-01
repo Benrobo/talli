@@ -68,3 +68,38 @@ read/write endpoints so model swaps don't require redeploys.
 
 If you don't need it, leave `OPENROUTER_API_KEY` empty and the engine treats
 ModelKit as disabled (see `config/modelkit.config.ts`).
+
+## Talli domain (Prisma)
+
+Schema lives in `services/engine/src/prisma/schema/`:
+
+| File | Models |
+|---|---|
+| `_base.prisma` | generator, datasource |
+| `auth.prisma` | `User`, `Account`, `AuthSession`, `RefreshToken` |
+| `workspace.prisma` | `Workspace`, `WorkspaceMember` |
+| `chat.prisma` | `LinkedChat`, `ChatLinkCode`, `BotCommand` |
+| `collection.prisma` | `Collection`, `CollectionMember` |
+| `payment.prisma` | `Payment` |
+| `savings.prisma` | `SavingsJar`, `SavingsTransaction` |
+| `webhook.prisma` | `WebhookEvent` |
+| `audit.prisma` | `AuditLog` |
+| `notification.prisma` | `Notification` (starter) |
+| `media.prisma` | `Media` (starter) |
+
+**Two role systems:** `User.role` (`user | admin | super_admin`) is
+platform-level. Workspace permissions use `WorkspaceMember.role`
+(`owner | admin | member`).
+
+**Money:** amounts are integers in whole currency units (NGN naira, not kobo).
+
+**Key relations:**
+
+- `Workspace` → many `LinkedChat`, `Collection`, `SavingsJar`, `Payment`
+- `Collection` → many `CollectionMember`; payments link via `collectionMemberId`
+- `Payment` → optional `collectionId` or `savingsJarId` (Nomba checkout)
+- `WebhookEvent.providerEventId` is unique for idempotency
+- `LinkedChat` unique on `(platform, platformChatId)`
+
+**Chat linking:** `ChatLinkCode` stores hashed codes; `LinkedChat` stores
+verified platform chat IDs after bot verification flow.
