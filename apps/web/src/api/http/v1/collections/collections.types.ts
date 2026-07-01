@@ -40,7 +40,11 @@ export interface CollectionRecord {
   status: string;
   targetAmount: number | null;
   amountPerMember: number | null;
-  totalCollected: number;
+  collected?: number;
+  totalCollected?: number;
+  paidCount?: number;
+  enrolledCount?: number;
+  deadline?: string | null;
   createdAt: string;
   updatedAt: string;
 }

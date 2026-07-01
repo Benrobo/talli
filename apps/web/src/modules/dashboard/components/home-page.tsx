@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { formatDistanceToNow } from "date-fns";
 import { useMe } from "@/api/http/v1/auth/auth.hooks";
 import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
 import { useWorkspaces } from "@/modules/workspaces/hooks/use-workspaces";
@@ -31,7 +32,6 @@ import {
   Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
-import { homeData } from "@/data/mock/dashboard";
 import type { ActivityItem, ActivityKind } from "@/modules/dashboard/types";
 
 const ACTIVITY_ICONS: Record<ActivityKind, IconData> = {
@@ -53,17 +53,47 @@ function greeting(): string {
   return "Good evening";
 }
 
-export function HomePage() {
-  const {
-    activeCollection,
-    jars,
-    activity,
-  } = homeData;
+function transactionToActivity(transaction: {
+  reason: string;
+  amount: number;
+  createdAt: string;
+}): ActivityItem {
+  const when = formatDistanceToNow(new Date(transaction.createdAt), { addSuffix: true });
+  if (transaction.reason === "savings_deposit") {
+    return {
+      kind: "saved",
+      text: `You saved ${formatNaira(transaction.amount)} to your jar`,
+      who: formatNaira(transaction.amount),
+      when,
+      link: { to: "/app/savings" },
+    };
+  }
+  if (transaction.reason === "collection") {
+    return {
+      kind: "paid",
+      text: `Collection received ${formatNaira(transaction.amount)}`,
+      who: formatNaira(transaction.amount),
+      when,
+      link: { to: "/app/collections" },
+    };
+  }
+  return {
+    kind: "sent",
+    text: `You sent ${formatNaira(transaction.amount)} from wallet`,
+    who: formatNaira(transaction.amount),
+    when,
+    link: { to: "/app/sent" },
+  };
+}
 
+export function HomePage() {
   const { data: meResponse } = useMe();
   const { activeWorkspace } = useWorkspaces();
   const { data: metricsResponse } = useWalletMetrics(activeWorkspace?.id);
   const metrics = metricsResponse?.data;
+  const activity = (metrics?.recentTransactions ?? []).map(transactionToActivity);
+  const jars = metrics?.topJars ?? [];
+  const activeCollection = metrics?.activeCollection;
 
   const me = meResponse?.data.user;
   const firstName = me?.name?.trim().split(/\s+/)[0] || "there";
@@ -75,6 +105,13 @@ export function HomePage() {
   const collectionsCount = metrics?.collectingNow.collectionsCount ?? 0;
   const sentThisMonth = metrics?.sentThisMonth.amount ?? 0;
   const transfersCount = metrics?.sentThisMonth.transfersCount ?? 0;
+  const activeCollected = activeCollection?.collected ?? 0;
+  const activeTarget = activeCollection?.targetAmount ?? 0;
+  const activePerPerson = activeCollection?.amountPerMember ?? 0;
+  const activePaidMembers = activeCollection?.paidMembers ?? 0;
+  const activeMembers = activeCollection?.totalMembers ?? 0;
+  const activeTitle = activeCollection?.title ?? "No active collection yet";
+  const activeStatus = activeCollection?.status ?? "active";
 
   return (
     <div>
@@ -144,40 +181,36 @@ export function HomePage() {
 
       <FadeIn delay={0.12} className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.35fr_1fr]">
         <Pressable className="h-full">
-          <Link
-            to="/app/collections/$slug"
-            params={{ slug: activeCollection.slug }}
-            className="block h-full"
-          >
+          <Link to="/app/collections" className="block h-full">
             <Card className="h-full">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[13px] font-medium text-content-muted">Active collection</span>
                 <StatusPill status="info" dot>
-                  Live
+                  {activeStatus.replaceAll("_", " ")}
                 </StatusPill>
               </div>
               <div className="mb-1 text-[20px] font-bold leading-tight tracking-[-0.01em]">
-                {activeCollection.title}
+                {activeTitle}
               </div>
               <div className="mb-5 text-[12.5px] text-content-muted">
-                {formatNaira(activeCollection.perPerson)} / person · due {activeCollection.due}
+                {formatNaira(activePerPerson)} / person
               </div>
               <div className="mb-2.5 flex items-baseline justify-between">
                 <span className="tabular text-[24px] font-bold tracking-[-0.02em]">
-                  {formatNaira(activeCollection.collected)}
+                  {formatNaira(activeCollected)}
                 </span>
                 <span className="tabular text-[12px] text-content-muted">
-                  of {formatNaira(activeCollection.target)}
+                  of {formatNaira(activeTarget)}
                 </span>
               </div>
               <ProgressBar
-                value={toPercent(activeCollection.collected, activeCollection.target)}
+                value={toPercent(activeCollected, activeTarget)}
                 className="h-2"
               />
               <div className="mt-4 flex items-center justify-between border-t border-hairline-soft pt-4">
                 <span className="inline-flex items-center gap-1.5 text-[12.5px] text-content-muted">
                   <Icon icon={Tick02Icon} size={14} strokeWidth={2.5} className="text-emerald-deep" />
-                  {activeCollection.paid} of {activeCollection.members} paid
+                  {activePaidMembers} of {activeMembers} paid
                 </span>
                 <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-iris-deep">
                   View collection
@@ -235,9 +268,13 @@ export function HomePage() {
           action={<span className="text-[12px] text-content-faint">Last 24 hours</span>}
           flush
         >
-          {activity.map((item, index) => (
-            <ActivityRow key={item.text} item={item} last={index === activity.length - 1} />
-          ))}
+          {activity.length === 0 ? (
+            <div className="px-[18px] py-4 text-[12.5px] text-content-muted">No recent activity yet.</div>
+          ) : (
+            activity.map((item, index) => (
+              <ActivityRow key={`${item.text}-${item.when}`} item={item} last={index === activity.length - 1} />
+            ))
+          )}
         </SectionCard>
       </FadeIn>
     </div>
