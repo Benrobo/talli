@@ -7,7 +7,6 @@ import { Button, Card, Input, Spotlight } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
 import { Icon } from "@benrobo/iconary/react";
 import { AlertCircleIcon, ArrowLeft01Icon, BankIcon, Clock01Icon, Copy01Icon, Download01Icon, Invoice01Icon, LockIcon, PlusSignIcon, Tick02Icon, TickDouble02Icon, UserIcon } from "@benrobo/iconary/core/duotone-rounded";
-import { CheckmarkCircle02Icon } from "@benrobo/iconary/core/solid-rounded";
 import { billSplitApi, type BillItem, type BillCheckoutResult } from "../api";
 import { useBillSocket } from "../use-bill-socket";
 
@@ -284,7 +283,7 @@ function ItemRow({
       </span>
       {claimed ? (
         <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-emerald text-white">
-          <Icon icon={CheckmarkCircle02Icon} size={15} />
+          <Icon icon={Tick02Icon} size={13} strokeWidth={2.75} />
         </span>
       ) : selected ? (
         <motion.span
@@ -478,7 +477,7 @@ function DoneStage({
           transition={{ type: "spring", stiffness: 260, damping: 18 }}
           className="mb-6 flex size-20 items-center justify-center rounded-full bg-emerald-soft text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_12px_28px_-8px_rgba(47,163,107,0.5)]"
         >
-          <Icon icon={CheckmarkCircle02Icon} size={44} />
+          <Icon icon={Tick02Icon} size={40} strokeWidth={2.5} />
         </motion.span>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">You're all set, {payerName}!</div>

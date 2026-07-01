@@ -21,7 +21,7 @@ import type { IconData } from "@benrobo/iconary/core";
 import {
   ArrowUpRight01Icon,
   ArrowRight01Icon,
-  CheckmarkCircle02Icon,
+  Tick02Icon,
   Coins01Icon,
   MoneySavingJarIcon,
   MoneySend01Icon,
@@ -34,7 +34,7 @@ import { homeData } from "@/data/mock/dashboard";
 import type { ActivityItem, ActivityKind } from "@/modules/dashboard/types";
 
 const ACTIVITY_ICONS: Record<ActivityKind, IconData> = {
-  paid: CheckmarkCircle02Icon,
+  paid: Tick02Icon,
   sent: ArrowUpRight01Icon,
   saved: PlusSignIcon,
 };
@@ -170,7 +170,7 @@ export function HomePage() {
               />
               <div className="mt-4 flex items-center justify-between border-t border-hairline-soft pt-4">
                 <span className="inline-flex items-center gap-1.5 text-[12.5px] text-content-muted">
-                  <Icon icon={CheckmarkCircle02Icon} size={15} className="text-emerald-deep" />
+                  <Icon icon={Tick02Icon} size={14} strokeWidth={2.5} className="text-emerald-deep" />
                   {activeCollection.paid} of {activeCollection.members} paid
                 </span>
                 <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-iris-deep">
