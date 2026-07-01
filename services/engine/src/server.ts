@@ -7,14 +7,15 @@ import userRoute from "./routes/user.route.js";
 import workspaceRoute from "./routes/workspace.route.js";
 import { startSocketServer } from "./socket/server.js";
 import { startScheduler } from "./cron/scheduler.js";
+import type { ServerType } from "@hono/node-server";
 
 const app = new App();
 
 app.initializeRoutes([healthRoute, authRoute, userRoute, workspaceRoute]);
 
 async function bootstrap() {
-  app.start();
-  startSocketServer(env.SOCKET_PORT);
+  const server = app.start();
+  startSocketServer(server as ServerType);
   startScheduler();
 
   const shutdown = (signal: string) => {

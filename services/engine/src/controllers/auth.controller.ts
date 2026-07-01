@@ -1,72 +1,68 @@
 import type { Context } from "hono";
+import { getCookie } from "hono/cookie";
 import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from "@app/shared/constants";
 import env from "../config/env.js";
 import { COOKIE_SECURE } from "../config/internal-config.js";
-import prisma from "../prisma/index.js";
-import jwtService from "../lib/jwt.js";
 import { cookieManager } from "../lib/cookie-manager.js";
 import sendResponse from "../lib/send-response.js";
-import { mailService } from "../services/mail.service.js";
-import { randomOtp } from "../lib/utils.js";
-import redis from "../lib/redis.js";
-import {
-  BadRequestException,
-  UnauthorizedException,
-} from "../lib/exception.js";
+import { UnauthorizedException } from "../lib/exception.js";
+import type { TokenPair } from "../lib/jwt.js";
+import { authService } from "../services/auth.service.js";
 import type { RequestOtpInput, VerifyOtpInput } from "../schemas/auth.schema.js";
-import { workspaceService } from "../services/workspace.service.js";
-
-const OTP_TTL_SECONDS = 600;
 
 class AuthController {
-  /**
-   * Issue a 6-digit code, store it in Redis with `OTP_TTL_SECONDS` TTL,
-   * and email it to the user.
-   */
   async requestOtp(ctx: Context) {
     const { email, mode } = ctx.get("validatedData") as RequestOtpInput;
-    const code = randomOtp(6);
-
-    await redis.setex(`otp:${email}`, OTP_TTL_SECONDS, code);
-    await mailService.sendOtpEmail(email, code, mode);
-
+    await authService.requestOtp(email, mode);
     return sendResponse.success(ctx, "Verification code sent", 200, {
       email,
-      expiresIn: OTP_TTL_SECONDS,
+      expiresIn: 600,
     });
   }
 
-  /**
-   * Validate a submitted OTP, upsert the user, create a session row, and
-   * set httpOnly auth cookies on the response.
-   */
   async verifyOtp(ctx: Context) {
     const { email, code } = ctx.get("validatedData") as VerifyOtpInput;
-    const stored = await redis.get(`otp:${email}`);
-    if (!stored || stored !== code) {
-      throw new BadRequestException("Invalid or expired verification code");
-    }
-    await redis.del(`otp:${email}`);
-
-    const user = await prisma.user.upsert({
-      where: { email },
-      create: { email, isVerified: true },
-      update: { isVerified: true },
+    const { user, tokens } = await authService.verifyOtp(email, code, {
+      userAgent: ctx.req.header("user-agent") ?? null,
+      ipAddress: ctx.req.header("x-forwarded-for") ?? null,
     });
+    this.setAuthCookies(ctx, tokens);
+    return sendResponse.success(ctx, "Signed in", 200, { user, ...tokens });
+  }
 
-    await workspaceService.ensureDefaultWorkspace(user.id);
+  async refresh(ctx: Context) {
+    const bodyToken = (ctx.get("validatedData") as { refreshToken?: string } | undefined)?.refreshToken;
+    const token = bodyToken ?? getCookie(ctx, REFRESH_COOKIE_NAME);
+    if (!token) throw new UnauthorizedException("Missing refresh token");
 
-    const expiresAt = new Date(Date.now() + env.JWT_REFRESH_TOKEN_TTL * 1000);
-    const session = await prisma.authSession.create({
-      data: {
-        userId: user.id,
-        userAgent: ctx.req.header("user-agent") ?? null,
-        ipAddress: ctx.req.header("x-forwarded-for") ?? null,
-        expiresAt,
-      },
+    const tokens = await authService.refresh(token);
+    this.setAuthCookies(ctx, tokens);
+    return sendResponse.success(ctx, "Token refreshed", 200, { ...tokens });
+  }
+
+  async me(ctx: Context) {
+    const user = ctx.get("user") as AuthUser | undefined;
+    if (!user) throw new UnauthorizedException();
+    return sendResponse.success(ctx, null, 200, { user });
+  }
+
+  async logout(ctx: Context) {
+    const token = ctx.req.header("Authorization")?.replace("Bearer ", "")
+      ?? getCookie(ctx, AUTH_COOKIE_NAME);
+    if (token) await authService.logout(token);
+
+    cookieManager.clearCookie(ctx, AUTH_COOKIE_NAME, {
+      domain: env.COOKIE_DOMAIN,
+      secure: COOKIE_SECURE,
     });
+    cookieManager.clearCookie(ctx, REFRESH_COOKIE_NAME, {
+      domain: env.COOKIE_DOMAIN,
+      secure: COOKIE_SECURE,
+    });
+    return sendResponse.success(ctx, "Signed out", 200, null);
+  }
 
-    const tokens = jwtService.createTokenPair(user.id, user.email, session.id);
+  private setAuthCookies(ctx: Context, tokens: TokenPair) {
     cookieManager.setCookie(ctx, AUTH_COOKIE_NAME, tokens.accessToken, {
       maxAge: env.JWT_ACCESS_TOKEN_TTL,
       sameSite: "lax",
@@ -79,43 +75,14 @@ class AuthController {
       secure: COOKIE_SECURE,
       domain: env.COOKIE_DOMAIN,
     });
-
-    return sendResponse.success(ctx, "Signed in", 200, {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatarUrl: user.avatarUrl,
-      },
-      ...tokens,
-    });
   }
+}
 
-  async me(ctx: Context) {
-    const user = ctx.get("user") as { id: string; email: string; name: string | null; avatarUrl: string | null };
-    if (!user) throw new UnauthorizedException();
-    return sendResponse.success(ctx, null, 200, { user });
-  }
-
-  /**
-   * Tear down the session row, clear cookies, and invalidate any cached
-   * session lookup keyed by the access token.
-   */
-  async logout(ctx: Context) {
-    const sessionId = ctx.get("sessionId") as string | undefined;
-    if (sessionId) {
-      await prisma.authSession.delete({ where: { id: sessionId } }).catch(() => undefined);
-    }
-    cookieManager.clearCookie(ctx, AUTH_COOKIE_NAME, {
-      domain: env.COOKIE_DOMAIN,
-      secure: COOKIE_SECURE,
-    });
-    cookieManager.clearCookie(ctx, REFRESH_COOKIE_NAME, {
-      domain: env.COOKIE_DOMAIN,
-      secure: COOKIE_SECURE,
-    });
-    return sendResponse.success(ctx, "Signed out", 200, null);
-  }
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
 }
 
 export const authController = new AuthController();
