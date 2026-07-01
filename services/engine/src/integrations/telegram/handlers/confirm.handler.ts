@@ -5,10 +5,9 @@ import { botCommandService } from "../../../services/bot-command.service.js";
 import { platformUserService } from "../../../services/platform-user.service.js";
 import { messages } from "../ui/messages.js";
 import type { Intent } from "../../../schemas/intent.schema.js";
+import { isAdminOnlyInGroup } from "../../../constants/chat-capabilities.js";
 import type { TalliContext } from "../types.js";
 import { safeReply, isGroupChat, isSenderAdmin } from "./shared.js";
-
-const ADMIN_ONLY_IN_GROUP: Intent["intent"][] = ["create_collection", "split_payment"];
 
 /** Confirm / Cancel taps on an intent's parse-and-confirm card. */
 export async function handleConfirm(
@@ -29,7 +28,7 @@ export async function handleConfirm(
   }
 
   const intent = command ? (command.parsedIntent as Intent | null) : null;
-  if (intent && isGroupChat(ctx) && ADMIN_ONLY_IN_GROUP.includes(intent.intent) && !(await isSenderAdmin(ctx))) {
+  if (intent && isGroupChat(ctx) && isAdminOnlyInGroup(intent.intent) && !(await isSenderAdmin(ctx))) {
     await ctx.answerCallbackQuery({ text: "Only a group admin can do this." }).catch(() => {});
     return;
   }

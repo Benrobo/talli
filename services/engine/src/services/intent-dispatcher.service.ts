@@ -3,7 +3,8 @@ import prisma from "../prisma/index.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
 import { confirmCancel, payButton, selectCollectionKeyboard } from "../integrations/telegram/ui/keyboards.js";
 import type { InlineKeyboard } from "grammy";
-import { commandParserService, type ChatScope } from "./command-parser.service.js";
+import { commandParserService } from "./command-parser.service.js";
+import { isAdminOnlyInGroup, type ChatScope } from "../constants/chat-capabilities.js";
 import { botCommandService, type CommandContext } from "./bot-command.service.js";
 import { collectionService } from "./collection.service.js";
 import { splitService } from "./split.service.js";
@@ -33,8 +34,6 @@ export interface DispatchContext extends CommandContext {
   senderName: string;
   isGroupAdmin: boolean;
 }
-
-const ADMIN_ONLY_IN_GROUP: Intent["intent"][] = ["create_collection", "split_payment"];
 
 /**
  * Turns a chat message into a bot action: parse → gate by chat type → either
@@ -71,7 +70,7 @@ class IntentDispatcherService {
       await botCommandService.recordConversational(ctx, text, intent, messages.dmOnly);
       return { text: messages.dmOnly };
     }
-    if (ctx.scope === "group" && ADMIN_ONLY_IN_GROUP.includes(intent.intent) && !ctx.isGroupAdmin) {
+    if (ctx.scope === "group" && isAdminOnlyInGroup(intent.intent) && !ctx.isGroupAdmin) {
       await botCommandService.recordConversational(ctx, text, intent, messages.adminOnlyCreate);
       return { text: messages.adminOnlyCreate };
     }
@@ -221,7 +220,7 @@ class IntentDispatcherService {
       },
     });
 
-    if (ctx.scope === "group" && ADMIN_ONLY_IN_GROUP.includes(intent.intent) && !ctx.isGroupAdmin) {
+    if (ctx.scope === "group" && isAdminOnlyInGroup(intent.intent) && !ctx.isGroupAdmin) {
       return { text: messages.adminOnlyCreate };
     }
 
