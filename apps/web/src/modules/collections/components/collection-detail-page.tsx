@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import toast from "react-hot-toast";
 import { cn } from "@app/ui";
 import {
   Button,
@@ -13,15 +15,18 @@ import {
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowLeft01Icon,
-  BellDotIcon,
   CheckmarkCircle02Icon,
   Coins01Icon,
-  Share01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  Edit02Icon,
   UserGroupIcon,
   Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, toPercent } from "@/lib/format";
 import { MemberRow } from "@/modules/collections/components/member-row";
+import { EditCollectionDialog } from "@/modules/collections/components/edit-collection-dialog";
+import { DeleteCollectionDialog } from "@/modules/collections/components/delete-collection-dialog";
 import type { Collection, CollectionStatus } from "@/modules/collections/types";
 
 const STATUS: Record<CollectionStatus, { status: "info" | "neutral" | "pending"; label: string }> = {
@@ -34,11 +39,21 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
   const badge = STATUS[collection.status];
   const pct = toPercent(collection.collectedMinor, collection.targetMinor);
   const owing = Math.max(0, collection.targetMinor - collection.collectedMinor);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const paying = collection.members.filter((m) => m.status === "paying").length;
   const hiddenUnpaid = Math.max(0, collection.memberCount - collection.members.length);
   const hiddenAmount = hiddenUnpaid * collection.perPersonMinor;
   const stillToGo = Math.max(0, collection.memberCount - collection.paidCount - paying);
+
+  function copyPayLink() {
+    const payUrl = `${window.location.origin}/pay/${collection.payReference}`;
+    navigator.clipboard.writeText(payUrl).then(() => {
+      setCopiedLink(true);
+      toast.success("Pay link copied");
+      setTimeout(() => setCopiedLink(false), 1600);
+    });
+  }
 
   return (
     <div>
@@ -70,20 +85,38 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
             </>
           }
           actions={
-            collection.status === "live" ? (
-              <>
-                <Link to="/pay/$reference" params={{ reference: collection.payReference }}>
-                  <Button variant="secondary" leadingIcon={<Icon icon={Share01Icon} size={16} />}>
-                    Share pay link
+            <div className="flex flex-wrap items-center gap-2">
+              {collection.status === "live" ? (
+                <>
+                  <Link to="/pay/$reference" params={{ reference: collection.payReference }}>
+                    <Button>Pay</Button>
+                  </Link>
+                  <Button
+                    variant="secondary"
+                    leadingIcon={<Icon icon={Copy01Icon} size={16} />}
+                    onClick={copyPayLink}
+                  >
+                    {copiedLink ? "Copied" : "Copy pay link"}
                   </Button>
-                </Link>
-                {stillToGo > 0 ? (
-                  <Button leadingIcon={<Icon icon={BellDotIcon} size={16} />}>
-                    Remind {stillToGo} unpaid
+                </>
+              ) : null}
+              <EditCollectionDialog
+                collection={collection}
+                trigger={
+                  <Button variant="secondary" leadingIcon={<Icon icon={Edit02Icon} size={16} />}>
+                    Edit
                   </Button>
-                ) : null}
-              </>
-            ) : null
+                }
+              />
+              <DeleteCollectionDialog
+                collection={collection}
+                trigger={
+                  <Button variant="secondary" leadingIcon={<Icon icon={Delete02Icon} size={16} />}>
+                    Delete
+                  </Button>
+                }
+              />
+            </div>
           }
         />
       </FadeIn>
@@ -132,7 +165,7 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
               description={
                 collection.status === "draft"
                   ? "Launch this collection to invite people and start tracking who has paid."
-                  : "No individual members are tracked for this collection."
+                  : "Share the pay link so people can pay and appear here."
               }
               className="border-0 bg-transparent py-8 shadow-none"
             />

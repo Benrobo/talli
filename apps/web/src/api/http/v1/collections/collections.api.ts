@@ -12,6 +12,12 @@ import type {
   ListPaymentsParams,
   UpdateCollectionStatusPayload,
   UpdateCollectionStatusResponse,
+  UpdateCollectionPayload,
+  UpdateCollectionResponse,
+  DeleteCollectionResponse,
+  GetCollectionPayViewResponse,
+  CollectionPayCheckoutPayload,
+  CollectionPayCheckoutResponse,
 } from "./collections.types";
 
 export const COLLECTIONS_ENDPOINTS = {
@@ -20,6 +26,8 @@ export const COLLECTIONS_ENDPOINTS = {
   get: (collectionId: string) => `/api/collections/${collectionId}`,
   members: (collectionId: string) => `/api/collections/${collectionId}/members`,
   payments: (collectionId: string) => `/api/collections/${collectionId}/payments`,
+  payView: (reference: string) => `/api/collections/pay/${reference}`,
+  payCheckout: (reference: string) => `/api/collections/pay/${reference}/checkout`,
 } as const;
 
 export const COLLECTIONS_API = {
@@ -63,4 +71,22 @@ export const COLLECTIONS_API = {
     apiClient
       .patch(COLLECTIONS_ENDPOINTS.get(collectionId), payload)
       .then((res) => res.data),
+
+  UPDATE: async (
+    collectionId: string,
+    payload: UpdateCollectionPayload
+  ): Promise<UpdateCollectionResponse> =>
+    apiClient.put(COLLECTIONS_ENDPOINTS.get(collectionId), payload).then((res) => res.data),
+
+  DELETE: async (collectionId: string): Promise<DeleteCollectionResponse> =>
+    apiClient.delete(COLLECTIONS_ENDPOINTS.get(collectionId)).then((res) => res.data),
+
+  GET_PAY_VIEW: async (reference: string): Promise<GetCollectionPayViewResponse> =>
+    apiClient.get(COLLECTIONS_ENDPOINTS.payView(reference)).then((res) => res.data),
+
+  CHECKOUT_PAY: async (
+    reference: string,
+    payload: CollectionPayCheckoutPayload
+  ): Promise<CollectionPayCheckoutResponse> =>
+    apiClient.post(COLLECTIONS_ENDPOINTS.payCheckout(reference), payload).then((res) => res.data),
 };

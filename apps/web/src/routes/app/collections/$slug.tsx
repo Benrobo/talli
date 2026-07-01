@@ -31,17 +31,28 @@ function CollectionDetailRoute() {
   const source = collectionResponse.data;
   const members = membersResponse?.data.members ?? [];
   const totalCollected = source.totalCollected ?? source.collected ?? 0;
+  const collectionType =
+    source.collectionType === "fixed_per_person" ||
+    source.collectionType === "open_contribution" ||
+    source.collectionType === "named_members"
+      ? source.collectionType
+      : "open_contribution";
+  const deadline = source.deadline ?? null;
   const collection: Collection = {
     slug: source.id,
     payReference: source.id,
     title: source.title,
+    purpose: source.purpose,
+    collectionType,
     status: source.status === "draft" ? "draft" : source.status === "active" || source.status === "partially_paid" ? "live" : "closed",
     perPersonMinor: source.amountPerMember ?? 0,
     targetMinor: source.targetAmount ?? totalCollected,
     collectedMinor: totalCollected,
     paidCount: members.filter((member) => member.status === "paid").length,
     memberCount: members.length,
-    due: source.updatedAt ? new Date(source.updatedAt).toLocaleDateString("en-NG") : "",
+    due: deadline ? new Date(deadline).toLocaleDateString("en-NG") : "",
+    deadline,
+    canEditAmounts: totalCollected === 0 && !members.some((member) => member.paidAmount > 0),
     members: members.map((member) => ({
       name: member.displayName,
       status: member.status === "paid" ? "paid" : member.status === "pending" ? "paying" : "unpaid" as MemberStatus,

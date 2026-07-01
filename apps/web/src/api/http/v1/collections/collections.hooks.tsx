@@ -14,6 +14,9 @@ import type {
   ListPaymentsParams,
   UpdateCollectionStatusPayload,
   UpdateCollectionStatusResponse,
+  UpdateCollectionPayload,
+  UpdateCollectionResponse,
+  DeleteCollectionResponse,
 } from "./collections.types";
 
 export const collectionsQueryKeys = {
@@ -87,6 +90,30 @@ export const useUpdateCollectionStatus = (collectionId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.detail(collectionId) });
       queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.list() });
+    },
+  });
+};
+
+export const useUpdateCollection = (collectionId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateCollectionResponse, AxiosError, UpdateCollectionPayload>({
+    mutationFn: (payload) => COLLECTIONS_API.UPDATE(collectionId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.detail(collectionId) });
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.list() });
+    },
+  });
+};
+
+export const useDeleteCollection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<DeleteCollectionResponse, AxiosError, string>({
+    mutationFn: (collectionId) => COLLECTIONS_API.DELETE(collectionId),
+    onSuccess: (_data, collectionId) => {
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.list() });
+      queryClient.removeQueries({ queryKey: collectionsQueryKeys.detail(collectionId) });
     },
   });
 };

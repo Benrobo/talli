@@ -550,6 +550,64 @@
               "path": ["collections", "{{collectionId}}"]
             }
           }
+        },
+        {
+          "name": "Update collection",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Office lunch\",\n  \"purpose\": \"Team lunch contribution\",\n  \"targetAmount\": 25000,\n  \"deadline\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete collection",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get collection pay view (public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/collections/pay/{{collectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "pay", "{{collectionId}}"]
+            }
+          }
+        },
+        {
+          "name": "Checkout collection payment (public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{collectionMemberId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collections/pay/{{collectionId}}/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "pay", "{{collectionId}}", "checkout"]
+            }
+          }
         }
       ]
     },
