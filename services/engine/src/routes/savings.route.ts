@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { savingsController } from "../controllers/savings.controller.js";
-import { createSavingsJarSchema, depositToSavingsJarSchema } from "../schemas/savings.schema.js";
+import {
+  createSavingsJarSchema,
+  depositToSavingsJarSchema,
+  updateSavingsJarSchema,
+} from "../schemas/savings.schema.js";
 import useCatchErrors from "../lib/use-catch-errors.js";
 import { validateSchema } from "../middleware/validate.js";
 import { isAuthenticated } from "../middleware/auth.js";
@@ -28,6 +32,21 @@ router.post(
   rateLimiter.rateLimit({ windowMs: 60_000, max: 20, keyPrefix: "savings:create" }),
   validateSchema(createSavingsJarSchema),
   useCatchErrors(isAuthenticated(c.create.bind(c)))
+);
+
+router.put(
+  "/savings/:id",
+  requireFeature("savings"),
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 20, keyPrefix: "savings:update" }),
+  validateSchema(updateSavingsJarSchema),
+  useCatchErrors(isAuthenticated(c.update.bind(c)))
+);
+
+router.delete(
+  "/savings/:id",
+  requireFeature("savings"),
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 20, keyPrefix: "savings:delete" }),
+  useCatchErrors(isAuthenticated(c.remove.bind(c)))
 );
 
 router.post(

@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
@@ -81,6 +82,47 @@ class SavingsService {
         data: { currentAmount: { increment: amount } },
       });
     });
+  }
+
+  async update(
+    workspaceId: string,
+    userId: string,
+    jarId: string,
+    input: {
+      name: string;
+      targetAmount?: number;
+      lockUntil?: Date | null;
+    }
+  ) {
+    const jar = await this.get(workspaceId, jarId, userId);
+    const hasDeposits = jar.currentAmount > 0;
+
+    const data: Prisma.SavingsJarUpdateInput = { name: input.name };
+
+    if (input.lockUntil !== undefined) {
+      data.lockUntil = input.lockUntil;
+      data.status =
+        input.lockUntil && input.lockUntil.getTime() > Date.now() ? "locked" : "active";
+    }
+
+    if (!hasDeposits && input.targetAmount !== undefined) {
+      data.targetAmount = input.targetAmount;
+    }
+
+    return prisma.savingsJar.update({
+      where: { id: jarId },
+      data,
+    });
+  }
+
+  async remove(workspaceId: string, userId: string, jarId: string): Promise<void> {
+    const jar = await this.get(workspaceId, jarId, userId);
+    if (jar.currentAmount > 0) {
+      throw new BadRequestException("Can't delete a jar that already has savings");
+    }
+
+    await prisma.pendingPayment.deleteMany({ where: { savingsJarId: jarId } });
+    await prisma.savingsJar.delete({ where: { id: jarId } });
   }
 
   async depositFromWallet(workspaceId: string, userId: string, jarId: string, amount: number) {

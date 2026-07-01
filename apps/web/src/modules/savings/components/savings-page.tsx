@@ -33,8 +33,11 @@ function toJar(record: {
     name: record.name,
     savedMinor: record.currentAmount,
     targetMinor: record.targetAmount ?? record.currentAmount,
+    targetAmountMinor: record.targetAmount,
+    lockUntil: record.lockUntil,
     status: record.status === "locked" ? "locked" : "active",
     lockText: record.lockUntil ? `unlocks ${new Date(record.lockUntil).toLocaleDateString("en-NG")}` : "no lock",
+    canEditAmounts: record.currentAmount === 0,
     deposits: [],
   };
 }

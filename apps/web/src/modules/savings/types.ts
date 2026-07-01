@@ -15,8 +15,11 @@ export interface Jar {
   name: string;
   savedMinor: number;
   targetMinor: number;
+  targetAmountMinor: number | null;
+  lockUntil: string | null;
   status: JarStatus;
   lockText: string;
+  canEditAmounts: boolean;
   deposits: Deposit[];
 }
 

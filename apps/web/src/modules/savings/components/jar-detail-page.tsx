@@ -5,6 +5,7 @@ import {
   FadeIn,
   IconChip,
   ListRow,
+  PageHeader,
   ProgressBar,
   SectionCard,
   StatCard,
@@ -13,6 +14,8 @@ import {
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowLeft01Icon,
+  Delete02Icon,
+  Edit02Icon,
   PlusSignIcon,
   Tick02Icon,
   SquareLock02Icon,
@@ -20,6 +23,8 @@ import {
   Target01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
+import { EditJarDialog } from "@/modules/savings/components/edit-jar-dialog";
+import { DeleteJarDialog } from "@/modules/savings/components/delete-jar-dialog";
 import type { Jar } from "@/modules/savings/types";
 
 interface JarDetailPageProps {
@@ -34,23 +39,60 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
 
   return (
     <div>
-      <FadeIn y={8}>
-        <Link
-          to="/app/savings"
-          className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-content-muted transition-colors hover:text-foreground"
-        >
-          <Icon icon={ArrowLeft01Icon} size={15} />
-          Savings jars
-        </Link>
+      <Link
+        to="/app/savings"
+        className="mb-[18px] inline-flex items-center gap-1.5 text-[13px] text-content-muted transition-colors hover:text-foreground"
+      >
+        <Icon icon={ArrowLeft01Icon} size={15} />
+        Savings jars
+      </Link>
 
-        <div className="mb-5 flex items-center gap-3">
-          <h1 className="text-[26px] font-bold tracking-[-0.02em]">{jar.name}</h1>
-          {locked ? (
-            <StatusPill status="pending">Locked</StatusPill>
-          ) : (
-            <StatusPill status="success">Active</StatusPill>
-          )}
-        </div>
+      <FadeIn y={8}>
+        <PageHeader
+          className="mb-6"
+          title={
+            <span className="inline-flex items-center gap-3">
+              {jar.name}
+              {locked ? (
+                <StatusPill status="pending">Locked</StatusPill>
+              ) : (
+                <StatusPill status="success">Active</StatusPill>
+              )}
+            </span>
+          }
+          subtitle={
+            <>
+              {formatNaira(jar.savedMinor)} saved
+              {jar.targetAmountMinor ? ` · ${formatNairaShort(jar.targetMinor)} target` : ""}
+              {locked ? ` · unlocks ${unlockDate}` : ""}
+            </>
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/pay/jar/$id" params={{ id: jar.id }}>
+                <Button leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>Add money</Button>
+              </Link>
+              <EditJarDialog
+                jar={jar}
+                trigger={
+                  <Button variant="secondary" leadingIcon={<Icon icon={Edit02Icon} size={16} />}>
+                    Edit
+                  </Button>
+                }
+              />
+              {jar.savedMinor === 0 ? (
+                <DeleteJarDialog
+                  jar={jar}
+                  trigger={
+                    <Button variant="secondary" leadingIcon={<Icon icon={Delete02Icon} size={16} />}>
+                      Delete
+                    </Button>
+                  }
+                />
+              ) : null}
+            </div>
+          }
+        />
       </FadeIn>
 
       <FadeIn delay={0.05} className="mb-4 grid grid-cols-3 gap-3.5">
@@ -62,11 +104,7 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
           sub={remaining === 0 ? "target reached" : `${formatNaira(remaining)} to go`}
         >
           <div className="mt-4">
-            <ProgressBar
-              value={pct}
-              className="h-1.5 bg-white/20"
-              barClassName="bg-white"
-            />
+            <ProgressBar value={pct} className="h-1.5 bg-white/20" barClassName="bg-white" />
             <div className="tabular mt-2 text-[11.5px] text-white/70">
               {pct}% of {formatNairaShort(jar.targetMinor)}
             </div>
@@ -105,13 +143,10 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
           title="Recent deposits"
           action={
             jar.deposits.length > 0 ? (
-              <span className="tabular text-[12px] text-content-muted">
-                {jar.deposits.length} total
-              </span>
+              <span className="tabular text-[12px] text-content-muted">{jar.deposits.length} total</span>
             ) : null
           }
           flush
-          className="mb-4"
         >
           {jar.deposits.length === 0 ? (
             <EmptyState
@@ -139,14 +174,6 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
             ))
           )}
         </SectionCard>
-      </FadeIn>
-
-      <FadeIn delay={0.2}>
-        <Link to="/pay/jar/$id" params={{ id: jar.id }}>
-          <Button block size="lg" leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>
-            Add money
-          </Button>
-        </Link>
       </FadeIn>
     </div>
   );
