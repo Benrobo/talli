@@ -209,6 +209,16 @@ export const messages = {
 
   payFailed: "⚠️ Couldn't start that payment right now. Please try again in a moment.",
 
+  billReading: "🧾 Reading your bill…",
+
+  billUnreadable:
+    "🧾 I couldn't read that image. Try a clearer photo, or just type the amount — e.g. _“split ₦30,000 between Tolu and Ada”_.",
+
+  billRejected(reason: string | null): string {
+    const why = reason ? `🧾 ${escapeMarkdown(reason)}` : "🧾 I couldn't read a total off that image.";
+    return `${why}\n\nTry a clearer photo, or just type the amount — e.g. _“split ₦30,000 between Tolu and Ada”_.`;
+  },
+
   /**
    * Group announcement when a member's collection payment lands. Tags the payer
    * so they see it confirmed, and shows running progress (total collected, toward
@@ -287,6 +297,7 @@ export const messages = {
       "Even, custom, or by count — each person gets a pay link, no account needed.",
       "_“split ₦30k between Tolu, Ada and me”_",
       "_“Tolu 10k, Ada 5k, Bola 15k”_",
+      "📸 _Or send a photo of the bill_ — I'll read the total and split it.",
       "",
       "📊 *Check progress*",
       "_“how much have we raised?”_",
