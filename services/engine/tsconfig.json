@@ -9,5 +9,6 @@
     "jsxImportSource": "hono/jsx",
     "noEmit": false
   },
-  "include": ["src/**/*", "trigger.config.ts", "prisma.config.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["prisma.config.ts", "trigger.config.ts"]
 }
