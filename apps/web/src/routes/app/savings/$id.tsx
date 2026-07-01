@@ -20,17 +20,20 @@ function JarDetailRoute() {
   }
 
   const source = response?.data;
-  const jar: Jar | null = source
+  const jar: Jar | null = source?.jar
     ? {
-        id: source.id,
-        name: source.name,
-        savedMinor: source.currentAmount,
-        targetMinor: source.targetAmount ?? source.currentAmount,
-        status: source.status === "locked" ? "locked" : "active",
-        lockText: source.lockUntil
-          ? `unlocks ${new Date(source.lockUntil).toLocaleDateString("en-NG")}`
+        id: source.jar.id,
+        name: source.jar.name,
+        savedMinor: source.jar.currentAmount,
+        targetMinor: source.jar.targetAmount ?? source.jar.currentAmount,
+        status: source.jar.status === "locked" ? "locked" : "active",
+        lockText: source.jar.lockUntil
+          ? `unlocks ${new Date(source.jar.lockUntil).toLocaleDateString("en-NG")}`
           : "no lock",
-        deposits: [],
+        deposits: source.deposits.map((deposit) => ({
+          amountMinor: deposit.amount,
+          when: new Date(deposit.createdAt).toLocaleString("en-NG"),
+        })),
       }
     : null;
 

@@ -6,4 +6,9 @@ export const createSavingsJarSchema = z.object({
   lockUntil: z.coerce.date().optional(),
 });
 
+export const depositToSavingsJarSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+});
+
 export type CreateSavingsJarInput = z.infer<typeof createSavingsJarSchema>;
+export type DepositToSavingsJarInput = z.infer<typeof depositToSavingsJarSchema>;

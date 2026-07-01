@@ -7,7 +7,12 @@ export const createSavingsJarSchema = z.object({
   lockUntil: z.coerce.date().optional(),
 });
 
+export const depositToSavingsJarSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+});
+
 export type CreateSavingsJarPayload = z.infer<typeof createSavingsJarSchema>;
+export type DepositToSavingsJarPayload = z.infer<typeof depositToSavingsJarSchema>;
 
 export interface SavingsJarRecord {
   id: string;
@@ -24,5 +29,17 @@ export interface SavingsJarRecord {
 }
 
 export type ListSavingsJarsResponse = ApiSuccess<SavingsJarRecord[]>;
-export type GetSavingsJarResponse = ApiSuccess<SavingsJarRecord>;
+export type GetSavingsJarResponse = ApiSuccess<{
+  jar: SavingsJarRecord;
+  deposits: { amount: number; createdAt: string }[];
+}>;
 export type CreateSavingsJarResponse = ApiSuccess<SavingsJarRecord>;
+export type DepositToSavingsJarResponse = ApiSuccess<{
+  orderRefId: string;
+  flashAccountNumber: string;
+  flashAccountName: string;
+  flashBankName: string;
+  amount: number;
+  expiresAt: string;
+  checkoutUrl: string;
+}>;

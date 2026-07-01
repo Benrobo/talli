@@ -1,9 +1,19 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
+import toast from "react-hot-toast";
 import {
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   EmptyState,
   FadeIn,
   IconChip,
+  Input,
   ListRow,
   ProgressBar,
   SectionCard,
@@ -20,17 +30,50 @@ import {
   Target01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
+import { useDepositToSavingsJar } from "@/api/http/v1/savings/savings.hooks";
+import { depositToSavingsJarSchema } from "@/api/http/v1/savings/savings.types";
 import type { Jar } from "@/modules/savings/types";
+import { z } from "zod";
 
 interface JarDetailPageProps {
   jar: Jar;
 }
 
 export function JarDetailPage({ jar }: JarDetailPageProps) {
+  const [open, setOpen] = useState(false);
+  const [fundingInfo, setFundingInfo] = useState<{
+    flashAccountNumber: string;
+    flashAccountName: string;
+    flashBankName: string;
+    amount: number;
+  } | null>(null);
+  const deposit = useDepositToSavingsJar(jar.id);
   const pct = toPercent(jar.savedMinor, jar.targetMinor);
   const locked = jar.status === "locked";
   const remaining = Math.max(0, jar.targetMinor - jar.savedMinor);
   const unlockDate = locked ? jar.lockText.replace(/^unlocks\s*/i, "") : "—";
+  const form = useForm({
+    defaultValues: { amount: "" },
+    onSubmit: async ({ value }) => {
+      try {
+        const payload = depositToSavingsJarSchema.parse({ amount: Number(value.amount) * 100 });
+        const result = await deposit.mutateAsync(payload);
+        setFundingInfo({
+          flashAccountNumber: result.data.flashAccountNumber,
+          flashAccountName: result.data.flashAccountName,
+          flashBankName: result.data.flashBankName,
+          amount: result.data.amount,
+        });
+        toast.success("Transfer to the account shown to fund this jar.");
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          toast.error(error.issues[0]?.message ?? "Invalid amount");
+          return;
+        }
+        toast.error("Couldn't add money. Check balance and try again.");
+      }
+    },
+  });
 
   return (
     <div>
@@ -142,10 +185,79 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
       </FadeIn>
 
       <FadeIn delay={0.2}>
-        <Button block size="lg" leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>
+        <Button block size="lg" leadingIcon={<Icon icon={PlusSignIcon} size={16} />} onClick={() => setOpen(true)}>
           Add money
         </Button>
       </FadeIn>
+
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setFundingInfo(null);
+            form.reset();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Add money to {jar.name}</DialogTitle>
+            <DialogDescription>Generate a Nomba payment account and transfer into it to fund this jar.</DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              form.handleSubmit();
+            }}
+          >
+            <form.Field
+              name="amount"
+              validators={{
+                onChange: ({ value }) => {
+                  if (!value) return "Amount is required";
+                  return Number(value) > 0 ? undefined : "Amount must be greater than zero";
+                },
+              }}
+              children={(field) => (
+                <div>
+                  <div className="mb-1.5 block text-[12.5px] font-medium text-content-muted">Amount</div>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value.replace(/[^\d]/g, ""))}
+                    onBlur={field.handleBlur}
+                  />
+                </div>
+              )}
+            />
+          </form>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={deposit.isPending}>
+              Cancel
+            </Button>
+            <form.Subscribe
+              selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+              children={([canSubmit, isSubmitting]) => (
+                <Button onClick={() => form.handleSubmit()} disabled={!canSubmit || isSubmitting || deposit.isPending}>
+                  {deposit.isPending ? "Adding…" : "Add money"}
+                </Button>
+              )}
+            />
+          </DialogFooter>
+          {fundingInfo ? (
+            <div className="rounded-[12px] border border-hairline bg-inset px-4 py-3 text-[12.5px]">
+              <div className="mb-1 font-medium text-foreground">Pay {formatNaira(fundingInfo.amount)}</div>
+              <div className="text-content-muted">{fundingInfo.flashAccountName}</div>
+              <div className="tabular text-foreground">{fundingInfo.flashAccountNumber}</div>
+              <div className="text-content-muted">{fundingInfo.flashBankName}</div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
