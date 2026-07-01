@@ -380,6 +380,7 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Starts Nomba funding for the jar. Amount is in kobo (minor units). Returns flash account details and checkoutUrl; the cron credits the jar when payment settles.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": 50000\n}"
@@ -388,6 +389,36 @@
               "raw": "{{baseUrl}}/savings/{{savingsJarId}}/deposits",
               "host": ["{{baseUrl}}"],
               "path": ["savings", "{{savingsJarId}}", "deposits"]
+            }
+          }
+        },
+        {
+          "name": "Update savings jar",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Update jar name, target, or lock date. targetAmount can only change before any deposits (currentAmount === 0). lockUntil null removes the lock.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Emergency fund\",\n  \"targetAmount\": 1000000,\n  \"lockUntil\": \"2026-12-31T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/savings/{{savingsJarId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["savings", "{{savingsJarId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete savings jar",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "description": "Permanently removes the jar. Only allowed when currentAmount is 0 (no savings yet).",
+            "url": {
+              "raw": "{{baseUrl}}/savings/{{savingsJarId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["savings", "{{savingsJarId}}"]
             }
           }
         }
@@ -556,6 +587,7 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Update title, purpose, due date, or amounts. Amount fields only apply before any payments are received.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Office lunch\",\n  \"purpose\": \"Team lunch contribution\",\n  \"targetAmount\": 25000,\n  \"deadline\": null\n}"
@@ -572,6 +604,7 @@
           "request": {
             "method": "DELETE",
             "header": [],
+            "description": "Permanently removes the collection. Only allowed when no payments have been received.",
             "url": {
               "raw": "{{baseUrl}}/collections/{{collectionId}}",
               "host": ["{{baseUrl}}"],
@@ -598,9 +631,10 @@
             "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Starts Nomba checkout for a collection payment. Use memberId for listed members, or payerName (and amount for open_contribution). Amount is in kobo.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"memberId\": \"{{collectionMemberId}}\"\n}"
+              "raw": "{\n  \"memberId\": \"{{collectionMemberId}}\",\n  \"payerName\": \"Ada\",\n  \"amount\": 500000\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/collections/pay/{{collectionId}}/checkout",

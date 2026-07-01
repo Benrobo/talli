@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { TRANSFERS_API } from "./transfers.api";
+import { paymentsQueryKeys } from "../payments/payments.hooks";
 import type {
   ListBanksParams,
   ListBanksResponse,
@@ -44,6 +45,7 @@ export const useSendMoney = () => {
     mutationFn: TRANSFERS_API.SEND,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: transfersQueryKeys.history() });
+      queryClient.invalidateQueries({ queryKey: paymentsQueryKeys.all });
     },
   });
 };
