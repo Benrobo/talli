@@ -8,6 +8,7 @@ import { telegram } from "../integrations/telegram/bot.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
 import { walletService } from "./wallet.service.js";
 import { collectionService } from "./collection.service.js";
+import { receiptService } from "./receipt/index.js";
 import logger from "../lib/logger.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
@@ -186,22 +187,32 @@ class PendingPaymentService {
     amount: number
   ): Promise<void> {
     if (!credit.chatId) return;
+    const caption = messages.collectionPaid({
+      payerName: credit.memberName,
+      payerId: credit.member.platformUserId,
+      amount,
+      title: credit.collection.title,
+      collectedTotal: credit.collectedTotal,
+      targetAmount: credit.collection.targetAmount,
+      paidCount: credit.paidCount,
+      targetReached: credit.targetReached,
+    });
     try {
-      await telegram.sendMessage(
-        credit.chatId,
-        messages.collectionPaid({
-          payerName: credit.memberName,
-          payerId: credit.member.platformUserId,
-          amount,
-          title: credit.collection.title,
-          collectedTotal: credit.collectedTotal,
-          targetAmount: credit.collection.targetAmount,
-          paidCount: credit.paidCount,
-          targetReached: credit.targetReached,
-        })
-      );
+      const receipt = await receiptService.render({
+        amount: amount.toLocaleString("en-NG"),
+        purpose: "Collection payment",
+        highlight: credit.collection.title,
+        rows: [
+          { icon: "from", label: "From", value: credit.memberName },
+          { icon: "to", label: "To", value: credit.collection.title },
+          { icon: "date", label: "Date", value: dayjs().format("DD MMM YYYY, h:mm A") },
+          { icon: "ref", label: "Reference", value: credit.member.id, mono: true },
+        ],
+      });
+      await telegram.sendPhoto(credit.chatId, receipt, caption);
     } catch (err) {
-      logger.warn(`[pending] payment announcement failed: ${(err as Error).message}`);
+      logger.warn(`[pending] receipt render failed, sending text: ${(err as Error).message}`);
+      await telegram.sendMessage(credit.chatId, caption);
     }
   }
 

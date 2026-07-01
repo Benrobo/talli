@@ -320,38 +320,30 @@ class IntentDispatcherService {
   }
 
   private async runSend(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
-    if (!intent.accountNumber || !intent.resolvedBankCode || !intent.resolvedAccountName) {
+    if (!intent.accountNumber || !intent.bankName) {
       return { text: messages.needsRecipient(intent.recipientName ?? "that person") };
     }
-    const accountName = intent.resolvedAccountName;
-
-    const wallet = await walletService.ensureWallet(ctx.ownerUserId);
     const amount = intent.amount!;
+    const wallet = await walletService.ensureWallet(ctx.ownerUserId);
     if (wallet.balance < amount) {
-      return { text: messages.insufficientForSend(accountName, amount, wallet.balance) };
+      const name = intent.resolvedAccountName ?? intent.recipientName ?? "that account";
+      return { text: messages.insufficientForSend(name, amount, wallet.balance) };
     }
 
-    const reference = `talli_send_${randomToken(8)}`;
-    await walletService.debit(wallet.id, amount, "send", reference);
+    const result = await transferService.payout({
+      workspaceId: ctx.workspaceId,
+      ownerUserId: ctx.ownerUserId,
+      amount,
+      accountNumber: intent.accountNumber,
+      bankName: intent.bankName,
+      senderName: ctx.workspaceName ?? ctx.senderName,
+      alias: intent.recipientName,
+      createdByPlatformUserId: ctx.senderPlatformId,
+    });
 
-    try {
-      await transferService.sendToBank({
-        workspaceId: ctx.workspaceId,
-        amount,
-        accountNumber: intent.accountNumber,
-        accountName,
-        bankCode: intent.resolvedBankCode,
-        bankName: intent.bankName,
-        senderName: ctx.workspaceName ?? ctx.senderName,
-        alias: intent.recipientName,
-        createdByPlatformUserId: ctx.senderPlatformId,
-      });
-      return { text: messages.sendQueued(accountName, amount) };
-    } catch (err) {
-      await walletService.credit(wallet.id, amount, "refund", `${reference}_refund`);
-      logger.error(`[dispatch] send failed, refunded wallet: ${(err as Error).message}`);
-      return { text: messages.sendUnavailable };
-    }
+    if (result.status === "sent") return { text: messages.sendSucceeded(result.accountName, amount) };
+    if (result.status === "pending") return { text: messages.sendProcessing(result.accountName, amount) };
+    return { text: messages.sendUnavailable };
   }
 
   /**

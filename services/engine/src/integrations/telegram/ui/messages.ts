@@ -376,7 +376,7 @@ export const messages = {
   }): string {
     return [
       "💸 *Send money*",
-      "",
+      "\n",
       `👤 *${p.accountName}*`,
       p.accountNumber && p.bankName
         ? `🏦 ${p.accountNumber} · ${p.bankName}`
@@ -384,7 +384,7 @@ export const messages = {
           ? `🏦 ${p.bankName}`
           : "",
       `💵 *${formatNaira(p.amount)}*`,
-      "",
+      "\n",
       "Send it?",
     ]
       .filter(Boolean)
@@ -441,12 +441,24 @@ export const messages = {
     ].join("\n");
   },
 
-  sendQueued(accountName: string, amount: number): string {
-    return `✅ ${formatNaira(amount)} to *${accountName}* is processing. I'll confirm once it settles.`;
+  sendSucceeded(accountName: string, amount: number): string {
+    return `✅ Sent *${formatNaira(amount)}* to *${accountName}*. Done!`;
+  },
+
+  sendProcessing(accountName: string, amount: number): string {
+    return `⏳ *${formatNaira(amount)}* to *${accountName}* is processing — I'll confirm here once it settles.`;
   },
 
   sendUnavailable:
-    "⚠️ Payouts are being enabled right now and aren't available yet. Your wallet wasn't charged.",
+    "⚠️ That transfer didn't go through, so I've refunded your wallet. Please try again.",
+
+  transferSettled(accountName: string, amount: number): string {
+    return `✅ Your *${formatNaira(amount)}* to *${accountName}* has landed.`;
+  },
+
+  transferRefunded(accountName: string, amount: number): string {
+    return `↩️ Your *${formatNaira(amount)}* to *${accountName}* didn't go through — I've refunded your wallet.`;
+  },
 
   needsRecipient(name: string): string {
     return [

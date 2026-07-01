@@ -2,6 +2,7 @@ import cron from "node-cron";
 import logger from "../lib/logger.js";
 import { processNotifications } from "./process-notifications.js";
 import { reconcilePayments } from "./reconcile-payments.js";
+import { reconcileTransfers } from "./reconcile-transfers.js";
 
 /**
  * Boot the in-process cron scheduler. Each job is wrapped in try/catch so
@@ -20,12 +21,21 @@ export function startScheduler() {
     }
   });
 
-  // Every 5 seconds, reconcile payments
+  // Every 5 seconds, reconcile inbound payments
   cron.schedule("*/5 * * * * *", async () => {
     try {
       await reconcilePayments();
     } catch (err) {
       logger.error("[cron] reconcilePayments failed:", err);
+    }
+  });
+
+  // Every 10 seconds, reconcile outbound transfers (settle slower, up to ~3 min)
+  cron.schedule("*/10 * * * * *", async () => {
+    try {
+      await reconcileTransfers();
+    } catch (err) {
+      logger.error("[cron] reconcileTransfers failed:", err);
     }
   });
 
