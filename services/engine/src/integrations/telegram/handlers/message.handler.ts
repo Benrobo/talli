@@ -23,6 +23,8 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
   const text = ctx.message?.text?.replace(MENTION, "").trim();
   if (!text) return;
 
+  console.log("ctx", JSON.stringify(ctx, null, 2));
+
   const isReplyToBot = ctx.message?.reply_to_message?.from?.id === ctx.me.id;
   if (isGroupChat(ctx) && !ctx.message?.text?.match(MENTION) && !isReplyToBot) return;
 
@@ -65,6 +67,8 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     senderName: platformUserService.formatName(identity),
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };
+
+  console.log("dispatchCtx", JSON.stringify(dispatchCtx, null, 2));
 
   const pending = await botCommandService.findPendingForReply(
     linked.id,
