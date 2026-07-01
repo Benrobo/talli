@@ -43,7 +43,7 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
   return (
     <div>
       <Link
-        to="/collections"
+        to="/app/collections"
         className="mb-[18px] inline-flex items-center gap-1.5 text-[13px] text-content-muted transition-colors hover:text-foreground"
       >
         <Icon icon={ArrowLeft01Icon} size={15} />

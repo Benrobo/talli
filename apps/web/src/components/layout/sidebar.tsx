@@ -6,6 +6,7 @@ import {
   Link01Icon,
   MoneySavingJarIcon,
   MoneySend02Icon,
+  ReceiptDollarIcon,
   UserGroupIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
 
@@ -15,22 +16,23 @@ import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { Spotlight } from "@/components/ui";
 
 interface NavItem {
-  to: "/home" | "/collections" | "/savings" | "/sent" | "/receipts" | "/integrations";
+  to: "/app/home" | "/app/collections" | "/app/savings" | "/app/sent" | "/app/receipts" | "/app/split" | "/app/integrations";
   label: string;
   icon: IconData;
   exact?: boolean;
 }
 
 const MENU: NavItem[] = [
-  { to: "/home", label: "Overview", icon: Home01Icon, exact: true },
-  { to: "/collections", label: "Collections", icon: UserGroupIcon },
-  { to: "/savings", label: "Savings jars", icon: MoneySavingJarIcon },
-  { to: "/sent", label: "Money sent", icon: MoneySend02Icon },
-  { to: "/receipts", label: "Receipts", icon: Invoice01Icon },
+  { to: "/app/home", label: "Overview", icon: Home01Icon, exact: true },
+  { to: "/app/collections", label: "Collections", icon: UserGroupIcon },
+  { to: "/app/savings", label: "Savings jars", icon: MoneySavingJarIcon },
+  { to: "/app/split", label: "Split a bill", icon: ReceiptDollarIcon },
+  { to: "/app/sent", label: "Money sent", icon: MoneySend02Icon },
+  { to: "/app/receipts", label: "Receipts", icon: Invoice01Icon },
 ];
 
 const GENERAL: NavItem[] = [
-  { to: "/integrations", label: "Integrations", icon: Link01Icon },
+  { to: "/app/integrations", label: "Integrations", icon: Link01Icon },
 ];
 
 function NavGroup({ label, items }: { label: string; items: NavItem[] }) {

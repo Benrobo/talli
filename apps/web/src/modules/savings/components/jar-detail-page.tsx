@@ -36,7 +36,7 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
     <div>
       <FadeIn y={8}>
         <Link
-          to="/savings"
+          to="/app/savings"
           className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-content-muted transition-colors hover:text-foreground"
         >
           <Icon icon={ArrowLeft01Icon} size={15} />

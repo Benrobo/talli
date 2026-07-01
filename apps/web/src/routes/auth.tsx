@@ -7,7 +7,7 @@ import { z } from "zod";
 import { cn } from "@app/ui";
 import { authApi } from "@/lib/auth";
 import { TalliLogo } from "@/components/brand/talli-logo";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, TallyWatermark } from "@/components/ui";
 import { Icon } from "@benrobo/iconary/react";
 import { BankIcon, Invoice01Icon, LockIcon, SparklesIcon, UserGroupIcon } from "@benrobo/iconary/core/duotone-rounded";
 
@@ -28,21 +28,21 @@ const HIGHLIGHTS = [
     icon: Invoice01Icon,
     title: "Split any bill",
     body: "Snap a receipt — everyone pays for what they had.",
-    chip: "bg-[#8b7bff]/20 ring-[#8b7bff]/30",
+    chip: "border-[#8b7bff]/25 bg-[#8b7bff]/20",
     tint: "text-[#b3a8ff]",
   },
   {
     icon: UserGroupIcon,
     title: "Collect from a group",
     body: "Dues, contributions, rent — tracked automatically.",
-    chip: "bg-emerald-400/15 ring-emerald-400/30",
+    chip: "border-emerald-400/25 bg-emerald-400/15",
     tint: "text-emerald-300",
   },
   {
     icon: BankIcon,
     title: "Money that moves",
     body: "Pay by transfer, get instant confirmations.",
-    chip: "bg-amber-400/15 ring-amber-400/30",
+    chip: "border-amber-400/25 bg-amber-400/15",
     tint: "text-amber-300",
   },
 ];
@@ -77,7 +77,7 @@ function AuthPage() {
         router.history.push(redirect);
         return;
       }
-      navigate({ to: "/home" });
+      navigate({ to: "/app/home" });
     },
     onError: () => toast.error("Invalid or expired code."),
   });
@@ -119,20 +119,20 @@ function AuthPage() {
             <TalliLogo className="mb-4 h-11" />
           </div>
 
-          <div className="rounded-[24px] border border-hairline bg-card p-8 shadow-[0_20px_60px_-24px_rgba(60,50,120,0.28)]">
+          <div className="rounded-[24px] border border-hairline bg-card p-8 shadow-lift">
             <div className="mb-6">
-              <div className="mb-5 inline-flex rounded-full bg-muted/60 p-1">
+              <div className="mb-5 inline-flex rounded-full bg-inset p-1">
                 {(["login", "signup"] as Mode[]).map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => switchMode(m)}
-                    className="relative rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors"
+                    className="relative rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors"
                   >
                     {mode === m ? (
                       <motion.span
                         layoutId="auth-mode-pill"
-                        className="absolute inset-0 rounded-full bg-card shadow-sm"
+                        className="absolute inset-0 rounded-full bg-card shadow-card"
                         transition={{ type: "spring", stiffness: 400, damping: 32 }}
                       />
                     ) : null}
@@ -150,7 +150,7 @@ function AuthPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.2 }}
-                  className="font-serif text-[30px] leading-tight"
+                  className="font-display text-[27px] font-bold leading-tight tracking-[-0.02em]"
                 >
                   {stage === "code"
                     ? "Enter your code"
@@ -290,51 +290,29 @@ function Highlight({ children }: { children: React.ReactNode }) {
 
 function BrandPanel() {
   return (
-    <div className="relative hidden w-[46%] max-w-[560px] overflow-hidden bg-[#17133a] lg:flex lg:flex-col lg:justify-between lg:p-12">
+    <div className="band-night relative hidden w-[46%] max-w-[560px] overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.5]"
         style={{
-          backgroundImage: "radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px)",
           backgroundSize: "22px 22px",
           maskImage: "radial-gradient(120% 90% at 30% 20%, black 0%, transparent 72%)",
           WebkitMaskImage: "radial-gradient(120% 90% at 30% 20%, black 0%, transparent 72%)",
         }}
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-          backgroundSize: "72px 72px",
-          maskImage: "radial-gradient(100% 100% at 80% 100%, black 0%, transparent 70%)",
-          WebkitMaskImage: "radial-gradient(100% 100% at 80% 100%, black 0%, transparent 70%)",
-        }}
-      />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full bg-iris/40 blur-[90px]"
-        animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.75, 0.5] }}
-        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
-      />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-32 -left-16 size-96 rounded-full bg-[#7c5cff]/30 blur-[100px]"
-        animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.65, 0.4] }}
-        transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
-      />
+      <TallyWatermark className="-right-16 -top-10 size-80 text-white" opacity={0.06} />
 
       <div className="relative">
         <TalliLogo />
       </div>
 
       <div className="relative">
-        <span className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-[#8b7bff]/20 px-3 py-1 text-[12px] font-medium text-[#c9c0ff] ring-1 ring-inset ring-[#8b7bff]/30">
-          <Icon icon={SparklesIcon} size={13} className="text-[#b3a8ff]" />
+        <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[12px] font-medium text-white/80">
+          <Icon icon={SparklesIcon} size={13} className="text-white/80" />
           Your money, handled
         </span>
-        <h2 className="mb-8 font-serif text-[34px] leading-[1.28] text-white">
+        <h2 className="mb-8 font-display text-[32px] font-bold leading-[1.22] tracking-[-0.02em] text-white">
           <Highlight>Split bills</Highlight>, collect from groups, and{" "}
           <Highlight>move money</Highlight> — all in chat.
         </h2>
@@ -347,7 +325,7 @@ function BrandPanel() {
               transition={{ delay: 0.15 + i * 0.1, duration: 0.4 }}
               className="flex items-start gap-3.5"
             >
-              <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset", h.chip)}>
+              <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border", h.chip)}>
                 <Icon icon={h.icon} size={18} className={h.tint} />
               </span>
               <div>

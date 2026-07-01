@@ -46,8 +46,14 @@ Rules:
 
 class BillParserService {
   async parse(image: Buffer): Promise<ParsedBill> {
-    const raw = await ai.generateFromImage(PROMPT, image);
+    const model = await ai.getModelForFeature("ai.bill.parse");
+    const raw = await ai.generateFromImage(PROMPT, image, {
+      model: model.model,
+      temperature: model.temperature,
+    });
+
     debugInDev((_, saveToFile) => saveToFile("bill-parser-response.txt", raw));
+    
     try {
       const json = cleanLLMJson({ response: raw, requiredFields: ["total", "items"] }) as Record<
         string,
@@ -67,11 +73,6 @@ class BillParserService {
     }
   }
 
-  /**
-   * Talli only splits Naira, so a non-NGN bill is forced to not-confident with a
-   * reason even if the model returned a total — we never silently split a foreign
-   * currency as if it were Naira.
-   */
   private enforceNaira(bill: ParsedBill): ParsedBill {
     if (bill.currency && bill.currency.toUpperCase() !== "NGN") {
       return {

@@ -47,14 +47,13 @@ const INTEGRATIONS: Integration[] = [
 ];
 
 export function IntegrationsPage() {
-  const [selected, setSelected] = useState<ChatPlatform>("telegram");
   const [chats, setChats] = useState<LinkedChat[]>(linkedChats);
-  const active = INTEGRATIONS.find((i) => i.platform === selected)!;
-  const chatsFor = (p: ChatPlatform) => chats.filter((c) => c.platform === p);
+  const telegramChats = chats.filter((c) => c.platform === "telegram");
   const disconnect = (id: string) => setChats((prev) => prev.filter((c) => c.id !== id));
+  const whatsapp = INTEGRATIONS.find((i) => i.platform === "whatsapp")!;
 
   return (
-    <div>
+    <div className="mx-auto max-w-[860px]">
       <div className="mb-6">
         <h1 className="font-display text-[25px] font-bold tracking-[-0.02em] text-foreground">Integrations</h1>
         <p className="mt-1 text-[13.5px] text-content-muted">
@@ -62,48 +61,13 @@ export function IntegrationsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_1fr]">
-        <FadeIn className="flex flex-col gap-2">
-          {INTEGRATIONS.map((it) => {
-            const isSelected = it.platform === selected;
-            const count = chatsFor(it.platform).length;
-            return (
-              <button
-                key={it.platform}
-                type="button"
-                onClick={() => setSelected(it.platform)}
-                className={cn(
-                  "t-press flex items-center gap-3 rounded-[14px] border p-3 text-left transition-colors",
-                  isSelected
-                    ? "border-iris/30 bg-iris-soft/50"
-                    : "border-hairline bg-card hover:bg-inset"
-                )}
-              >
-                <PlatformTile platform={it.platform} className="size-10 rounded-[11px]" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-[14px] font-semibold text-foreground">
-                    {it.name}
-                  </div>
-                  <div className="mt-0.5 text-[11.5px] text-content-faint">
-                    {it.available ? (count > 0 ? `${count} chat${count > 1 ? "s" : ""} linked` : "Not connected") : "Coming soon"}
-                  </div>
-                </div>
-                {it.available && count > 0 ? (
-                  <span className="size-1.5 rounded-full bg-emerald" />
-                ) : null}
-              </button>
-            );
-          })}
-        </FadeIn>
+      <FadeIn>
+        <TelegramPanel chats={telegramChats} onDisconnect={disconnect} />
+      </FadeIn>
 
-        <FadeIn delay={0.06}>
-          {active.available ? (
-            <TelegramPanel chats={chatsFor("telegram")} onDisconnect={disconnect} />
-          ) : (
-            <ComingSoonPanel integration={active} />
-          )}
-        </FadeIn>
-      </div>
+      <FadeIn delay={0.08} className="mt-4">
+        <ComingSoonStrip integration={whatsapp} />
+      </FadeIn>
     </div>
   );
 }
@@ -111,28 +75,26 @@ export function IntegrationsPage() {
 function PanelHeader({
   platform,
   name,
-  status,
+  connectedCount,
 }: {
   platform: ChatPlatform;
   name: string;
-  status: "connected" | "soon";
+  connectedCount: number;
 }) {
   return (
     <div className="flex items-center gap-3.5 border-b border-hairline-soft p-5">
       <PlatformTile platform={platform} className="size-12 rounded-[14px]" />
       <div className="flex-1">
-        <div className="font-display text-[19px] font-bold tracking-[-0.02em] text-foreground">{name}</div>
+        <div className="flex items-center gap-2">
+          <span className="font-display text-[19px] font-bold tracking-[-0.02em] text-foreground">{name}</span>
+          <StatusPill status="success" dot>
+            Connected
+          </StatusPill>
+        </div>
         <div className="mt-0.5 text-[12.5px] text-content-muted">
-          {status === "connected" ? "Bot integration · @" + botHandle : "Not available yet"}
+          @{botHandle} · {connectedCount} chat{connectedCount === 1 ? "" : "s"} linked
         </div>
       </div>
-      {status === "connected" ? (
-        <StatusPill status="success" dot>
-          Connected
-        </StatusPill>
-      ) : (
-        <StatusPill status="neutral">Coming soon</StatusPill>
-      )}
     </div>
   );
 }
@@ -168,7 +130,7 @@ function TelegramPanel({ chats, onDisconnect }: { chats: LinkedChat[]; onDisconn
 
   return (
     <div className="overflow-hidden rounded-[18px] border border-hairline bg-card shadow-card">
-      <PanelHeader platform="telegram" name="Telegram" status="connected" />
+      <PanelHeader platform="telegram" name="Telegram" connectedCount={chats.length} />
 
       <div className="p-5">
         <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.11em] text-content-faint">
@@ -226,13 +188,17 @@ function TelegramPanel({ chats, onDisconnect }: { chats: LinkedChat[]; onDisconn
           <span className="text-[12px] text-content-faint">{chats.length} active</span>
         </div>
       </div>
-      <div className="px-2 pb-2 pt-1">
+      <div className="p-3 pt-2">
         {chats.length === 0 ? (
-          <div className="px-3 py-8 text-center text-[13px] text-content-muted">
+          <div className="rounded-[12px] bg-inset/50 px-3 py-8 text-center text-[13px] text-content-muted">
             No chats linked yet. Send the code above in a Telegram chat to connect one.
           </div>
         ) : (
-          chats.map((chat) => <ChatRow key={chat.id} chat={chat} onDisconnect={() => onDisconnect(chat.id)} />)
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {chats.map((chat) => (
+              <ChatTile key={chat.id} chat={chat} onDisconnect={() => onDisconnect(chat.id)} />
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -253,22 +219,22 @@ function Step({ index, title, children }: { index: number; title: string; childr
   );
 }
 
-function ChatRow({ chat, onDisconnect }: { chat: LinkedChat; onDisconnect: () => void }) {
+function ChatTile({ chat, onDisconnect }: { chat: LinkedChat; onDisconnect: () => void }) {
   return (
-    <div className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 transition-colors hover:bg-inset">
+    <div className="flex items-center gap-3 rounded-[13px] border border-hairline bg-inset/40 p-3 transition-colors hover:bg-inset">
       <PlatformTile platform={chat.platform} className="size-9 rounded-[10px]" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-medium text-foreground">{chat.title}</div>
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[13.5px] font-semibold text-foreground">{chat.title}</span>
+          <span className="size-1.5 shrink-0 rounded-full bg-emerald" />
+        </div>
         <div className="truncate text-[11.5px] text-content-faint">{chat.meta}</div>
       </div>
-      <StatusPill status="success" dot>
-        Active
-      </StatusPill>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             title="Manage chat"
-            className="t-press flex size-8 items-center justify-center rounded-lg text-content-muted hover:bg-card hover:text-foreground"
+            className="t-press flex size-8 shrink-0 items-center justify-center rounded-lg text-content-muted hover:bg-card hover:text-foreground"
           >
             <Icon icon={MoreHorizontalIcon} size={16} />
           </button>
@@ -292,20 +258,20 @@ function ChatRow({ chat, onDisconnect }: { chat: LinkedChat; onDisconnect: () =>
   );
 }
 
-function ComingSoonPanel({ integration }: { integration: Integration }) {
+function ComingSoonStrip({ integration }: { integration: Integration }) {
   return (
-    <div className="overflow-hidden rounded-[18px] border border-hairline bg-card shadow-card">
-      <PanelHeader platform={integration.platform} name={integration.name} status="soon" />
-      <div className="flex flex-col items-center px-6 py-14 text-center">
-        <PlatformTile platform={integration.platform} className="size-14 rounded-2xl opacity-70" />
-        <div className="mt-4 font-display text-[17px] font-bold tracking-[-0.01em] text-foreground">
-          {integration.name} is coming soon
+    <div className="flex items-center gap-3.5 rounded-[16px] border border-dashed border-hairline bg-inset/40 p-4">
+      <PlatformTile platform={integration.platform} className="size-11 opacity-70 grayscale" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[14.5px] font-semibold text-foreground">{integration.name}</span>
+          <StatusPill status="neutral">Coming soon</StatusPill>
         </div>
-        <p className="mt-1.5 max-w-[320px] text-[13px] text-content-muted">{integration.blurb}</p>
-        <Button variant="secondary" className="mt-5" trailingIcon={<Icon icon={ArrowRight01Icon} size={15} />}>
-          Notify me when it's ready
-        </Button>
+        <p className="mt-0.5 truncate text-[12.5px] text-content-muted">{integration.blurb}</p>
       </div>
+      <Button variant="secondary" size="sm" trailingIcon={<Icon icon={ArrowRight01Icon} size={14} />}>
+        Notify me
+      </Button>
     </div>
   );
 }

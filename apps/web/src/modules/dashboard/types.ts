@@ -6,9 +6,9 @@
 export type ActivityKind = "paid" | "sent" | "saved";
 
 export type ActivityLink =
-  | { to: "/collections/$slug"; params: { slug: string } }
-  | { to: "/sent" }
-  | { to: "/savings/$id"; params: { id: string } };
+  | { to: "/app/collections/$slug"; params: { slug: string } }
+  | { to: "/app/sent" }
+  | { to: "/app/savings/$id"; params: { id: string } };
 
 export interface ActiveCollection {
   slug: string;

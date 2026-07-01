@@ -14,7 +14,7 @@ export function PaymentReceiptPage() {
     <MobileScreen
       footer={
         <div className="flex flex-col gap-3">
-          <Link to="/home">
+          <Link to="/app/home">
             <Button block size="lg">
               Back to chat
             </Button>
