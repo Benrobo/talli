@@ -30,6 +30,22 @@ export function openDashboard(webAppUrl: string, label = "Open dashboard"): Inli
   return new InlineKeyboard().url(label, webAppUrl);
 }
 
+/**
+ * Action keyboard for `/info`. Shows the dashboard link plus context-aware
+ * shortcuts: connected chats get a refresh + disconnect, unconnected ones get
+ * a connect prompt.
+ */
+export function infoActions(webAppUrl: string, connected: boolean): InlineKeyboard {
+  const kb = new InlineKeyboard().url("📊 Open dashboard", webAppUrl).row();
+  if (connected) {
+    kb.text("🔄 Refresh status", encodeCallback(CALLBACK_ACTION.info, "refresh"))
+      .text("🔌 Disconnect", encodeCallback(CALLBACK_ACTION.disconnect, "chat"));
+  } else {
+    kb.url("🔗 Connect Talli", `${webAppUrl}/onboarding?connect=telegram`);
+  }
+  return kb;
+}
+
 export function formatNaira(amount: number): string {
   return `₦${amount.toLocaleString("en-NG")}`;
 }

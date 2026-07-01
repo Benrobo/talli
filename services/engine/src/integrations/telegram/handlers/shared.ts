@@ -19,6 +19,29 @@ export async function safeReply(
   }
 }
 
+/**
+ * Like {@link safeReply} but sends a photo with the text as its caption. Falls
+ * back to a plain text reply if the photo send fails (bad URL, fetch timeout),
+ * so the user always gets the message. Captions are capped at 1024 chars.
+ */
+export async function safeReplyWithPhoto(
+  ctx: TalliContext,
+  photoUrl: string,
+  caption: string,
+  keyboard?: InlineKeyboard
+): Promise<void> {
+  try {
+    await ctx.replyWithPhoto(photoUrl, {
+      caption,
+      parse_mode: "Markdown",
+      reply_markup: keyboard,
+    });
+  } catch (err) {
+    logger.error(`[telegram] photo reply failed in chat ${ctx.chat?.id}: ${(err as Error).message}`);
+    await safeReply(ctx, caption, keyboard);
+  }
+}
+
 export function isGroupChat(ctx: TalliContext): boolean {
   return ctx.chat?.type === "group" || ctx.chat?.type === "supergroup";
 }

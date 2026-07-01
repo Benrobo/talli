@@ -10,7 +10,10 @@
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
     { "key": "workspaceId", "value": "" },
-    { "key": "userId", "value": "" }
+    { "key": "userId", "value": "" },
+    { "key": "linkCode", "value": "" },
+    { "key": "deepLink", "value": "" },
+    { "key": "linkedChatId", "value": "" }
   ],
   "auth": {
     "type": "bearer",
@@ -154,6 +157,102 @@
               "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/switch",
               "host": ["{{baseUrl}}"],
               "path": ["workspaces", "{{workspaceId}}", "switch"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "description": "Chat linking — issue a one-time code, then redeem it from the bot via t.me/<bot>?start=<code> (DM) or /start <code> posted by a group admin (group). Codes are hashed, single-use, expire in 15 min.",
+      "item": [
+        {
+          "name": "Create link code (DM)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data) {",
+                  "  pm.collectionVariables.set('linkCode', res.data.code);",
+                  "  pm.collectionVariables.set('deepLink', res.data.deepLink);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"telegram\",\n  \"purpose\": \"private_link\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/chat/link-codes", "host": ["{{baseUrl}}"], "path": ["chat", "link-codes"] }
+          }
+        },
+        {
+          "name": "Create link code (group)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data) {",
+                  "  pm.collectionVariables.set('linkCode', res.data.code);",
+                  "  pm.collectionVariables.set('deepLink', res.data.deepLink);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"telegram\",\n  \"purpose\": \"group_link\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/chat/link-codes", "host": ["{{baseUrl}}"], "path": ["chat", "link-codes"] }
+          }
+        },
+        {
+          "name": "List connected chats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.length) {",
+                  "  pm.collectionVariables.set('linkedChatId', res.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Lists chats connected to the active workspace (Telegram DMs + groups), newest first, with who connected each.",
+            "url": { "raw": "{{baseUrl}}/chat/connected", "host": ["{{baseUrl}}"], "path": ["chat", "connected"] }
+          }
+        },
+        {
+          "name": "Disconnect chat",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "description": "Disconnects a connected chat by id (scoped to the active workspace). The chat must run /start <code> again to reconnect.",
+            "url": {
+              "raw": "{{baseUrl}}/chat/connected/{{linkedChatId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "connected", "{{linkedChatId}}"]
             }
           }
         }

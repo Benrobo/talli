@@ -29,6 +29,9 @@ class AuthService {
   async requestOtp(email: string, mode: "signup" | "login"): Promise<void> {
     const code = randomOtp(6);
     await redis.setex(`otp:${email}`, OTP_TTL_SECONDS, code);
+
+    console.log(`Sending OTP to ${email}: ${code}`);
+
     await mailService.sendOtpEmail(email, code, mode);
   }
 

@@ -8,6 +8,8 @@ export const CALLBACK_ACTION = {
   pay: "pay",
   confirm: "confirm",
   cancel: "cancel",
+  info: "info",
+  disconnect: "disconnect",
 } as const;
 
 export type CallbackAction = (typeof CALLBACK_ACTION)[keyof typeof CALLBACK_ACTION];

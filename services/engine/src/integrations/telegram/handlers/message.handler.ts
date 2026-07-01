@@ -18,12 +18,19 @@ import { safeReply, isGroupChat } from "./shared.js";
 export async function handleMessage(ctx: TalliContext): Promise<void> {
   const chatId = String(ctx.chat!.id);
   const linked = await chatLinkService.findActiveChat("telegram", chatId);
+  const messageIncludesTalli = ctx.message?.text?.includes("@trytalli_bot");
+
+  console.log(JSON.stringify({
+    chat: ctx.chat,
+    message: ctx.message,
+  }, null, 2));
 
   if (isGroupChat(ctx)) {
-    console.log(JSON.stringify({
-      chat: ctx.chat,
-      message: ctx.message,
-    }, null, 2));
+    if(!messageIncludesTalli) {
+      console.log("❌ Message does not include talli");
+      return;
+    }
+    
     if (!linked) {
       await safeReply(ctx, messages.groupNotLinked);
       return;

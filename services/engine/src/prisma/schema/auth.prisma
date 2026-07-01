@@ -26,6 +26,7 @@ model User {
   ownedWorkspaces       Workspace[]        @relation("WorkspaceOwner")
   workspaceMemberships  WorkspaceMember[]
   verifiedLinkedChats   LinkedChat[]       @relation("LinkedChatVerifier")
+  platformIdentities    PlatformUser[]     @relation("PlatformUserAccount")
   chatLinkCodesCreated  ChatLinkCode[]
   collectionsCreated    Collection[]
   collectionMemberships CollectionMember[]

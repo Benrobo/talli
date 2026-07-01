@@ -19,4 +19,14 @@ router.post(
   useCatchErrors(isAuthenticated(chatLinkController.createCode.bind(chatLinkController)))
 );
 
+router.get(
+  "/chat/connected",
+  useCatchErrors(isAuthenticated(chatLinkController.listConnectedChats.bind(chatLinkController)))
+);
+
+router.delete(
+  "/chat/connected/:id",
+  useCatchErrors(isAuthenticated(chatLinkController.disconnectChat.bind(chatLinkController)))
+);
+
 export default router;

@@ -53,6 +53,9 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().default(""),
   TELEGRAM_BOT_USERNAME: z.string().default(""),
   TELEGRAM_WEBHOOK_SECRET: z.string().default(""),
+  TELEGRAM_INFO_BANNER_URL: z
+    .string()
+    .default("https://res.cloudinary.com/dmi4vivcw/image/upload/v1782595988/talli-img-banner.png"),
 
   WHATSAPP_ACCESS_TOKEN: z.string().default(""),
   WHATSAPP_PHONE_NUMBER_ID: z.string().default(""),
