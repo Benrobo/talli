@@ -38,6 +38,9 @@ export interface MetricDelta {
 
 export interface WalletMetricsData {
   currency: string;
+  totalBalanceAcrossWorkspaces: {
+    amount: number;
+  };
   totalBalance: {
     amount: number;
     delta: MetricDelta | null;

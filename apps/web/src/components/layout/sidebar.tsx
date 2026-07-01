@@ -59,7 +59,7 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
 export function Sidebar() {
   const { activeWorkspace } = useWorkspaces();
   const { data: metricsResponse } = useWalletMetrics(activeWorkspace?.id);
-  const totalBalance = metricsResponse?.data.totalBalance.amount ?? 0;
+  const totalBalance = metricsResponse?.data.totalBalanceAcrossWorkspaces.amount ?? 0;
 
   return (
     <aside className="flex h-full w-[248px] shrink-0 flex-col bg-card">
