@@ -1,8 +1,64 @@
+import fs from "node:fs";
+import path from "node:path";
+import env from "../config/env.js";
+
 /**
  * Sleep for a given number of milliseconds. Useful in tests and retry loops.
  */
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const DEBUG_DIR = path.join(process.cwd(), ".debug");
+
+/**
+ * Ensures the debug directory exists.
+ */
+function ensureDebugDir(): void {
+  if (!fs.existsSync(DEBUG_DIR)) {
+    fs.mkdirSync(DEBUG_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Get the path to a debug file.
+ */
+export function getDebugPath(filename: string): string {
+  ensureDebugDir();
+  return path.join(DEBUG_DIR, filename);
+}
+
+/**
+ * Typesafe file writer for {@link debugInDev}.
+ */
+type SaveToFile = <T extends string | NodeJS.ArrayBufferView>(
+  filename: string,
+  content: T
+) => void;
+
+/**
+ * Execute code only in development, for debugging. The callback receives a path
+ * helper and a saveToFile writer, so prompts and LLM responses can be dumped to
+ * `.debug/` to inspect what the model actually saw and returned. No-op in
+ * production. Mirrors scribe's `debugInDev`.
+ */
+export function debugInDev(
+  fn: (debugPath: (filename: string) => string, saveToFile: SaveToFile) => void
+): void {
+  try {
+    if (env.NODE_ENV !== "development") return;
+    ensureDebugDir();
+    const saveToFile: SaveToFile = (filename, content) => {
+      try {
+        fs.writeFileSync(getDebugPath(filename), content);
+      } catch (err) {
+        console.debug("[debugInDev: saveToFile error]:", err);
+      }
+    };
+    fn(getDebugPath, saveToFile);
+  } catch (err) {
+    console.debug("[debugInDev: Error]: ", err);
+  }
 }
 
 /**

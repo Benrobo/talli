@@ -2,6 +2,7 @@ import retry from "async-retry";
 import dayjs from "dayjs";
 import { ai } from "./ai/index.js";
 import { cleanLLMJson } from "../lib/clean-llm-json.js";
+import { debugInDev } from "../lib/utils.js";
 import { commandParserPrompt } from "../data/prompts/command-parser.prompt.js";
 import { intentSchema, type Intent, type IntentName } from "../schemas/intent.schema.js";
 import logger from "../lib/logger.js";
@@ -19,11 +20,12 @@ export interface ParseContext {
   workspaceName?: string;
   knownJars?: string[];
   knownBeneficiaries?: string[];
+  recentHistory?: string[];
   priorExchange?: PriorExchange;
 }
 
 const DM_ONLY: IntentName[] = ["send_money", "save_to_jar", "create_jar"];
-const GROUP_OK: IntentName[] = ["create_collection", "status_query"];
+const GROUP_OK: IntentName[] = ["create_collection", "status_query", "help_query"];
 
 /**
  * Turns a chat message into one structured intent using the LLM. Parses and
@@ -52,6 +54,12 @@ class CommandParserService {
       async () => {
         const { model, maxTokens } = await ai.getModelForFeature("ai.command.parse");
         const raw = await ai.generate(prompt, { model, temperature: 0.1, maxTokens });
+        
+        debugInDev((_, saveToFile) => {
+          saveToFile("command-parser-prompt.txt", prompt);
+          saveToFile("command-parser-response.txt", raw);
+        });
+
         const json = cleanLLMJson({ response: raw, requiredFields: ["intent"] }) as Record<string, unknown>;
         if (json.status !== "ready") json.status = "needs_clarification";
         return intentSchema.parse(json);
@@ -83,6 +91,13 @@ class CommandParserService {
     if (context.knownJars?.length) lines.push(`Known jars: ${context.knownJars.join(", ")}`);
     if (context.knownBeneficiaries?.length) {
       lines.push(`Known recipients: ${context.knownBeneficiaries.join(", ")}`);
+    }
+    if (context.recentHistory?.length) {
+      lines.push(
+        "",
+        "Recent conversation (for understanding follow-ups only — do NOT re-run past actions):",
+        ...context.recentHistory
+      );
     }
     return lines.join("\n");
   }

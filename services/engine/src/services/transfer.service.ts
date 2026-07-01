@@ -1,5 +1,6 @@
 import { randomToken } from "../lib/utils.js";
 import { nomba } from "../integrations/nomba/index.js";
+import type { Bank } from "../integrations/nomba/resources/transfers.js";
 import { beneficiaryService } from "./beneficiary.service.js";
 import { NotFoundException } from "../lib/exception.js";
 
@@ -49,6 +50,53 @@ class TransferService {
     const { accountName } = await nomba.transfers.lookupAccount({ accountNumber, bankCode });
     if (!accountName) throw new NotFoundException("Could not verify that account");
     return accountName;
+  }
+
+  /**
+   * Matches a free-text bank name ("zenith", "gtb") to a Nomba bank. Prefers an
+   * exact name, then a name starting with the term, then any name containing it —
+   * so "zenith" picks "Zenith Bank" over "Zenith Eazy Wallet". Returns null when
+   * nothing matches.
+   */
+  async resolveBank(name: string): Promise<Bank | null> {
+    const term = name.trim().toLowerCase();
+    if (!term) return null;
+    const banks = await nomba.transfers.listBanks();
+
+    return (
+      banks.find((b) => b.name.toLowerCase() === term) ??
+      banks.find((b) => b.name.toLowerCase().startsWith(term)) ??
+      banks.find((b) => b.name.toLowerCase().includes(term)) ??
+      null
+    );
+  }
+
+  /**
+   * Verifies a destination the user typed (account number + a bank name) against
+   * Nomba: resolves the bank, then looks up the real account-holder name. Returns
+   * the verified details to show on the confirm card, or a reason it failed so
+   * the dispatcher can ask again. Never throws for the expected failures.
+   */
+  async verifyDestination(
+    accountNumber: string,
+    bankName: string
+  ): Promise<
+    | { ok: true; accountName: string; accountNumber: string; bankCode: string; bankName: string }
+    | { ok: false; reason: "bank_unknown" | "account_unverified" }
+  > {
+    const bank = await this.resolveBank(bankName);
+    if (!bank) return { ok: false, reason: "bank_unknown" };
+
+    try {
+      const { accountName } = await nomba.transfers.lookupAccount({
+        accountNumber,
+        bankCode: bank.code,
+      });
+      if (!accountName) return { ok: false, reason: "account_unverified" };
+      return { ok: true, accountName, accountNumber, bankCode: bank.code, bankName: bank.name };
+    } catch {
+      return { ok: false, reason: "account_unverified" };
+    }
   }
 
   async listBanks() {

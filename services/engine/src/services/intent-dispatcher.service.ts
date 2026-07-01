@@ -41,15 +41,17 @@ export interface DispatchContext extends CommandContext {
 class IntentDispatcherService {
   /** Builds the parse context shared by first-pass and clarification re-parses. */
   private async parseContext(ctx: DispatchContext) {
-    const [jars, beneficiaries] = await Promise.all([
+    const [jars, beneficiaries, recentHistory] = await Promise.all([
       savingsService.list(ctx.workspaceId),
       beneficiaryService.listAliases(ctx.workspaceId),
+      botCommandService.recentHistory(ctx.linkedChatId, ctx.senderPlatformId),
     ]);
     return {
       scope: ctx.scope,
       workspaceName: ctx.workspaceName,
       knownJars: jars.map((j) => j.name),
       knownBeneficiaries: beneficiaries,
+      recentHistory,
     };
   }
 
@@ -57,39 +59,112 @@ class IntentDispatcherService {
     const intent = await commandParserService.parse(text, await this.parseContext(ctx));
 
     if (intent.intent === "unknown") {
-      return { text: messages.unrecognized };
+      const reply = intent.reply ?? intent.clarification ?? messages.unrecognized;
+      await botCommandService.recordConversational(ctx, text, intent, reply);
+      return { text: reply };
     }
     if (!commandParserService.isAllowed(ctx.scope, intent.intent)) {
+      await botCommandService.recordConversational(ctx, text, intent, messages.dmOnly);
       return { text: messages.dmOnly };
     }
     if (intent.intent === "status_query") {
-      return this.runStatusQuery(ctx);
+      const result = await this.runStatusQuery(ctx);
+      await botCommandService.recordConversational(ctx, text, intent, result.text);
+      return result;
     }
-    const gap = await this.missingInfo(intent, ctx);
-    if (intent.status === "needs_clarification" || gap) {
-      const command = await botCommandService.recordClarification(ctx, text, intent, null);
-      const question = gap ?? intent.clarification ?? messages.unrecognized;
+    if (intent.intent === "help_query") {
+      const reply = messages.help(ctx.scope === "group" ? "group" : "private");
+      await botCommandService.recordConversational(ctx, text, intent, reply);
+      return { text: reply };
+    }
+    const prepared = await this.prepareIntent(intent, ctx);
+    if (intent.status === "needs_clarification" || prepared.clarify) {
+      const question = prepared.clarify ?? intent.clarification ?? messages.unrecognized;
+      const command = await botCommandService.recordClarification(ctx, text, intent, null, question);
       return { text: question, clarify: { commandId: command.id } };
     }
 
-    const command = await botCommandService.record(ctx, text, intent);
-    return this.planConfirm(intent, command.id);
+    const command = await botCommandService.record(ctx, text, prepared.intent);
+    const result = this.planConfirm(prepared.intent, command.id);
+    await botCommandService.setReplyText(command.id, result.text);
+    return result;
   }
 
   /**
-   * Deterministic backstop for when the LLM marks an intent "ready" that isn't
-   * actually actionable — e.g. send_money to a name that isn't a saved recipient
-   * and has no account number. Returns a clarification question, or null if the
-   * intent is genuinely complete. Trust the parser, but verify the money path.
+   * Verifies and enriches a "ready" intent before it reaches a confirm card.
+   * Trust the parser, but verify the money path: for send_money, resolve the
+   * destination (saved beneficiary, or account number + bank looked up against
+   * Nomba) so the card shows the REAL account-holder name. Returns either a
+   * clarification to ask, or the intent with resolved details attached.
    */
-  private async missingInfo(intent: Intent, ctx: DispatchContext): Promise<string | null> {
-    if (intent.intent === "send_money") {
-      if (!intent.recipientName) return messages.needsRecipient("that person");
-      if (intent.accountNumber && intent.bankName) return null;
-      const recipient = await transferService.resolveRecipient(ctx.workspaceId, intent.recipientName);
-      if (!recipient.found) return messages.needsRecipient(intent.recipientName);
+  private async prepareIntent(
+    intent: Intent,
+    ctx: DispatchContext
+  ): Promise<{ clarify?: string; intent: Intent }> {
+    switch (intent.intent) {
+      case "send_money":
+        return this.prepareSend(intent, ctx);
+      case "create_jar":
+        if (!intent.title) return { clarify: messages.needsJarName, intent };
+        if (!intent.amount) return { clarify: messages.needsJarTarget(intent.title), intent };
+        return { intent };
+      case "save_to_jar": {
+        if (!intent.title) return { clarify: messages.needsJarName, intent };
+        if (!intent.amount) return { clarify: messages.needsSaveAmount(intent.title), intent };
+        const jar = await savingsService.findByName(ctx.workspaceId, intent.title);
+        if (!jar) return { clarify: messages.jarNotFound(intent.title), intent };
+        return { intent };
+      }
+      default:
+        return { intent };
     }
-    return null;
+  }
+
+  private async prepareSend(
+    intent: Intent,
+    ctx: DispatchContext
+  ): Promise<{ clarify?: string; intent: Intent }> {
+    if (!intent.recipientName && !intent.accountNumber) {
+      return { clarify: messages.needsRecipient("that person"), intent };
+    }
+
+    if (intent.recipientName) {
+      const saved = await transferService.resolveRecipient(ctx.workspaceId, intent.recipientName);
+      if (saved.found) {
+        return {
+          intent: {
+            ...intent,
+            accountNumber: saved.accountNumber,
+            bankName: saved.bankName,
+            resolvedAccountName: saved.accountName,
+            resolvedBankCode: saved.bankCode,
+          },
+        };
+      }
+    }
+
+    if (!intent.accountNumber || !intent.bankName) {
+      return { clarify: messages.needsRecipient(intent.recipientName ?? "that person"), intent };
+    }
+
+    const verified = await transferService.verifyDestination(intent.accountNumber, intent.bankName);
+    if (!verified.ok) {
+      const question =
+        verified.reason === "bank_unknown"
+          ? messages.bankNotFound(intent.bankName)
+          : messages.accountNotVerified(intent.accountNumber, intent.bankName);
+      return { clarify: question, intent };
+    }
+
+    return {
+      intent: {
+        ...intent,
+        accountNumber: verified.accountNumber,
+        bankName: verified.bankName,
+        resolvedAccountName: verified.accountName,
+        resolvedBankCode: verified.bankCode,
+      },
+    };
   }
 
   /**
@@ -113,19 +188,22 @@ class IntentDispatcherService {
       },
     });
 
-    const gap = await this.missingInfo(intent, ctx);
-    if (intent.status === "needs_clarification" || gap) {
+    const prepared = await this.prepareIntent(intent, ctx);
+    if (intent.status === "needs_clarification" || prepared.clarify) {
       if (rounds + 1 >= MAX_CLARIFY_ROUNDS) {
         await botCommandService.setStatus(pendingId, "failed", "too many clarification rounds");
         return { text: messages.unrecognized };
       }
       await botCommandService.updateIntent(pendingId, intent, null, rounds + 1);
-      const question = gap ?? intent.clarification ?? messages.unrecognized;
+      const question = prepared.clarify ?? intent.clarification ?? messages.unrecognized;
+      await botCommandService.setReplyText(pendingId, question);
       return { text: question, clarify: { commandId: pendingId } };
     }
 
-    await botCommandService.updateIntent(pendingId, intent);
-    return this.planConfirm(intent, pendingId);
+    await botCommandService.updateIntent(pendingId, prepared.intent);
+    const result = this.planConfirm(prepared.intent, pendingId);
+    await botCommandService.setReplyText(pendingId, result.text);
+    return result;
   }
 
   /** Confirm tap: execute the stored intent. */
@@ -164,11 +242,19 @@ class IntentDispatcherService {
           keyboard,
         };
       case "create_jar":
-        return { text: messages.confirmCreateJar(intent.title!, intent.amount), keyboard };
+        return { text: messages.confirmCreateJar(intent.title!, intent.amount!), keyboard };
       case "save_to_jar":
         return { text: messages.confirmSaveToJar(intent.title!, intent.amount!), keyboard };
       case "send_money":
-        return { text: messages.confirmSend(intent.recipientName!, intent.bankName, intent.amount!), keyboard };
+        return {
+          text: messages.confirmSend({
+            accountName: intent.resolvedAccountName ?? intent.recipientName!,
+            accountNumber: intent.accountNumber,
+            bankName: intent.bankName,
+            amount: intent.amount!,
+          }),
+          keyboard,
+        };
       case "status_query":
         return { text: messages.unrecognized };
       default:
@@ -234,15 +320,15 @@ class IntentDispatcherService {
   }
 
   private async runSend(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
-    const recipient = await transferService.resolveRecipient(ctx.workspaceId, intent.recipientName!);
-    if (!recipient.found) {
-      return { text: messages.needsRecipient(intent.recipientName!) };
+    if (!intent.accountNumber || !intent.resolvedBankCode || !intent.resolvedAccountName) {
+      return { text: messages.needsRecipient(intent.recipientName ?? "that person") };
     }
+    const accountName = intent.resolvedAccountName;
 
     const wallet = await walletService.ensureWallet(ctx.ownerUserId);
     const amount = intent.amount!;
     if (wallet.balance < amount) {
-      return { text: messages.insufficientForSend(recipient.accountName!, amount, wallet.balance) };
+      return { text: messages.insufficientForSend(accountName, amount, wallet.balance) };
     }
 
     const reference = `talli_send_${randomToken(8)}`;
@@ -252,15 +338,15 @@ class IntentDispatcherService {
       await transferService.sendToBank({
         workspaceId: ctx.workspaceId,
         amount,
-        accountNumber: recipient.accountNumber!,
-        accountName: recipient.accountName!,
-        bankCode: recipient.bankCode!,
-        bankName: recipient.bankName,
+        accountNumber: intent.accountNumber,
+        accountName,
+        bankCode: intent.resolvedBankCode,
+        bankName: intent.bankName,
         senderName: ctx.workspaceName ?? ctx.senderName,
         alias: intent.recipientName,
         createdByPlatformUserId: ctx.senderPlatformId,
       });
-      return { text: messages.sendQueued(recipient.accountName!, amount) };
+      return { text: messages.sendQueued(accountName, amount) };
     } catch (err) {
       await walletService.credit(wallet.id, amount, "refund", `${reference}_refund`);
       logger.error(`[dispatch] send failed, refunded wallet: ${(err as Error).message}`);

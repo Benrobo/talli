@@ -259,6 +259,52 @@ export const messages = {
     "Try something like \"collect ₦5,000 from everyone\" or \"send ₦10,000 to Tolu\".",
   ].join("\n"),
 
+  /**
+   * Rich capability guide shown when someone asks what Talli can do / for help. A
+   * fixed, well-formatted message (not LLM-improvised) so it's consistent and
+   * complete, with a concrete example for each thing Talli does.
+   */
+  help(scope: "group" | "private"): string {
+    const lines = [
+      "👋 *Here's what I can do*",
+      "_Your AI treasurer — just talk to me normally._",
+      "",
+      "💰 *Collect money from a group*",
+      "Split bills, dues, or contributions. I post a Pay button and track who's paid.",
+      "_“collect ₦5,000 from everyone for jerseys”_",
+      "_“raise 200k for the party, 10k each, by July 20”_",
+      "",
+      "📊 *Check progress*",
+      "_“how much have we raised?”_",
+      "_“status of the jersey collection”_",
+    ];
+
+    if (scope === "private") {
+      lines.push(
+        "",
+        "🏦 *Save towards a goal*",
+        "Set up a jar with a target and add to it from your wallet.",
+        "_“start a rent jar with a ₦200k goal”_",
+        "_“save 20k to my rent jar”_",
+        "",
+        "💸 *Send money to a bank*",
+        "I verify the account name before anything leaves your wallet.",
+        "_“send ₦10,000 to GTB 0123456789”_",
+        "",
+        "👛 *See your balance*  — just tap /balance or ask _“what's my balance?”_"
+      );
+    } else {
+      lines.push(
+        "",
+        "💸 *Savings & sending* are private — _DM me_ for those.",
+        "",
+        `In this group, mention me: ${botMention} collect ₦5,000 from everyone`
+      );
+    }
+
+    return lines.join("\n");
+  },
+
   dmOnly: "🔒 That can only be done in a *private chat* with me. DM me to continue.",
 
   confirmCollection(
@@ -282,15 +328,33 @@ export const messages = {
       .join("\n");
   },
 
-  confirmCreateJar(name: string, target?: number): string {
+  confirmCreateJar(name: string, target: number): string {
     return [
       "🏦 *Create savings jar*",
       "",
       `Name: *${name}*`,
-      target ? `Target: *${formatNaira(target)}*` : "No target",
+      `🎯 Target: *${formatNaira(target)}*`,
       "",
       "Create it?",
     ].join("\n");
+  },
+
+  needsJarName: [
+    "🏦 *What should I call this jar?*",
+    "",
+    "e.g. _\"a rent jar with a 200k goal\"_.",
+  ].join("\n"),
+
+  needsJarTarget(name: string): string {
+    return [
+      `🎯 How much do you want to save in your *${name}* jar?`,
+      "",
+      "Give me a target, e.g. `200k` or `500,000`.",
+    ].join("\n");
+  },
+
+  needsSaveAmount(jar: string): string {
+    return `💰 How much should I move into your *${jar}* jar?`;
   },
 
   confirmSaveToJar(jar: string, amount: number): string {
@@ -304,18 +368,43 @@ export const messages = {
     ].join("\n");
   },
 
-  confirmSend(accountName: string, bankName: string | undefined, amount: number): string {
+  confirmSend(p: {
+    accountName: string;
+    accountNumber?: string;
+    bankName?: string;
+    amount: number;
+  }): string {
     return [
       "💸 *Send money*",
       "",
-      `To: *${accountName}*`,
-      bankName ? `Bank: ${bankName}` : "",
-      `Amount: *${formatNaira(amount)}*`,
+      `👤 *${p.accountName}*`,
+      p.accountNumber && p.bankName
+        ? `🏦 ${p.accountNumber} · ${p.bankName}`
+        : p.bankName
+          ? `🏦 ${p.bankName}`
+          : "",
+      `💵 *${formatNaira(p.amount)}*`,
       "",
       "Send it?",
     ]
       .filter(Boolean)
       .join("\n");
+  },
+
+  bankNotFound(bankName: string): string {
+    return [
+      `🏦 I couldn't find a bank matching *${escapeMarkdown(bankName)}*.`,
+      "",
+      "Reply with the exact bank name, e.g. `Zenith Bank` or `GTBank`.",
+    ].join("\n");
+  },
+
+  accountNotVerified(accountNumber: string, bankName: string): string {
+    return [
+      `🔎 I couldn't verify *${escapeMarkdown(accountNumber)}* at *${escapeMarkdown(bankName)}*.`,
+      "",
+      "Double-check the account number and bank, then send them again.",
+    ].join("\n");
   },
 
   collectionCreated(title: string): string {
