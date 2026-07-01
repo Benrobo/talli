@@ -5,6 +5,8 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "node"],
     "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@/*": ["./src/*"]
     },
