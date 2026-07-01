@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMe } from "@/api/http/v1/auth/auth.hooks";
+import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
@@ -53,22 +54,25 @@ function greeting(): string {
 
 export function HomePage() {
   const {
-    savedAcrossJars,
-    activeJars,
-    collectingNow,
-    collectionsCount,
-    sentThisMonth,
-    transfersCount,
     activeCollection,
     jars,
     activity,
   } = homeData;
 
   const { data: meResponse } = useMe();
+  const { data: metricsResponse } = useWalletMetrics();
+  const metrics = metricsResponse?.data;
+
   const me = meResponse?.data.user;
   const firstName = me?.name?.trim().split(/\s+/)[0] || "there";
 
-  const totalMoving = savedAcrossJars + collectingNow;
+  const totalBalance = metrics?.totalBalance.amount ?? 0;
+  const savedAcrossJars = metrics?.savedAcrossJars.amount ?? 0;
+  const activeJars = metrics?.savedAcrossJars.activeJars ?? 0;
+  const collectingNow = metrics?.collectingNow.amount ?? 0;
+  const collectionsCount = metrics?.collectingNow.collectionsCount ?? 0;
+  const sentThisMonth = metrics?.sentThisMonth.amount ?? 0;
+  const transfersCount = metrics?.sentThisMonth.transfersCount ?? 0;
 
   return (
     <div>
@@ -101,9 +105,9 @@ export function HomePage() {
           <StatCard
             tone="filled"
             label="Total balance"
-            value={formatNaira(totalMoving)}
+            value={formatNaira(totalBalance)}
             icon={Wallet01Icon}
-            delta={{ value: "+3.2%", direction: "up" }}
+            delta={metrics?.totalBalance.delta ?? undefined}
             sub="vs last month"
           />
         </StaggerItem>
@@ -112,8 +116,8 @@ export function HomePage() {
             label="Saved across jars"
             value={formatNaira(savedAcrossJars)}
             icon={MoneySavingJarIcon}
-            delta={{ value: "+4.5%", direction: "up" }}
-            sub={`${activeJars} active jars`}
+            delta={metrics?.savedAcrossJars.delta ?? undefined}
+            sub={`${activeJars} active jar${activeJars === 1 ? "" : "s"}`}
           />
         </StaggerItem>
         <StaggerItem>
@@ -121,8 +125,8 @@ export function HomePage() {
             label="Collecting now"
             value={formatNaira(collectingNow)}
             icon={Coins01Icon}
-            delta={{ value: "+12%", direction: "up" }}
-            sub={`${collectionsCount} collection`}
+            delta={metrics?.collectingNow.delta ?? undefined}
+            sub={`${collectionsCount} collection${collectionsCount === 1 ? "" : "s"}`}
           />
         </StaggerItem>
         <StaggerItem>
@@ -130,8 +134,8 @@ export function HomePage() {
             label="Sent this month"
             value={formatNaira(sentThisMonth)}
             icon={MoneySend01Icon}
-            delta={{ value: "-2.1%", direction: "down" }}
-            sub={`${transfersCount} transfer`}
+            delta={metrics?.sentThisMonth.delta ?? undefined}
+            sub={`${transfersCount} transfer${transfersCount === 1 ? "" : "s"}`}
           />
         </StaggerItem>
       </Stagger>

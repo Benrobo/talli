@@ -8,6 +8,8 @@ import { isAuthenticated } from "../middleware/auth.js";
 const router = new Hono();
 const c = walletController;
 
+router.get("/wallet/metrics", useCatchErrors(isAuthenticated(c.metrics.bind(c))));
+
 router.get("/wallet", useCatchErrors(isAuthenticated(c.balance.bind(c))));
 
 router.get("/wallet/history", useCatchErrors(isAuthenticated(c.history.bind(c))));

@@ -1,10 +1,26 @@
 import type { Context } from "hono";
 import sendResponse from "../lib/send-response.js";
-import { NotFoundException } from "../lib/exception.js";
+import { BadRequestException, NotFoundException } from "../lib/exception.js";
 import { walletService } from "../services/wallet.service.js";
+import { walletMetricsService } from "../services/wallet-metrics.service.js";
+import { workspaceService } from "../services/workspace.service.js";
 import type { TopUpInput } from "../schemas/wallet.schema.js";
 
 class WalletController {
+  private async workspaceId(ctx: Context): Promise<string> {
+    const userId = ctx.get("userId") as string;
+    const workspaceId = await workspaceService.getActiveWorkspaceId(userId);
+    if (!workspaceId) throw new BadRequestException("No active workspace");
+    return workspaceId;
+  }
+
+  async metrics(ctx: Context) {
+    const userId = ctx.get("userId") as string;
+    const workspaceId = await this.workspaceId(ctx);
+    const metrics = await walletMetricsService.get(userId, workspaceId);
+    return sendResponse.success(ctx, "Wallet metrics fetched", 200, metrics);
+  }
+
   async balance(ctx: Context) {
     const userId = ctx.get("userId") as string;
     const wallet = await walletService.ensureWallet(userId);
