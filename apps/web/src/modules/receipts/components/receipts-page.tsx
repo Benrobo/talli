@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   FadeIn,
+  IconChip,
   PageHeader,
   StatCard,
   Tooltip,
@@ -18,7 +19,6 @@ import {
   TooltipTrigger,
   type Column,
 } from "@/components/ui";
-import { cn } from "@app/ui";
 import { Icon } from "@benrobo/iconary/react";
 import type { IconData } from "@benrobo/iconary/core";
 import {
@@ -40,10 +40,10 @@ const KIND_ICON: Record<ReceiptKind, IconData> = {
   savings: Coins01Icon,
 };
 
-const KIND_TONE: Record<ReceiptKind, string> = {
-  collection: "bg-emerald-500/12 text-emerald-600",
-  send: "bg-iris-soft text-iris-deep",
-  savings: "bg-amber-soft text-amber-deep",
+const KIND_TONE: Record<ReceiptKind, "emerald" | "iris" | "amber"> = {
+  collection: "emerald",
+  send: "iris",
+  savings: "amber",
 };
 
 const columns: Column<Receipt>[] = [
@@ -52,14 +52,9 @@ const columns: Column<Receipt>[] = [
     header: "Receipt",
     render: (r) => (
       <div className="flex items-center gap-3">
-        <span
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-[11px]",
-            KIND_TONE[r.kind]
-          )}
-        >
+        <IconChip tone={KIND_TONE[r.kind]} size="md">
           <Icon icon={KIND_ICON[r.kind]} size={17} />
-        </span>
+        </IconChip>
         <div>
           <div className="text-[13.5px] font-medium">{r.title}</div>
           <div className="text-[11px] text-content-faint">{r.detail}</div>
@@ -95,7 +90,7 @@ const columns: Column<Receipt>[] = [
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex size-8 items-center justify-center rounded-lg text-content-muted transition-colors hover:bg-iris-soft hover:text-iris-deep">
+            <span className="inline-flex size-8 items-center justify-center rounded-lg text-content-muted transition-colors hover:bg-inset hover:text-foreground">
               <Icon icon={Download01Icon} size={16} />
             </span>
           </TooltipTrigger>

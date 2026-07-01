@@ -59,7 +59,7 @@ export function JarCard({ jar }: JarCardProps) {
                 </span>
               )}
             </span>
-            <span className="text-content-faint transition-colors group-hover:text-iris-deep">
+            <span className="text-content-faint">
               <Icon icon={ArrowRight01Icon} size={15} />
             </span>
           </div>

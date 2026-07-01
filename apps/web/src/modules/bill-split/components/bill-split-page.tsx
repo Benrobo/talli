@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@app/ui";
-import { Button, Card, Input, StatusPill } from "@/components/ui";
+import { Button, Card, Input, Spotlight } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
 import { Icon } from "@benrobo/iconary/react";
 import { AlertCircleIcon, ArrowLeft01Icon, BankIcon, Clock01Icon, Copy01Icon, Download01Icon, Invoice01Icon, LockIcon, PlusSignIcon, Tick02Icon, TickDouble02Icon, UserIcon } from "@benrobo/iconary/core/duotone-rounded";
@@ -121,7 +121,7 @@ export function BillSplitPage() {
           <span className="mb-4 flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <Icon icon={AlertCircleIcon} size={26} />
           </span>
-          <div className="font-serif text-[22px]">This bill isn't available</div>
+          <div className="text-[22px] font-extrabold tracking-[-0.02em]">This bill isn't available</div>
           <p className="mt-2 text-[13.5px] text-content-muted">
             The link may have expired or already been closed.
           </p>
@@ -219,14 +219,14 @@ function Header({ title, remaining, total }: { title: string; remaining: number;
       </div>
       <div className="mb-6 text-center">
         <div className="mb-1.5 text-[13px] text-content-muted">Split the bill</div>
-        <div className="mb-3 font-serif text-[26px] font-normal leading-tight">{title}</div>
+        <div className="mb-3 text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{title}</div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-iris-soft px-3 py-1 text-[12px] font-medium text-iris-deep">
-          <Icon icon={SparklesIcon} size={13} />
+          <Icon icon={TickDouble02Icon} size={13} />
           Tap the items you had
         </span>
       </div>
       <div className="mb-3 flex items-center justify-between">
-        <span className="font-mono text-[10.5px] tracking-[0.1em] text-content-faint">ITEMS</span>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-content-faint">Items</span>
         <span className="text-[11.5px] text-content-faint">{remaining} of {total} left</span>
       </div>
     </>
@@ -249,7 +249,7 @@ function ItemRow({
         onClick={onToggle}
         className={cn(
           "flex items-center gap-3 p-3.5 transition-all",
-          claimed ? "cursor-default bg-emerald-50/60" : "cursor-pointer",
+          claimed ? "cursor-default bg-emerald-soft/50" : "t-press cursor-pointer",
           selected && !claimed && "border-iris ring-[3px] ring-iris-soft"
         )}
       >
@@ -262,7 +262,7 @@ function ItemRow({
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-600"
+                className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-deep"
               >
                 <Icon icon={TickDouble02Icon} size={13} />
                 Paid by {item.paidByName}
@@ -274,7 +274,7 @@ function ItemRow({
           {naira(item.unitPrice)}
         </div>
         {claimed ? (
-          <span className="flex size-6 items-center justify-center rounded-full bg-emerald-500 text-white">
+          <span className="flex size-6 items-center justify-center rounded-full bg-emerald text-white">
             <Icon icon={CheckmarkCircle02Icon} size={16} />
           </span>
         ) : selected ? (
@@ -317,7 +317,7 @@ function NameStep({
     <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}>
       <div className="mb-8 text-center">
         <div className="mb-1.5 text-[13px] text-content-muted">Paying {naira(total)}</div>
-        <div className="font-serif text-[24px] leading-tight">Who's paying?</div>
+        <div className="text-[24px] font-extrabold leading-tight tracking-[-0.03em]">Who's paying?</div>
       </div>
 
       {!typing && knownNames.length > 0 ? (
@@ -408,11 +408,13 @@ function PayStage({
         </div>
       }
     >
-      <div className="mb-6 text-center">
-        <div className="mb-1.5 text-[13px] text-content-muted">{payerName}, transfer</div>
-        <div className="tabular text-[40px] font-bold tracking-tight">{naira(checkout.amount)}</div>
-        <div className="mt-1 text-[13px] text-content-muted">for {title}</div>
-      </div>
+      <Spotlight className="mb-6 p-6 text-center">
+        <div className="mb-1.5 text-[13px] text-white/70">{payerName}, transfer</div>
+        <div className="tabular text-[42px] font-extrabold leading-none tracking-[-0.03em]">
+          {naira(checkout.amount)}
+        </div>
+        <div className="mt-2 text-[13px] text-white/70">for {title}</div>
+      </Spotlight>
 
       <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
         <Card className="p-5">
@@ -428,7 +430,7 @@ function PayStage({
             <span
               className={cn(
                 "flex size-9 items-center justify-center rounded-[10px] transition-colors",
-                copied ? "bg-emerald-500 text-white" : "bg-iris-soft text-iris-deep"
+                copied ? "bg-emerald-soft text-emerald-deep" : "bg-iris-soft text-iris-deep"
               )}
             >
               <Icon icon={copied ? Tick02Icon : Copy01Icon} size={16} />
@@ -440,7 +442,7 @@ function PayStage({
         </Card>
       </motion.div>
 
-      <div className="mt-5 flex items-center justify-center gap-1.5 rounded-[11px] bg-amber-50 px-3 py-2.5 text-[12px] text-amber-700">
+      <div className="mt-5 flex items-center justify-center gap-1.5 rounded-[12px] bg-amber-soft px-3 py-2.5 text-[12px] text-amber-deep">
         <Icon icon={Clock01Icon} size={13} />
         Waiting for your transfer — this updates automatically.
       </div>
@@ -466,12 +468,12 @@ function DoneStage({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 260, damping: 18 }}
-          className="mb-6 flex size-20 items-center justify-center rounded-full bg-emerald-500 text-white"
+          className="mb-6 flex size-20 items-center justify-center rounded-full bg-emerald-soft text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_12px_28px_-8px_rgba(47,163,107,0.5)]"
         >
           <Icon icon={CheckmarkCircle02Icon} size={44} />
         </motion.span>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <div className="font-serif text-[26px] leading-tight">You're all set, {payerName}!</div>
+          <div className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">You're all set, {payerName}!</div>
           <p className="mt-2 text-[14px] text-content-muted">
             {naira(amount)} paid for {title}. Your items are now marked as yours.
           </p>
@@ -482,7 +484,7 @@ function DoneStage({
           transition={{ delay: 0.4 }}
           className="mt-8 w-full"
         >
-          <div className="mb-4 flex items-center justify-center gap-1.5 rounded-[11px] bg-emerald-50 px-3 py-2.5 text-[12.5px] text-emerald-700">
+          <div className="mb-4 flex items-center justify-center gap-1.5 rounded-[12px] bg-emerald-soft px-3 py-2.5 text-[12.5px] text-emerald-deep">
             <Icon icon={Download01Icon} size={13} />
             Your receipt is on its way.
           </div>

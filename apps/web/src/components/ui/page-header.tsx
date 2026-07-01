@@ -18,7 +18,7 @@ export function PageHeader({ eyebrow, title, subtitle, actions, className }: Pag
             {eyebrow}
           </div>
         ) : null}
-        <h1 className="text-[26px] font-bold tracking-[-0.02em]">{title}</h1>
+        <h1 className="font-display text-[25px] font-bold tracking-[-0.02em] text-foreground">{title}</h1>
         {subtitle ? <p className="mt-1.5 text-[13.5px] text-content-muted">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2.5">{actions}</div> : null}

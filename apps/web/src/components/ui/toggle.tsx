@@ -7,7 +7,6 @@ interface ToggleProps {
   className?: string;
 }
 
-/** Thin wrapper around shadcn Switch for settings toggles. */
 export function Toggle({ checked, onChange, label, className }: ToggleProps) {
   return (
     <Switch

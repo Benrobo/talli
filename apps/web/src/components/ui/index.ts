@@ -7,6 +7,7 @@ export { ProgressBar } from "./progress-bar";
 export { RingProgress } from "./ring-progress";
 export { Avatar } from "./avatar";
 export { StatCard } from "./stat-card";
+export { Spotlight, IconChip, DeltaPill, TallyWatermark } from "./surface";
 export { Field, Input } from "./input";
 export { Label } from "./label";
 export { Switch } from "./switch";

@@ -13,31 +13,26 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   useCreateWorkspace,
   useSwitchWorkspace,
   useWorkspaces,
 } from "@/modules/workspaces/hooks/use-workspaces";
 import type { Workspace } from "@app/shared";
 import { Icon } from "@benrobo/iconary/react";
-import { ArrowUpDownIcon, LayoutGridIcon, PlusSignIcon, Tick02Icon } from "@benrobo/iconary/core/duotone-rounded";
+import { ArrowUpDownIcon, LayoutGridIcon, Logout01Icon, PlusSignIcon, Tick02Icon } from "@benrobo/iconary/core/duotone-rounded";
 import { initials } from "@/lib/format";
 
-function WorkspaceAvatar({
-  name,
-  tone = "sidebar",
-}: {
-  name: string;
-  tone?: "sidebar" | "popover";
-}) {
+function WorkspaceAvatar({ name }: { name: string }) {
   return (
-    <span
-      className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold uppercase",
-        tone === "sidebar"
-          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-          : "bg-primary text-primary-foreground"
-      )}
-    >
+    <span className="band-iris flex size-7 shrink-0 items-center justify-center rounded-[9px] text-[12px] font-bold uppercase text-white shadow-chip">
       {initials(name).slice(0, 1)}
     </span>
   );
@@ -105,6 +100,15 @@ export function WorkspaceSwitcher() {
     });
   };
 
+  const handleSignOut = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      toast.error("Couldn't sign out cleanly.");
+    }
+    router.navigate({ to: "/auth" });
+  };
+
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (next && isError) {
@@ -117,34 +121,34 @@ export function WorkspaceSwitcher() {
   };
 
   return (
-    <div className="flex w-full shrink-0 items-center gap-2 border-y border-hairline px-3.5 py-2.5">
+    <div className="flex w-full shrink-0 items-center gap-2 px-3.5 pb-1">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <button
             type="button"
             disabled={isLoading && !activeWorkspace}
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-hairline px-2.5 py-2 text-left transition-colors hover:bg-muted/50 disabled:opacity-60"
+            className="t-press flex min-w-0 flex-1 items-center gap-2.5 rounded-[12px] border border-hairline bg-inset px-2.5 py-2 text-left transition-colors hover:bg-iris-soft/40 disabled:opacity-60"
           >
-            <WorkspaceAvatar name={activeWorkspace?.name ?? "W"} tone="popover" />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+            <WorkspaceAvatar name={activeWorkspace?.name ?? "W"} />
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
               {isLoading
                 ? "Loading…"
                 : activeWorkspace
                   ? truncateName(activeWorkspace.name)
                   : "Select workspace"}
             </span>
-            <Icon icon={ArrowUpDownIcon} size={12} className="shrink-0 text-content-faint" />
+            <Icon icon={ArrowUpDownIcon} size={13} className="shrink-0 text-content-faint" />
           </button>
         </PopoverTrigger>
 
         <PopoverContent
           align="start"
           side="bottom"
-          className="w-[280px] border-sidebar-border bg-card text-foreground"
+          className="w-[280px] rounded-[16px] border-hairline bg-card p-1.5 text-foreground shadow-card"
         >
-          <div className="flex items-center gap-2 border-b border-hairline-soft px-3 py-2">
-            <Icon icon={LayoutGridIcon} size={12} className="text-muted-foreground" />
-            <span className="font-mono text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+          <div className="flex items-center gap-2 px-2.5 pb-2 pt-1.5">
+            <Icon icon={LayoutGridIcon} size={13} className="text-content-faint" />
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-content-faint">
               Workspaces · {workspaces.length}
             </span>
           </div>
@@ -182,18 +186,18 @@ export function WorkspaceSwitcher() {
                     disabled={pending}
                     onClick={() => handleSelect(workspace)}
                     className={cn(
-                      "flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors disabled:opacity-50",
-                      isActive ? "bg-accent" : "hover:bg-muted/50"
+                      "flex w-full items-center justify-between rounded-[11px] px-2.5 py-2 text-left transition-colors disabled:opacity-50",
+                      isActive ? "bg-iris-soft" : "hover:bg-inset"
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <WorkspaceAvatar name={workspace.name} tone="popover" />
-                      <span className="truncate text-[13px] font-medium">
+                      <WorkspaceAvatar name={workspace.name} />
+                      <span className={cn("truncate text-[13px] font-semibold", isActive && "text-iris-deep")}>
                         {workspace.name}
                       </span>
                     </span>
                     {isActive ? (
-                      <Icon icon={Tick02Icon} size={13} className="shrink-0 text-primary" />
+                      <Icon icon={Tick02Icon} size={14} className="shrink-0 text-iris-deep" />
                     ) : null}
                   </button>
                 );
@@ -201,9 +205,9 @@ export function WorkspaceSwitcher() {
             )}
           </div>
 
-          <div className="border-t border-hairline-soft p-2">
+          <div className="mt-1 border-t border-hairline-soft pt-1.5">
             {isCreating ? (
-              <form onSubmit={handleCreate} className="flex flex-col gap-2">
+              <form onSubmit={handleCreate} className="flex flex-col gap-2 p-1">
                 <Input
                   value={newName}
                   onChange={(event) => setNewName(event.target.value)}
@@ -240,28 +244,39 @@ export function WorkspaceSwitcher() {
                 type="button"
                 disabled={pending}
                 onClick={() => setIsCreating(true)}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/50 disabled:opacity-50"
+                className="flex w-full items-center gap-2.5 rounded-[11px] px-2.5 py-2 transition-colors hover:bg-inset disabled:opacity-50"
               >
-                <span className="flex size-4 items-center justify-center border border-hairline">
-                  <Icon icon={PlusSignIcon} size={10} className="text-muted-foreground" />
+                <span className="flex size-7 items-center justify-center rounded-[9px] border border-dashed border-hairline text-content-faint">
+                  <Icon icon={PlusSignIcon} size={13} />
                 </span>
-                <span className="text-[13px] text-muted-foreground">
-                  Create workspace
-                </span>
+                <span className="text-[13px] font-medium text-content-muted">Create workspace</span>
               </button>
             )}
           </div>
         </PopoverContent>
       </Popover>
 
-      <button
-        type="button"
-        title={userLabel}
-        onClick={() => router.navigate({ to: "/settings" })}
-        className="shrink-0 transition-opacity hover:opacity-80"
-      >
-        <Avatar name={userLabel} size="sm" tone="iris" className="rounded-full" />
-      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" title={userLabel} className="t-press shrink-0 rounded-full">
+            <Avatar name={userLabel} size="sm" tone="iris" className="rounded-full" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[220px] rounded-[14px]">
+          <DropdownMenuLabel className="flex flex-col gap-0.5">
+            <span className="text-[13px] font-semibold text-foreground">{userLabel}</span>
+            {user?.email ? <span className="text-[11.5px] font-normal text-content-faint">{user.email}</span> : null}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-rose-deep focus:bg-rose-soft focus:text-rose-deep"
+            onSelect={handleSignOut}
+          >
+            <Icon icon={Logout01Icon} size={15} />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

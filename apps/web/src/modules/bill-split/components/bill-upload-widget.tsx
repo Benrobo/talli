@@ -87,7 +87,7 @@ export function BillUploadWidget() {
         <span className="mb-4 inline-flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
           <Icon icon={Invoice01Icon} size={24} />
         </span>
-        <h1 className="font-serif text-[28px] leading-tight">Split a bill</h1>
+        <h1 className="font-display text-[26px] font-bold leading-tight tracking-[-0.02em]">Split a bill</h1>
         <p className="mt-2 text-[14px] text-content-muted">
           Snap the receipt — everyone picks what they had and pays for it.
         </p>

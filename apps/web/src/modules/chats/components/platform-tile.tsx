@@ -1,26 +1,29 @@
 import { cn } from "@app/ui";
-import { Icon } from "@benrobo/iconary/react";
-import { TelegramIcon, WhatsappIcon } from "@benrobo/iconary/core/duotone-rounded";
 import type { ChatPlatform } from "@/modules/chats/types";
 
 interface PlatformTileProps {
   platform: ChatPlatform;
   className?: string;
+  imgClassName?: string;
 }
 
-export function PlatformTile({ platform, className }: PlatformTileProps) {
+const LOGO: Record<ChatPlatform, string> = {
+  telegram: "/telegram.png",
+  whatsapp: "/whatsapp.png",
+};
+
+export function PlatformTile({ platform, className, imgClassName }: PlatformTileProps) {
   return (
     <span
       className={cn(
-        "flex size-11 shrink-0 items-center justify-center rounded-[13px]",
-        platform === "whatsapp" ? "bg-[#1FA855]" : "bg-[#2AABEE]",
+        "flex size-11 shrink-0 items-center justify-center rounded-[13px] border border-hairline bg-card shadow-chip",
         className
       )}
     >
-      <Icon
-        icon={platform === "whatsapp" ? WhatsappIcon : TelegramIcon}
-        size={21}
-        className="text-white"
+      <img
+        src={LOGO[platform]}
+        alt={platform === "telegram" ? "Telegram" : "WhatsApp"}
+        className={cn("size-[62%] object-contain", imgClassName)}
       />
     </span>
   );

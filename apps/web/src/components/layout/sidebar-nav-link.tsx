@@ -8,7 +8,7 @@ interface SidebarNavLinkProps extends LinkProps {
 }
 
 const BASE =
-  "flex items-center gap-2.5 rounded-[6px] px-3 py-[7px] text-[13px] font-medium transition-colors";
+  "group relative flex items-center gap-2.5 rounded-[11px] px-3 py-[9px] text-[13px] font-medium transition-colors";
 
 export function SidebarNavLink({
   className,
@@ -22,12 +22,13 @@ export function SidebarNavLink({
       activeOptions={activeOptions}
       className={cn(BASE, className)}
       inactiveProps={{
-        className: "text-content-muted hover:bg-muted/50 hover:text-foreground",
+        className: "text-content-muted hover:bg-inset hover:text-foreground [&_.nav-dot]:opacity-0",
       }}
       activeProps={{
-        className: "bg-iris-soft font-semibold text-iris-deep",
+        className: "bg-iris-soft font-semibold text-iris-deep [&_.nav-dot]:opacity-100",
       }}
     >
+      <span className="nav-dot absolute left-0 h-4 w-[3px] rounded-full bg-iris transition-opacity" />
       {children}
     </Link>
   );

@@ -5,16 +5,15 @@ import { cn } from "@/lib/utils";
 import { ActivitySpinner } from "./activity-spinner";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "t-press inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[12px] font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-btn hover:bg-iris-deep",
-        destructive:
-          "border border-destructive/30 bg-transparent text-destructive hover:bg-destructive/10",
-        outline: "border border-hairline bg-card text-foreground shadow-card hover:bg-muted/40",
-        secondary: "border border-hairline bg-card text-foreground shadow-card hover:bg-muted/40",
-        ghost: "text-content-muted hover:bg-muted/60 hover:text-foreground",
+        default: "band-iris text-white shadow-btn",
+        destructive: "border border-rose/25 bg-rose-soft text-rose-deep shadow-soft",
+        outline: "grad-btn-white border border-hairline text-foreground shadow-btn-white",
+        secondary: "grad-btn-white border border-hairline text-foreground shadow-btn-white",
+        ghost: "text-content-muted hover:bg-muted/70 hover:text-foreground",
         link: "text-iris-deep underline-offset-4 hover:underline",
       },
       size: {
