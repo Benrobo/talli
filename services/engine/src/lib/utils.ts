@@ -29,6 +29,21 @@ export function randomToken(length = 32): string {
 }
 
 /**
+ * Generate a short, human-friendly code like `KOL-9281` for deep-link sharing.
+ * Avoids ambiguous characters (no O/0, I/1) since users may read it aloud.
+ */
+export function randomLinkCode(): string {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const pick = (set: string, n: number) => {
+    const bytes = new Uint8Array(n);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => set[b % set.length]).join("");
+  };
+  return `${pick(letters, 3)}-${pick(digits, 4)}`;
+}
+
+/**
  * Generate a numeric OTP code of the given digit count.
  */
 export function randomOtp(digits = 6): string {
@@ -36,6 +51,17 @@ export function randomOtp(digits = 6): string {
   const bytes = new Uint32Array(1);
   globalThis.crypto.getRandomValues(bytes);
   return String(bytes[0] % max).padStart(digits, "0");
+}
+
+/**
+ * SHA-256 hash of a string, hex-encoded. Used to store secrets (e.g. chat
+ * link codes) hashed at rest. Uses the Web Crypto API so it works on Node,
+ * Bun, and Workers.
+ */
+export async function sha256(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
