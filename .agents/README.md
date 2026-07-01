@@ -24,6 +24,7 @@ without having to install anything globally.
 | `durable-objects` | DO design and review: coordination, RPC, SQLite, alarms. |
 | `sandbox-sdk` | Sandboxed code execution (interpreters, untrusted code). |
 | `find-skills` | Discover and install additional skills. |
+| `karpathy-guidelines` | Andrej Karpathy-inspired guardrails for assumptions, simplicity, surgical edits, and verification. |
 | `skills-cursor/create-rule` | Author `.cursor/rules/` and `AGENTS.md`. |
 | `skills-cursor/create-skill` | Author new agent skills. |
 | `skills-cursor/split-to-prs` | Split work into small reviewable PRs. |
