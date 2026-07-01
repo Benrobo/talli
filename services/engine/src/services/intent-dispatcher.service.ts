@@ -1,13 +1,14 @@
 import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
-import { confirmCancel, payButton, selectCollectionKeyboard } from "../integrations/telegram/ui/keyboards.js";
+import { confirmCancel, payButton, selectCollectionKeyboard, openPickerLink } from "../integrations/telegram/ui/keyboards.js";
 import type { InlineKeyboard } from "grammy";
 import { commandParserService } from "./command-parser.service.js";
 import { isAdminOnlyInGroup, type ChatScope } from "../constants/chat-capabilities.js";
 import { botCommandService, type CommandContext } from "./bot-command.service.js";
 import { collectionService } from "./collection.service.js";
 import { splitService } from "./split.service.js";
+import { personPickerService } from "./person-picker.service.js";
 import { savingsService } from "./savings.service.js";
 import { balanceService } from "./balance.service.js";
 import { walletService } from "./wallet.service.js";
@@ -15,7 +16,10 @@ import { transferService } from "./transfer.service.js";
 import { beneficiaryService } from "./beneficiary.service.js";
 import { randomToken } from "../lib/utils.js";
 import type { Intent } from "../schemas/intent.schema.js";
+import type { ParsedBill } from "./bill-parser.service.js";
 import logger from "../lib/logger.js";
+
+const PICKER_CAPTION = /\b(pick|choose|select|each person|what they chose|everyone pick|person picker)\b/i;
 
 export interface DispatchResult {
   text: string;
@@ -103,6 +107,67 @@ class IntentDispatcherService {
   }
 
   /**
+   * Bill photo path: vision extracts line items, caption decides person_picker vs
+   * a total-only split. Items are merged from the parser — never invented by the LLM.
+   */
+  async handleBillPhoto(bill: ParsedBill, caption: string, ctx: DispatchContext): Promise<DispatchResult> {
+    const instruction = caption.trim() || "person picker from this receipt";
+    let intent = await commandParserService.parse(instruction, await this.parseContext(ctx));
+
+    if (intent.intent !== "person_picker" && PICKER_CAPTION.test(instruction)) {
+      intent = { ...intent, intent: "person_picker", status: "ready" };
+    }
+
+    if (intent.intent === "person_picker") {
+      if (!bill.confident || bill.items.length === 0) {
+        const reply = bill.reason ?? messages.billUnreadable;
+        await botCommandService.recordConversational(ctx, instruction, intent, reply);
+        return { text: reply };
+      }
+      intent = {
+        ...intent,
+        status: "ready",
+        title: intent.title?.trim() || "Receipt split",
+        amount: bill.total ?? undefined,
+        items: bill.items.map((item) => ({
+          name: item.name,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+        })),
+      };
+    } else if (bill.total && bill.confident) {
+      const command = instruction
+        ? `${instruction} (the bill total is ${bill.total})`
+        : `split ${bill.total}`;
+      return this.handleMessage(command, ctx);
+    } else {
+      const reply = messages.billRejected(bill.reason);
+      await botCommandService.recordConversational(ctx, instruction, intent, reply);
+      return { text: reply };
+    }
+
+    if (!commandParserService.isAllowed(ctx.scope, intent.intent)) {
+      await botCommandService.recordConversational(ctx, instruction, intent, messages.dmOnly);
+      return { text: messages.dmOnly };
+    }
+    if (ctx.scope === "group" && isAdminOnlyInGroup(intent.intent) && !ctx.isGroupAdmin) {
+      await botCommandService.recordConversational(ctx, instruction, intent, messages.adminOnlyCreate);
+      return { text: messages.adminOnlyCreate };
+    }
+
+    const prepared = await this.prepareIntent(intent, ctx);
+    if (prepared.clarify) {
+      const command = await botCommandService.recordClarification(ctx, instruction, intent, null, prepared.clarify);
+      return { text: prepared.clarify, clarify: { commandId: command.id } };
+    }
+
+    const command = await botCommandService.record(ctx, instruction, prepared.intent);
+    const result = this.planConfirm(prepared.intent, command.id);
+    await botCommandService.setReplyText(command.id, result.text);
+    return result;
+  }
+
+  /**
    * Verifies and enriches a "ready" intent before it reaches a confirm card.
    * Trust the parser, but verify the money path: for send_money, resolve the
    * destination (saved beneficiary, or account number + bank looked up against
@@ -129,6 +194,8 @@ class IntentDispatcherService {
       }
       case "split_payment":
         return this.prepareSplit(intent, ctx);
+      case "person_picker":
+        return this.preparePersonPicker(intent);
       default:
         return { intent };
     }
@@ -150,6 +217,22 @@ class IntentDispatcherService {
     } catch (err) {
       return { clarify: (err as Error).message, intent: resolved };
     }
+  }
+
+  private preparePersonPicker(intent: Intent): { clarify?: string; intent: Intent } {
+    const items = intent.items ?? [];
+    if (items.length === 0) {
+      return {
+        clarify: "Send a photo of the receipt so I can read the items everyone can pick from.",
+        intent,
+      };
+    }
+    const resolved: Intent = {
+      ...intent,
+      title: intent.title?.trim() || "Receipt split",
+      items,
+    };
+    return { intent: resolved };
   }
 
   private async prepareSend(
@@ -293,6 +376,18 @@ class IntentDispatcherService {
         };
       case "split_payment":
         return { text: messages.confirmSplit(splitService.plan(intent)), keyboard };
+      case "person_picker":
+        return {
+          text: messages.confirmPersonPicker({
+            title: intent.title ?? "Receipt split",
+            total: intent.amount ?? intent.items?.reduce((s, i) => s + i.unitPrice * (i.quantity ?? 1), 0) ?? 0,
+            items: (intent.items ?? []).map((i) => ({
+              name: i.name,
+              unitPrice: i.unitPrice,
+            })),
+          }),
+          keyboard,
+        };
       case "status_query":
         return { text: messages.unrecognized };
       default:
@@ -312,6 +407,8 @@ class IntentDispatcherService {
         return this.runSend(intent, ctx);
       case "split_payment":
         return this.runSplit(intent, ctx);
+      case "person_picker":
+        return this.runPersonPicker(intent, ctx);
       default:
         return { text: messages.actionFailed };
     }
@@ -348,6 +445,26 @@ class IntentDispatcherService {
     }
 
     return { text: messages.splitCreated(result.collection.title, result.links) };
+  }
+
+  private async runPersonPicker(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
+    const items = intent.items ?? [];
+    const { url } = await personPickerService.createFromItems({
+      workspaceId: ctx.workspaceId,
+      ownerUserId: ctx.ownerUserId,
+      linkedChatId: ctx.linkedChatId,
+      title: intent.title ?? "Receipt split",
+      items: items.map((i) => ({
+        name: i.name,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      })),
+      total: intent.amount,
+    });
+    return {
+      text: messages.personPickerCreated(intent.title ?? "Receipt split", url),
+      keyboard: openPickerLink(url),
+    };
   }
 
   private async runCreateJar(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {

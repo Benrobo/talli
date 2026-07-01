@@ -52,6 +52,10 @@ export function openDashboard(webAppUrl: string, label = "Open dashboard"): Inli
   return new InlineKeyboard().url(label, webAppUrl);
 }
 
+export function openPickerLink(url: string): InlineKeyboard {
+  return new InlineKeyboard().url("Pick your items", url);
+}
+
 /**
  * Action keyboard for `/info`. Shows the dashboard link plus context-aware
  * shortcuts: connected chats get a refresh + disconnect, unconnected ones get

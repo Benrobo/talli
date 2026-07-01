@@ -9,6 +9,7 @@ export const INTENTS = [
   "help_query",
   "pay_collection",
   "split_payment",
+  "person_picker",
   "unknown",
 ] as const;
 
@@ -48,6 +49,15 @@ export const intentSchema = z.object({
       z.object({
         name: z.string(),
         amount: opt(z.number().int().positive()),
+      })
+    )
+  ),
+  items: opt(
+    z.array(
+      z.object({
+        name: z.string(),
+        unitPrice: z.number().int().positive(),
+        quantity: opt(z.number().int().positive()),
       })
     )
   ),
