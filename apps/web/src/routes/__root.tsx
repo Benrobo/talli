@@ -32,6 +32,60 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       });
     }
   },
+  head: (ctx)=> {
+    return  {
+      meta: [
+        {
+          title: "Talli",
+          description: "Talli is a platform for creating and managing collections.",
+        },
+        {
+          name: "description",
+          content: "Talli is a platform for creating and managing collections.",
+        },
+        {
+          property: "og:title",
+          content: "Talli",
+        },
+        {
+          property: "og:description",
+          content: "Talli is a platform for creating and managing collections.",
+        },
+        {
+          property: "og:image",
+          content: "https://talli.benlabtest.space/og-image.png",
+        },
+        {
+          property: "og:url",
+          content: "https://talli.benlabtest.space",
+        },
+        {
+          property: "og:type",
+          content: "website",
+        },
+        {
+          property: "og:locale",
+          content: "en_US",
+        },
+        {
+          property: "og:site_name",
+          content: "Talli",
+        },
+        {
+          property: "og:image:width",
+          content: "1200",
+        },
+        {
+          property: "og:image:height",
+          content: "630",
+        },
+        {
+          property: "og:image:alt",
+          content: "Talli is a platform for creating and managing collections.",
+        },
+      ]
+    }
+  },
   component: RootLayout,
 });
 
