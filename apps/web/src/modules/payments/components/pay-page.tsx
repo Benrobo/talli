@@ -3,16 +3,11 @@ import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { cn } from "@app/ui";
-import { Button, Card, Input, Spotlight } from "@/components/ui";
+import { Button, Card, Input } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
 import { Icon } from "@benrobo/iconary/react";
 import {
   AlertCircleIcon,
-  BankIcon,
-  Clock01Icon,
-  Copy01Icon,
-  Download01Icon,
-  LockIcon,
   PlusSignIcon,
   Tick02Icon,
   TickDouble02Icon,
@@ -24,6 +19,12 @@ import type {
   CollectionPayCheckoutResult,
   CollectionPayMember,
 } from "@/api/http/v1/collections/collections.types";
+import {
+  CheckoutSecureFooter,
+  NombaPayDoneContent,
+  NombaPayTransferActions,
+  NombaPayTransferContent,
+} from "@/modules/payments/components/nomba-checkout-ui";
 
 type Stage = "pick" | "pay-name" | "pay-amount" | "pay" | "done";
 
@@ -220,10 +221,7 @@ export function PayPage() {
             <Button block size="lg" disabled={submitting || !amountInput} onClick={continueFromAmount}>
               {amountInput ? `Pay ${formatNaira(Number(amountInput) * 100)}` : "Enter an amount"}
             </Button>
-            <div className="mt-3 flex items-center justify-center gap-1.5 text-[11.5px] text-content-faint">
-              <Icon icon={LockIcon} size={12} />
-              Secured by Nomba · money goes straight to the group
-            </div>
+            <CheckoutSecureFooter note="Secured by Nomba · money goes straight to the group" />
           </div>
         }
       >
@@ -270,10 +268,7 @@ export function PayPage() {
                 ? "Continue"
                 : "Select your name"}
           </Button>
-          <div className="mt-3 flex items-center justify-center gap-1.5 text-[11.5px] text-content-faint">
-            <Icon icon={LockIcon} size={12} />
-            Secured by Nomba · money goes straight to the group
-          </div>
+            <CheckoutSecureFooter note="Secured by Nomba · money goes straight to the group" />
         </motion.div>
       }
     >
@@ -615,57 +610,19 @@ function PayStage({
   return (
     <MobileScreen
       footer={
-        <div className="flex flex-col items-center gap-3">
-          <a
-            href={checkout.checkoutUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-[13px] font-medium text-iris-deep"
-          >
-            Select another payment method →
-          </a>
-          <button onClick={onPaid} className="text-[12px] text-content-faint">
-            I've sent the transfer
-          </button>
+        <div>
+          <NombaPayTransferActions checkoutUrl={checkout.checkoutUrl} onPaid={onPaid} />
+          <CheckoutSecureFooter note="Secured by Nomba · money goes straight to the group" />
         </div>
       }
     >
-      <Spotlight className="mb-6 p-6 text-center">
-        <div className="mb-1.5 text-[13px] text-white/70">{payerName}, transfer</div>
-        <div className="tabular text-[42px] font-extrabold leading-none tracking-[-0.03em]">
-          {formatNaira(checkout.amount)}
-        </div>
-        <div className="mt-2 text-[13px] text-white/70">for {title}</div>
-      </Spotlight>
-
-      <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-        <Card className="p-5">
-          <div className="mb-4 flex items-center gap-2 text-[12px] font-medium text-content-muted">
-            <Icon icon={BankIcon} size={15} />
-            {checkout.flashBankName}
-          </div>
-          <div className="mb-1 text-[11px] uppercase tracking-wide text-content-faint">Account number</div>
-          <button onClick={onCopy} className="flex w-full items-center justify-between">
-            <span className="tabular text-[30px] font-bold tracking-tight">{checkout.flashAccountNumber}</span>
-            <span
-              className={cn(
-                "flex size-9 items-center justify-center rounded-[10px] transition-colors",
-                copied ? "bg-emerald-soft text-emerald-deep" : "bg-iris-soft text-iris-deep"
-              )}
-            >
-              <Icon icon={copied ? Tick02Icon : Copy01Icon} size={16} />
-            </span>
-          </button>
-          {checkout.flashAccountName ? (
-            <div className="mt-3 text-[12.5px] text-content-muted">{checkout.flashAccountName}</div>
-          ) : null}
-        </Card>
-      </motion.div>
-
-      <div className="mt-5 flex items-center justify-center gap-1.5 rounded-[12px] bg-amber-soft px-3 py-2.5 text-[12px] text-amber-deep">
-        <Icon icon={Clock01Icon} size={13} />
-        Waiting for your transfer — this updates automatically.
-      </div>
+      <NombaPayTransferContent
+        transferLabel={`${payerName}, transfer`}
+        title={title}
+        checkout={checkout}
+        copied={copied}
+        onCopy={onCopy}
+      />
     </MobileScreen>
   );
 }
@@ -683,38 +640,12 @@ function DoneStage({
 }) {
   return (
     <MobileScreen>
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <motion.span
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 18 }}
-          className="mb-6 flex size-20 items-center justify-center rounded-full bg-emerald-soft text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_12px_28px_-8px_rgba(47,163,107,0.5)]"
-        >
-          <Icon icon={Tick02Icon} size={40} strokeWidth={2.5} />
-        </motion.span>
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <div className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">
-            You're all set, {payerName}!
-          </div>
-          <p className="mt-2 text-[14px] text-content-muted">
-            {formatNaira(amount)} paid for {title}.
-          </p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 w-full"
-        >
-          <div className="mb-4 flex items-center justify-center gap-1.5 rounded-[12px] bg-emerald-soft px-3 py-2.5 text-[12.5px] text-emerald-deep">
-            <Icon icon={Download01Icon} size={13} />
-            Your receipt is on its way.
-          </div>
-          <Button block variant="secondary" size="lg" onClick={onBack}>
-            Back to collection
-          </Button>
-        </motion.div>
-      </div>
+      <NombaPayDoneContent
+        headline={`You're all set, ${payerName}!`}
+        description={`${formatNaira(amount)} paid for ${title}.`}
+        backLabel="Back to collection"
+        onBack={onBack}
+      />
     </MobileScreen>
   );
 }
