@@ -21,7 +21,7 @@ export function SectionCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[16px] border border-hairline bg-card shadow-card",
+        "overflow-hidden rounded-[18px] border border-hairline bg-card shadow-card",
         className
       )}
     >

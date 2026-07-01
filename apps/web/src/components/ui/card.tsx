@@ -13,9 +13,9 @@ function Card({ className, tone = "light", padded = true, ...props }: CardProps)
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col rounded-[16px] text-card-foreground",
+        "flex flex-col rounded-[18px] text-card-foreground",
         tone === "light" && "border border-hairline bg-card shadow-card",
-        tone === "night" && "bg-night text-white",
+        tone === "night" && "band-night text-white shadow-lift",
         padded && "p-5",
         className
       )}

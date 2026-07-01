@@ -6,6 +6,7 @@ import {
   Avatar,
   Button,
   Card,
+  IconChip,
   ProgressBar,
   SectionCard,
   StatCard,
@@ -36,6 +37,12 @@ const ACTIVITY_ICONS: Record<ActivityKind, IconData> = {
   paid: CheckmarkCircle02Icon,
   sent: ArrowUpRight01Icon,
   saved: PlusSignIcon,
+};
+
+const ACTIVITY_TONES: Record<ActivityKind, "emerald" | "iris" | "amber"> = {
+  paid: "emerald",
+  sent: "iris",
+  saved: "amber",
 };
 
 function greeting(): string {
@@ -76,11 +83,11 @@ export function HomePage() {
           </div>
         </div>
         <div className="flex items-center gap-2.5">
-          <label className="hidden items-center gap-2 rounded-[10px] border border-hairline bg-card px-3 shadow-card sm:flex">
+          <label className="hidden items-center gap-2 rounded-[12px] border border-hairline bg-inset px-3.5 sm:flex">
             <Icon icon={Search01Icon} size={16} className="text-content-faint" />
             <input
               placeholder="Search"
-              className="h-9 w-40 bg-transparent text-[13px] text-foreground placeholder:text-content-faint focus:outline-none"
+              className="h-10 w-44 bg-transparent text-[13px] text-foreground placeholder:text-content-faint focus:outline-none"
             />
           </label>
           <Link to="/collections">
@@ -163,7 +170,7 @@ export function HomePage() {
               />
               <div className="mt-4 flex items-center justify-between border-t border-hairline-soft pt-4">
                 <span className="inline-flex items-center gap-1.5 text-[12.5px] text-content-muted">
-                  <Icon icon={CheckmarkCircle02Icon} size={15} className="text-emerald-600" />
+                  <Icon icon={CheckmarkCircle02Icon} size={15} className="text-emerald-deep" />
                   {activeCollection.paid} of {activeCollection.members} paid
                 </span>
                 <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-iris-deep">
@@ -198,9 +205,7 @@ export function HomePage() {
                   className="group block rounded-lg"
                 >
                   <div className="mb-1.5 flex items-center justify-between text-[13px]">
-                    <span className="font-medium transition-colors group-hover:text-iris-deep">
-                      {jar.name}
-                    </span>
+                    <span className="font-medium">{jar.name}</span>
                     <span className="tabular text-content-muted">
                       {formatNairaShort(jar.saved)} / {formatNairaShort(jar.target)}
                     </span>
@@ -239,15 +244,15 @@ function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
       to={item.link.to}
       params={"params" in item.link ? item.link.params : undefined}
       className={cn(
-        "flex items-center gap-3 px-[18px] py-3.5 transition-colors hover:bg-muted/30",
+        "flex items-center gap-3 px-[18px] py-3.5 transition-colors hover:bg-inset",
         !last && "border-b border-hairline-soft"
       )}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-muted text-content-muted">
+      <IconChip tone={ACTIVITY_TONES[item.kind]} size="md">
         <Icon icon={ACTIVITY_ICONS[item.kind]} size={16} />
-      </span>
+      </IconChip>
       <div className="flex-1 text-[13.5px]">{renderActivityText(item)}</div>
-      <div className="text-[12px] text-content-faint">{item.when}</div>
+      <div className="tabular text-[12px] text-content-faint">{item.when}</div>
     </Link>
   );
 }

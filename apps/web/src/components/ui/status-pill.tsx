@@ -6,11 +6,11 @@ const statusPill = cva(
   {
     variants: {
       status: {
-        success: "bg-emerald-500/10 text-emerald-600",
+        success: "bg-emerald-soft text-emerald-deep",
         pending: "bg-amber-soft text-amber-deep",
-        neutral: "bg-[rgba(25,23,38,0.05)] text-content-muted",
+        neutral: "bg-inset text-content-muted",
         info: "bg-iris-soft text-iris-deep",
-        danger: "bg-rose-soft/25 text-rose",
+        danger: "bg-rose-soft text-rose-deep",
       },
     },
     defaultVariants: { status: "neutral" },
@@ -24,7 +24,7 @@ interface StatusPillProps extends VariantProps<typeof statusPill> {
 }
 
 const DOT: Record<NonNullable<StatusPillProps["status"]>, string> = {
-  success: "bg-emerald-500",
+  success: "bg-emerald",
   pending: "bg-amber",
   neutral: "bg-content-faint",
   info: "bg-iris",

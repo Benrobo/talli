@@ -3,6 +3,7 @@ import {
   DataTable,
   EmptyState,
   FadeIn,
+  IconChip,
   PageHeader,
   StatCard,
   type Column,
@@ -36,7 +37,7 @@ const columns: Column<Transfer>[] = [
     key: "typed",
     header: "Typed in chat",
     render: (t) => (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 text-[11.5px] text-content-muted">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-inset px-2.5 py-1 text-[11.5px] text-content-muted">
         <Icon icon={BubbleChatIcon} size={12} className="text-content-faint" />
         {t.typed}
       </span>
@@ -112,9 +113,9 @@ export function SentPage() {
 
       <FadeIn delay={0.16}>
         <div className="mt-3.5 flex items-center gap-3 rounded-[16px] border border-hairline bg-card p-4 shadow-card">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-iris-soft text-iris-deep">
+          <IconChip tone="iris" size="md">
             <Icon icon={BubbleChatIcon} size={17} />
-          </span>
+          </IconChip>
           <span className="text-[12.5px] text-content-muted">
             Every transfer is confirmed by you before it sends — Talli just reads the sentence.
           </span>

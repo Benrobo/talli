@@ -1,7 +1,8 @@
-import { cn } from "@app/ui";
 import type { ReactNode } from "react";
 import { Icon } from "@benrobo/iconary/react";
 import type { IconData } from "@benrobo/iconary/core";
+import { cn } from "@/lib/utils";
+import { IconChip, Spotlight, DeltaPill } from "./surface";
 
 interface StatCardProps {
   label: string;
@@ -9,7 +10,7 @@ interface StatCardProps {
   sub?: ReactNode;
   icon?: IconData;
   delta?: { value: string; direction: "up" | "down" };
-  tone?: "light" | "filled" | "night";
+  tone?: "light" | "filled";
   className?: string;
   children?: ReactNode;
 }
@@ -24,58 +25,46 @@ export function StatCard({
   className,
   children,
 }: StatCardProps) {
-  const filled = tone === "filled";
-  const night = tone === "night";
-  const dark = filled || night;
-
-  return (
-    <div
-      className={cn(
-        "rounded-[16px] p-5",
-        tone === "light" && "border border-hairline bg-card shadow-card",
-        filled && "bg-primary text-white",
-        night && "bg-night text-white",
-        className
-      )}
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <span className={cn("text-[13px] font-medium", dark ? "text-white/70" : "text-content-muted")}>
-          {label}
-        </span>
-        {icon ? (
-          <span
-            className={cn(
-              "flex size-8 items-center justify-center rounded-[10px]",
-              dark ? "bg-white/12 text-white" : "bg-iris-soft text-iris-deep"
-            )}
-          >
-            <Icon icon={icon} size={16} />
-          </span>
-        ) : null}
-      </div>
-
-      <div className="tabular text-[28px] font-bold tracking-[-0.02em]">{value}</div>
-
-      {delta || sub ? (
-        <div className="mt-3 flex items-center gap-2">
-          {delta ? (
-            <span
-              className={cn(
-                "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
-                dark
-                  ? "bg-white/15 text-white"
-                  : delta.direction === "up"
-                    ? "bg-emerald-500/10 text-emerald-600"
-                    : "bg-rose-soft/30 text-rose"
-              )}
-            >
-              {delta.value}
-              {delta.direction === "up" ? " ↑" : " ↓"}
+  if (tone === "filled") {
+    return (
+      <Spotlight className={cn("p-5", className)}>
+        <div className="mb-4 flex items-start justify-between">
+          <span className="text-[13px] font-medium text-white/75">{label}</span>
+          {icon ? (
+            <span className="flex size-10 items-center justify-center rounded-[12px] bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+              <Icon icon={icon} size={18} />
             </span>
           ) : null}
-          {sub ? (
-            <span className={cn("text-[12px]", dark ? "text-white/70" : "text-content-muted")}>{sub}</span>
-          ) : null}
+        </div>
+        <div className="font-display tabular text-[32px] font-bold leading-none tracking-[-0.02em]">{value}</div>
+        {delta || sub ? (
+          <div className="mt-3.5 flex items-center gap-2">
+            {delta ? <DeltaPill value={delta.value} direction={delta.direction} onDark /> : null}
+            {sub ? <span className="text-[12px] text-white/70">{sub}</span> : null}
+          </div>
+        ) : null}
+        {children}
+      </Spotlight>
+    );
+  }
+
+  return (
+    <div className={cn("rounded-[18px] border border-hairline bg-card p-5 shadow-card", className)}>
+      <div className="mb-4 flex items-start justify-between">
+        <span className="text-[13px] font-medium text-content-muted">{label}</span>
+        {icon ? (
+          <IconChip size="md" tone="iris">
+            <Icon icon={icon} size={18} />
+          </IconChip>
+        ) : null}
+      </div>
+      <div className="font-display tabular text-[30px] font-bold leading-none tracking-[-0.02em] text-foreground">
+        {value}
+      </div>
+      {delta || sub ? (
+        <div className="mt-3.5 flex items-center gap-2">
+          {delta ? <DeltaPill value={delta.value} direction={delta.direction} /> : null}
+          {sub ? <span className="text-[12px] text-content-muted">{sub}</span> : null}
         </div>
       ) : null}
       {children}

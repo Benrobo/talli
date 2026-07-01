@@ -6,16 +6,16 @@ import {
   Link01Icon,
   MoneySavingJarIcon,
   MoneySend02Icon,
-  Settings01Icon,
   UserGroupIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
 
-import { Logo } from "@/components/brand/logo";
+import { LogoMark } from "@/components/brand/logo";
 import { SidebarNavLink } from "@/components/layout/sidebar-nav-link";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
+import { Spotlight } from "@/components/ui";
 
 interface NavItem {
-  to: "/home" | "/collections" | "/savings" | "/sent" | "/receipts" | "/chats" | "/settings";
+  to: "/home" | "/collections" | "/savings" | "/sent" | "/receipts" | "/integrations";
   label: string;
   icon: IconData;
   exact?: boolean;
@@ -30,14 +30,13 @@ const MENU: NavItem[] = [
 ];
 
 const GENERAL: NavItem[] = [
-  { to: "/chats", label: "Integrations", icon: Link01Icon },
-  { to: "/settings", label: "Settings", icon: Settings01Icon },
+  { to: "/integrations", label: "Integrations", icon: Link01Icon },
 ];
 
 function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
   return (
     <div>
-      <div className="px-3 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-content-faint">
+      <div className="px-3 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.11em] text-content-faint">
         {label}
       </div>
       <nav className="flex flex-col gap-0.5">
@@ -54,22 +53,27 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
 
 export function Sidebar() {
   return (
-    <aside className="flex h-full w-[236px] shrink-0 flex-col border-r border-hairline bg-card">
-      <div className="flex items-center px-5 py-[18px]">
-        <Logo />
+    <aside className="flex h-full w-[248px] shrink-0 flex-col bg-card">
+      <div className="flex items-center gap-2.5 px-5 py-[18px]">
+        <span className="grad-chip flex size-9 items-center justify-center rounded-[11px] border border-hairline shadow-chip">
+          <LogoMark size={15} />
+        </span>
+        <span className="font-display text-[18px] font-bold tracking-[-0.02em] text-foreground">Talli</span>
       </div>
 
       <WorkspaceSwitcher />
 
-      <div className="flex flex-1 flex-col gap-6 px-3.5 py-5">
+      <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-3.5 py-5">
         <NavGroup label="Main menu" items={MENU} />
         <NavGroup label="General" items={GENERAL} />
       </div>
 
-      <div className="mx-3.5 mb-4 rounded-[14px] bg-night p-4 text-white">
-        <div className="mb-1 text-[11.5px] text-on-night">Total balance</div>
-        <div className="tabular text-[22px] font-bold leading-none">₦56,000</div>
-        <div className="mt-1.5 text-[11px] text-on-night-soft">across jars & collections</div>
+      <div className="shrink-0 p-3.5">
+        <Spotlight className="p-4">
+          <div className="mb-1 text-[11.5px] font-medium text-white/70">Total balance</div>
+          <div className="font-display tabular text-[24px] font-bold leading-none tracking-[-0.02em]">₦56,000</div>
+          <div className="mt-1.5 text-[11px] text-white/65">across jars &amp; collections</div>
+        </Spotlight>
       </div>
     </aside>
   );

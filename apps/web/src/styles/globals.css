@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 @import "@app/tailwind-config/globals.css";
 
@@ -34,40 +34,41 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
-  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-serif: "Inter", system-ui, sans-serif;
 }
 
 :root {
-  --background: #f6f5fb;
-  --foreground: #191726;
+  --background: #edecf3;
+  --foreground: #1b1830;
   --card: #ffffff;
-  --card-foreground: #191726;
+  --card-foreground: #1b1830;
   --popover: #ffffff;
-  --popover-foreground: #191726;
-  --primary: oklch(0.52 0.21 285);
+  --popover-foreground: #1b1830;
+  --primary: #6d4ae6;
   --primary-foreground: #ffffff;
   --secondary: #ffffff;
-  --secondary-foreground: #191726;
-  --muted: #e7e4f2;
-  --muted-foreground: #6e6b86;
-  --accent: oklch(0.52 0.21 285 / 0.12);
-  --accent-foreground: oklch(0.41 0.17 285);
-  --destructive: oklch(0.58 0.18 18);
+  --secondary-foreground: #1b1830;
+  --muted: #f0eef8;
+  --muted-foreground: #6b6880;
+  --accent: #eee9fc;
+  --accent-foreground: #5636c4;
+  --destructive: #e5484d;
   --destructive-foreground: #ffffff;
-  --border: rgba(25, 23, 38, 0.09);
-  --input: rgba(25, 23, 38, 0.09);
-  --ring: oklch(0.52 0.21 285);
-  --radius: 0.625rem;
-  --sidebar: #161427;
-  --sidebar-foreground: #a8a5c0;
-  --sidebar-primary: oklch(0.52 0.21 285);
+  --border: rgba(27, 24, 48, 0.07);
+  --input: rgba(27, 24, 48, 0.07);
+  --ring: #6d4ae6;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #6b6880;
+  --sidebar-primary: #6d4ae6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(255, 255, 255, 0.06);
-  --sidebar-accent-foreground: #f4f3f9;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: oklch(0.52 0.21 285);
+  --sidebar-accent: #eee9fc;
+  --sidebar-accent-foreground: #5636c4;
+  --sidebar-border: rgba(27, 24, 48, 0.07);
+  --sidebar-ring: #6d4ae6;
 }
 
 @layer base {
@@ -87,7 +88,55 @@
 
   .tabular {
     font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
+}
+
+@utility band-iris {
+  background: var(--band-iris);
+}
+@utility band-night {
+  background: var(--band-night);
+}
+@utility grad-chip {
+  background: var(--grad-chip);
+}
+@utility grad-btn-white {
+  background: var(--grad-btn-white);
+}
+@utility grad-avatar {
+  background: var(--grad-avatar);
+}
+
+main::-webkit-scrollbar {
+  width: 10px;
+}
+main::-webkit-scrollbar-thumb {
+  background-color: rgba(27, 24, 48, 0.12);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+main::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(27, 24, 48, 0.2);
+}
+main::-webkit-scrollbar-track {
+  background: transparent;
+}
+main {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27, 24, 48, 0.12) transparent;
+}
+
+.t-press {
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.t-press:active {
+  transform: scale(0.985);
 }
 
 @keyframes spinnerBar {
@@ -96,5 +145,33 @@
   }
   100% {
     opacity: 0.25;
+  }
+}
+
+@keyframes tRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tShimmer {
+  0% {
+    transform: translateX(-120%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(320%) skewX(-12deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-press,
+  .t-press:active {
+    transition: none;
+    transform: none;
   }
 }

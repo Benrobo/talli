@@ -3,9 +3,12 @@ import { cn } from "@app/ui";
 import {
   Button,
   EmptyState,
+  IconChip,
   PageHeader,
   ProgressBar,
+  StatCard,
   StatusPill,
+  FadeIn,
   Stagger,
   StaggerItem,
   Pressable,
@@ -16,6 +19,7 @@ import {
   Coins01Icon,
   PlusSignIcon,
   UserGroupIcon,
+  Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, toPercent } from "@/lib/format";
 import { collections } from "@/data/mock/collections";
@@ -32,6 +36,9 @@ export function CollectionsPage() {
   const live = collections.filter((c) => c.status === "live").length;
   const closed = collections.filter((c) => c.status === "closed").length;
   const draft = collections.filter((c) => c.status === "draft").length;
+  const collectingNow = collections
+    .filter((c) => c.status === "live")
+    .reduce((sum, c) => sum + c.collectedMinor, 0);
 
   return (
     <div>
@@ -46,6 +53,19 @@ export function CollectionsPage() {
           />
         }
       />
+
+      {collections.length > 0 ? (
+        <FadeIn delay={0.05} className="mb-5">
+          <StatCard
+            tone="filled"
+            className="max-w-sm"
+            label="Collecting now"
+            value={formatNaira(collectingNow)}
+            icon={Wallet01Icon}
+            sub={`across ${live} live collection${live === 1 ? "" : "s"}`}
+          />
+        </FadeIn>
+      ) : null}
 
       {collections.length === 0 ? (
         <EmptyState
@@ -84,13 +104,13 @@ function CollectionRow({ collection }: { collection: Collection }) {
         to="/collections/$slug"
         params={{ slug: collection.slug }}
         className={cn(
-          "flex items-center gap-4 rounded-[16px] border border-hairline bg-card px-5 py-[18px] shadow-card transition-colors hover:border-iris/30",
+          "flex items-center gap-4 rounded-[18px] border border-hairline bg-card px-5 py-[18px] shadow-card transition-colors hover:bg-inset/50",
           isDraft && "opacity-[.86]"
         )}
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-muted text-content-muted">
+        <IconChip tone={collection.status === "live" ? "iris" : collection.status === "draft" ? "amber" : "neutral"} size="md">
           <Icon icon={Coins01Icon} size={18} />
-        </span>
+        </IconChip>
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2.5">

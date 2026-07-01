@@ -119,7 +119,7 @@ function ModeCard({
       onClick={onClick}
       className={cn(
         "rounded-xl border p-3 text-left transition-colors",
-        active ? "border-iris bg-iris-soft" : "border-hairline hover:bg-muted/40"
+        active ? "border-iris bg-iris-soft" : "border-hairline hover:bg-inset"
       )}
     >
       <div className="text-[13.5px] font-semibold">{title}</div>

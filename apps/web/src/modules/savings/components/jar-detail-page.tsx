@@ -3,6 +3,7 @@ import {
   Button,
   EmptyState,
   FadeIn,
+  IconChip,
   ListRow,
   ProgressBar,
   SectionCard,
@@ -124,12 +125,12 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
               <ListRow
                 key={deposit.when}
                 leading={
-                  <span className="flex size-9 items-center justify-center rounded-[11px] bg-emerald-500/10 text-emerald-600">
+                  <IconChip tone="emerald" size="md">
                     <Icon icon={Tick02Icon} size={16} />
-                  </span>
+                  </IconChip>
                 }
                 title={
-                  <span className="tabular font-semibold text-emerald-600">
+                  <span className="tabular font-semibold text-emerald-deep">
                     + {formatNaira(deposit.amountMinor)}
                   </span>
                 }

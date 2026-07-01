@@ -60,7 +60,7 @@ export function NewJarDialog({ trigger }: NewJarDialogProps) {
             />
           </label>
 
-          <div className="flex items-center justify-between rounded-xl border border-hairline bg-muted/30 px-4 py-3">
+          <div className="flex items-center justify-between rounded-[12px] border border-hairline bg-inset px-4 py-3">
             <div>
               <div className="text-[13.5px] font-medium">Lock this jar</div>
               <div className="text-[12px] text-content-muted">Can't withdraw until the unlock date</div>

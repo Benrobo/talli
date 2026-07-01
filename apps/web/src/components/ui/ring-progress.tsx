@@ -2,7 +2,6 @@ import { cn } from "@app/ui";
 import type { CSSProperties, ReactNode } from "react";
 
 interface RingProgressProps {
-  /** 0-100 */
   value: number;
   size?: number;
   thickness?: number;
@@ -10,11 +9,6 @@ interface RingProgressProps {
   children?: ReactNode;
 }
 
-/**
- * Conic progress ring used by savings jars. The conic-gradient stop is the
- * single data-driven value passed through a CSS variable; everything else is
- * expressed with utility classes.
- */
 export function RingProgress({
   value,
   size = 104,

@@ -9,13 +9,13 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, className }: DashboardLayoutProps) {
   return (
-    <div className="flex min-h-dvh bg-screen">
-      <div className="sticky top-0 h-dvh">
+    <div className="h-dvh overflow-hidden bg-canvas p-3">
+      <div className="mx-auto flex h-full max-w-[1440px] overflow-hidden rounded-[24px] border border-hairline bg-card shadow-card">
         <Sidebar />
+        <main className={cn("flex-1 overflow-y-auto bg-inset/60 px-7 py-6", className)}>
+          <div className="mx-auto max-w-[1080px]">{children}</div>
+        </main>
       </div>
-      <main className={cn("flex-1 overflow-x-hidden px-8 py-7", className)}>
-        <div className="mx-auto max-w-6xl">{children}</div>
-      </main>
     </div>
   );
 }

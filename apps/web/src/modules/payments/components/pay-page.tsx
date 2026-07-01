@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@app/ui";
-import { Button, Card, StatusPill, FadeIn } from "@/components/ui";
+import { Button, Card, IconChip, Spotlight, StatusPill, FadeIn } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
 import { Icon } from "@benrobo/iconary/react";
 import type { IconData } from "@benrobo/iconary/core";
@@ -64,15 +64,13 @@ export function PayPage() {
       </FadeIn>
 
       <FadeIn delay={0.05}>
-        <Card className="mb-4 items-center text-center">
-          <div className="mb-1.5 text-[12.5px] font-medium text-content-muted">You're paying for</div>
-          <div className="mb-4 text-[17px] font-semibold tracking-[-0.01em] text-foreground">
-            {purpose}
-          </div>
-          <div className="tabular text-[38px] font-bold leading-none tracking-[-0.02em] text-foreground">
+        <Spotlight className="mb-4 p-6 text-center">
+          <div className="mb-1.5 text-[12.5px] font-medium text-white/70">You're paying for</div>
+          <div className="mb-5 text-[17px] font-semibold tracking-[-0.01em] text-white">{purpose}</div>
+          <div className="tabular text-[42px] font-extrabold leading-none tracking-[-0.03em] text-white">
             {formatNaira(amountMinor)}
           </div>
-        </Card>
+        </Spotlight>
       </FadeIn>
 
       <FadeIn delay={0.1}>
@@ -93,18 +91,13 @@ export function PayPage() {
                 key={option.id}
                 onClick={() => setMethod(option.id)}
                 className={cn(
-                  "flex-row items-center gap-3 p-3.5 transition-colors cursor-pointer",
-                  selected ? "border-iris ring-[3px] ring-iris-soft" : "hover:bg-muted/40"
+                  "t-press flex-row items-center gap-3 p-3.5 transition-colors cursor-pointer",
+                  selected ? "border-iris ring-[3px] ring-iris-soft" : "hover:bg-inset"
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-[10px]",
-                    selected ? "bg-iris-soft text-iris-deep" : "bg-muted text-content-muted"
-                  )}
-                >
+                <IconChip tone={selected ? "iris" : "neutral"} size="md">
                   <Icon icon={option.icon} size={18} />
-                </span>
+                </IconChip>
                 <span className="flex-1">
                   <span className="block text-[14px] font-medium text-foreground">{option.label}</span>
                   <span className="block text-[11.5px] text-content-faint">{option.hint}</span>
@@ -140,9 +133,9 @@ function DetailRow({ icon, label, value, last }: DetailRowProps) {
         !last && "border-b border-hairline-soft"
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-muted text-content-muted">
+      <IconChip tone="neutral" size="sm">
         <Icon icon={icon} size={15} />
-      </span>
+      </IconChip>
       <span className="flex-1 text-[13px] text-content-muted">{label}</span>
       <span className="text-[13.5px] font-medium text-foreground">{value}</span>
     </div>
