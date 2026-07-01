@@ -1,15 +1,17 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import toast from "react-hot-toast";
 import { z } from "zod";
 import { cn } from "@app/ui";
-import { authApi } from "@/lib/auth";
+import type { AuthFormValues } from "@/api/http/v1/auth/auth.types";
 import { TalliLogo } from "@/components/brand/talli-logo";
-import { Button, Field, Input, TallyWatermark } from "@/components/ui";
+import { Button, TallyWatermark } from "@/components/ui";
 import { Icon } from "@benrobo/iconary/react";
 import { BankIcon, Invoice01Icon, LockIcon, SparklesIcon, UserGroupIcon } from "@benrobo/iconary/core/duotone-rounded";
+import { CreateAccountForm } from "./-components/create-account-form";
+import { LoginForm } from "./-components/login-form";
+import { OtpForm } from "./-components/otp-form";
+import { useAuthForm } from "./-components/use-auth-form";
 
 const authSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Mode = "login" | "signup";
+type Mode = AuthFormValues["mode"];
 type Stage = "details" | "code";
 
 const HIGHLIGHTS = [
@@ -50,58 +52,28 @@ const HIGHLIGHTS = [
 function AuthPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { redirect } = Route.useSearch();
 
-  const [mode, setMode] = useState<Mode>("login");
   const [stage, setStage] = useState<Stage>("details");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
 
-  const requestOtp = useMutation({
-    mutationFn: authApi.requestOtp,
-    onSuccess: () => {
-      setStage("code");
-      toast.success("Check your inbox for a 6-digit code.");
-    },
-    onError: () => toast.error("Couldn't send the code. Try again."),
-  });
-
-  const verifyOtp = useMutation({
-    mutationFn: authApi.verifyOtp,
-    onSuccess: (result) => {
-      queryClient.setQueryData(["me"], result.user);
-      toast.success(mode === "signup" ? "Welcome to Talli 🎉" : "Signed in.");
+  const { form, busy, verifyPending } = useAuthForm({
+    stage,
+    setStage,
+    redirect,
+    onSignedIn: () => {
       if (redirect) {
         router.history.push(redirect);
         return;
       }
       navigate({ to: "/app/home" });
     },
-    onError: () => toast.error("Invalid or expired code."),
   });
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (stage === "details") {
-      if (mode === "signup" && !name.trim()) {
-        toast.error("What should we call you?");
-        return;
-      }
-      requestOtp.mutate({ email, mode });
-    } else {
-      verifyOtp.mutate({ email, code, name: mode === "signup" ? name.trim() : undefined });
-    }
-  }
-
   function switchMode(next: Mode) {
-    setMode(next);
+    form.setFieldValue("mode", next);
     setStage("details");
-    setCode("");
+    form.setFieldValue("code", "");
   }
-
-  const busy = requestOtp.isPending || verifyOtp.isPending;
 
   return (
     <main className="flex min-h-dvh bg-screen">
@@ -120,152 +92,105 @@ function AuthPage() {
           </div>
 
           <div className="rounded-[24px] border border-hairline bg-card p-8 shadow-lift">
-            <div className="mb-6">
-              <div className="mb-5 inline-flex rounded-full bg-inset p-1">
-                {(["login", "signup"] as Mode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => switchMode(m)}
-                    className="relative rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors"
-                  >
-                    {mode === m ? (
-                      <motion.span
-                        layoutId="auth-mode-pill"
-                        className="absolute inset-0 rounded-full bg-card shadow-card"
-                        transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                      />
-                    ) : null}
-                    <span className={mode === m ? "relative text-foreground" : "relative text-content-muted"}>
-                      {m === "login" ? "Sign in" : "Create account"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <AnimatePresence mode="wait">
-                <motion.h1
-                  key={`${mode}-${stage}`}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2 }}
-                  className="font-display text-[27px] font-bold leading-tight tracking-[-0.02em]"
-                >
-                  {stage === "code"
-                    ? "Enter your code"
-                    : mode === "login"
-                      ? "Welcome back"
-                      : "Create your account"}
-                </motion.h1>
-              </AnimatePresence>
-              <p className="mt-1.5 text-[13.5px] text-content-muted">
-                {stage === "code"
-                  ? `We sent a 6-digit code to ${email}.`
-                  : "We'll email you a 6-digit code. No passwords."}
-              </p>
-            </div>
-
-            <form onSubmit={submit} className="space-y-4">
-              <AnimatePresence mode="wait" initial={false}>
-                {stage === "details" ? (
-                  <motion.div
-                    key="details"
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <AnimatePresence initial={false}>
-                      {mode === "signup" ? (
-                        <motion.div
-                          key="name-field"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                          className="overflow-hidden"
+            <form.Subscribe selector={(state) => ({ mode: state.values.mode, email: state.values.email })}>
+              {({ mode, email }) => (
+                <>
+                  <div className="mb-6">
+                    <div className="mb-5 inline-flex rounded-full bg-inset p-1">
+                      {(["login", "signup"] as Mode[]).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => switchMode(m)}
+                          className="relative rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors"
                         >
-                          <div className="px-0.5 pb-4 pt-0.5">
-                            <Field label="Your name">
-                              <Input
-                                required
-                                autoFocus
-                                placeholder="Ada Obi"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                              />
-                            </Field>
-                          </div>
-                        </motion.div>
-                      ) : null}
+                          {mode === m ? (
+                            <motion.span
+                              layoutId="auth-mode-pill"
+                              className="absolute inset-0 rounded-full bg-card shadow-card"
+                              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                            />
+                          ) : null}
+                          <span className={mode === m ? "relative text-foreground" : "relative text-content-muted"}>
+                            {m === "login" ? "Sign in" : "Create account"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      <motion.h1
+                        key={`${mode}-${stage}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className="font-display text-[27px] font-bold leading-tight tracking-[-0.02em]"
+                      >
+                        {stage === "code"
+                          ? "Enter your code"
+                          : mode === "login"
+                            ? "Welcome back"
+                            : "Create your account"}
+                      </motion.h1>
                     </AnimatePresence>
-                    <Field label="Email">
-                      <Input
-                        type="email"
-                        required
-                        autoFocus={mode === "login"}
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </Field>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="code"
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.2 }}
+                    <p className="mt-1.5 text-[13.5px] text-content-muted">
+                      {stage === "code"
+                        ? `We sent a 6-digit code to ${email}.`
+                        : "We'll email you a 6-digit code. No passwords."}
+                    </p>
+                  </div>
+
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void form.handleSubmit();
+                    }}
+                    className="space-y-4"
                   >
-                    <Field label="6-digit code">
-                      <Input
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        required
-                        autoFocus
-                        placeholder="000000"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                          setCode(digits);
-                          if (digits.length === 6 && !verifyOtp.isPending) {
-                            verifyOtp.mutate({
-                              email,
-                              code: digits,
-                              name: mode === "signup" ? name.trim() : undefined,
-                            });
-                          }
-                        }}
-                        className="tabular text-center text-[20px] tracking-[0.4em]"
-                      />
-                    </Field>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <AnimatePresence mode="wait" initial={false}>
+                      {stage === "code" ? (
+                        <OtpForm
+                          form={form}
+                          verifyPending={verifyPending}
+                          onComplete={() => void form.handleSubmit()}
+                        />
+                      ) : mode === "login" ? (
+                        <LoginForm form={form} />
+                      ) : (
+                        <CreateAccountForm form={form} />
+                      )}
+                    </AnimatePresence>
 
-              <Button type="submit" size="lg" block loading={busy}>
-                {stage === "code" ? "Verify & continue" : "Send code"}
-              </Button>
-            </form>
-
-            {stage === "code" ? (
-              <button
-                type="button"
-                onClick={() => setStage("details")}
-                className="mt-4 w-full text-[13px] text-content-muted transition-colors hover:text-foreground"
-              >
-                ← Use a different email
-              </button>
-            ) : (
-              <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[12px] text-content-faint">
-                <Icon icon={LockIcon} size={12} />
-                Passwordless & secure
-              </p>
-            )}
+                    {stage === "details" ? (
+                      <>
+                        <Button type="submit" size="lg" block loading={busy}>
+                          Send code
+                        </Button>
+                        <p className="flex items-center justify-center gap-1.5 text-center text-[12px] text-content-faint">
+                          <Icon icon={LockIcon} size={12} />
+                          Passwordless & secure
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Button type="submit" size="lg" block loading={busy}>
+                          Verify & continue
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => setStage("details")}
+                          className="w-full text-[13px] text-content-muted transition-colors hover:text-foreground"
+                        >
+                          ← Use a different email
+                        </button>
+                      </>
+                    )}
+                  </form>
+                </>
+              )}
+            </form.Subscribe>
           </div>
         </motion.div>
       </div>

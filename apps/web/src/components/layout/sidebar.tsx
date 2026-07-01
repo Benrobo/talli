@@ -14,6 +14,8 @@ import { LogoMark } from "@/components/brand/logo";
 import { SidebarNavLink } from "@/components/layout/sidebar-nav-link";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { Spotlight } from "@/components/ui";
+import { formatNaira } from "@/lib/format";
+import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
 
 interface NavItem {
   to: "/app/home" | "/app/collections" | "/app/savings" | "/app/sent" | "/app/receipts" | "/app/split" | "/app/integrations";
@@ -54,6 +56,9 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
 }
 
 export function Sidebar() {
+  const { data: metricsResponse } = useWalletMetrics();
+  const totalBalance = metricsResponse?.data.totalBalanceAcrossWorkspaces.amount ?? 0;
+
   return (
     <aside className="flex h-full w-[248px] shrink-0 flex-col bg-card">
       <div className="flex items-center gap-2.5 px-5 py-[18px]">
@@ -73,8 +78,10 @@ export function Sidebar() {
       <div className="shrink-0 p-3.5">
         <Spotlight className="p-4">
           <div className="mb-1 text-[11.5px] font-medium text-white/70">Total balance</div>
-          <div className="font-display tabular text-[24px] font-bold leading-none tracking-[-0.02em]">₦56,000</div>
-          <div className="mt-1.5 text-[11px] text-white/65">across jars &amp; collections</div>
+          <div className="font-display tabular text-[24px] font-bold leading-none tracking-[-0.02em]">
+            {formatNaira(totalBalance)}
+          </div>
+          <div className="mt-1.5 text-[11px] text-white/65">across all workspaces</div>
         </Spotlight>
       </div>
     </aside>

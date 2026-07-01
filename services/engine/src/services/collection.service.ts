@@ -34,6 +34,28 @@ export interface CollectionWithProgress extends Collection {
   enrolledCount: number;
 }
 
+export type CollectionPayMemberStatus = "available" | "claimed";
+
+export interface CollectionPayMemberView {
+  id: string;
+  displayName: string;
+  expectedAmount: number;
+  paidAmount: number;
+  status: CollectionPayMemberStatus;
+}
+
+export interface CollectionPayView {
+  title: string;
+  purpose: string;
+  currency: string;
+  collectionType: CollectionType;
+  amountPerMember: number | null;
+  targetAmount: number | null;
+  payTo: string;
+  due: string | null;
+  members: CollectionPayMemberView[];
+}
+
 export interface CreditResult {
   member: CollectionMember;
   collection: Collection;
@@ -104,6 +126,59 @@ class CollectionService {
         enrolledCount: members.length,
       };
     });
+  }
+
+  async getPayView(collectionId: string): Promise<CollectionPayView> {
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      include: {
+        members: { orderBy: { createdAt: "asc" } },
+        workspace: { select: { name: true } },
+      },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+    if (!["active", "partially_paid"].includes(collection.status)) {
+      throw new BadRequestException("This collection is not accepting payments");
+    }
+
+    return {
+      title: collection.title,
+      purpose: collection.purpose,
+      currency: collection.currency,
+      collectionType: collection.collectionType,
+      amountPerMember: collection.amountPerMember,
+      targetAmount: collection.targetAmount,
+      payTo: collection.workspace.name,
+      due: collection.deadline?.toISOString() ?? null,
+      members: collection.members.map((member) => ({
+        id: member.id,
+        displayName: member.displayName,
+        expectedAmount: member.expectedAmount,
+        paidAmount: member.paidAmount,
+        status:
+          collection.collectionType === "open_contribution"
+            ? "available"
+            : this.isMemberPaid(member)
+              ? "claimed"
+              : "available",
+      })),
+    };
+  }
+
+  async resolvePayMember(
+    collectionId: string,
+    input: { memberId?: string; payerName?: string; amount?: number }
+  ): Promise<CollectionMember> {
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      include: { members: true },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+    if (!["active", "partially_paid"].includes(collection.status)) {
+      throw new BadRequestException("This collection is not accepting payments");
+    }
+
+    return this.resolvePayMemberForCollection(collection, input);
   }
 
   async listPayableForChat(linkedChatId: string): Promise<Collection[]> {
@@ -201,7 +276,7 @@ class CollectionService {
   async updateStatus(
     workspaceId: string,
     collectionId: string,
-    status: "active" | "closed" | "cancelled"
+    status: "draft" | "active" | "closed" | "cancelled"
   ): Promise<Collection> {
     const collection = await prisma.collection.findFirst({
       where: { id: collectionId, workspaceId },
@@ -212,6 +287,80 @@ class CollectionService {
       where: { id: collectionId },
       data: { status },
     });
+  }
+
+  async update(
+    workspaceId: string,
+    collectionId: string,
+    input: {
+      title: string;
+      purpose?: string;
+      amountPerMember?: number;
+      targetAmount?: number;
+      deadline?: Date | null;
+    }
+  ): Promise<Collection> {
+    const collection = await prisma.collection.findFirst({
+      where: { id: collectionId, workspaceId },
+      include: {
+        members: { select: { paidAmount: true } },
+        payments: { where: { status: "successful" }, take: 1, select: { id: true } },
+      },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+
+    const hasPayments =
+      collection.payments.length > 0 || collection.members.some((member) => member.paidAmount > 0);
+
+    const data: Prisma.CollectionUpdateInput = {
+      title: input.title,
+      purpose: input.purpose ?? "",
+    };
+
+    if (input.deadline !== undefined) {
+      data.deadline = input.deadline;
+    }
+
+    if (!hasPayments) {
+      if (
+        input.amountPerMember !== undefined &&
+        collection.collectionType === "fixed_per_person"
+      ) {
+        data.amountPerMember = input.amountPerMember;
+      }
+      if (
+        input.targetAmount !== undefined &&
+        (collection.collectionType === "open_contribution" ||
+          collection.collectionType === "named_members")
+      ) {
+        data.targetAmount = input.targetAmount;
+      }
+    }
+
+    return prisma.collection.update({
+      where: { id: collectionId },
+      data,
+    });
+  }
+
+  async remove(workspaceId: string, collectionId: string): Promise<void> {
+    const collection = await prisma.collection.findFirst({
+      where: { id: collectionId, workspaceId },
+      include: {
+        members: { select: { paidAmount: true } },
+        payments: { where: { status: "successful" }, take: 1, select: { id: true } },
+      },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+
+    const hasPayments =
+      collection.payments.length > 0 || collection.members.some((member) => member.paidAmount > 0);
+    if (hasPayments) {
+      throw new BadRequestException("Can't delete a collection that already has payments");
+    }
+
+    await prisma.pendingPayment.deleteMany({ where: { collectionId } });
+    await prisma.collection.delete({ where: { id: collectionId } });
   }
 
   /** Adds a named member up front (for `named_members` collections). */
@@ -320,6 +469,131 @@ class CollectionService {
       collectedTotal,
       targetReached,
     };
+  }
+
+  private isMemberPaid(member: CollectionMember): boolean {
+    if (member.status === "paid") return true;
+    return member.expectedAmount > 0 && member.paidAmount >= member.expectedAmount;
+  }
+
+  private async resolvePayMemberForCollection(
+    collection: Collection & { members: CollectionMember[] },
+    input: { memberId?: string; payerName?: string; amount?: number }
+  ): Promise<CollectionMember> {
+    if (collection.collectionType === "open_contribution") {
+      return this.resolveOpenContributionMember(collection, input);
+    }
+
+    if (input.memberId) {
+      const member = collection.members.find((row) => row.id === input.memberId);
+      if (!member) throw new NotFoundException("Member not found");
+      if (this.isMemberPaid(member)) {
+        throw new BadRequestException("This member has already paid");
+      }
+      return member;
+    }
+
+    const payerName = input.payerName?.trim();
+    if (!payerName) throw new BadRequestException("Select or enter your name");
+
+    const existing = collection.members.find(
+      (row) => row.displayName.toLowerCase() === payerName.toLowerCase()
+    );
+    if (existing) {
+      if (this.isMemberPaid(existing)) {
+        throw new BadRequestException("This member has already paid");
+      }
+      return existing;
+    }
+
+    if (collection.collectionType === "fixed_per_person") {
+      const expectedAmount = collection.amountPerMember ?? 0;
+      if (expectedAmount <= 0) {
+        throw new BadRequestException("No amount set for this collection yet");
+      }
+      return prisma.collectionMember.create({
+        data: {
+          collectionId: collection.id,
+          displayName: payerName,
+          expectedAmount,
+        },
+      });
+    }
+
+    const expectedAmount = collection.amountPerMember ?? collection.targetAmount ?? 0;
+    if (expectedAmount <= 0) {
+      throw new BadRequestException("No amount set for this collection yet");
+    }
+
+    return prisma.collectionMember.create({
+      data: {
+        collectionId: collection.id,
+        displayName: payerName,
+        expectedAmount,
+      },
+    });
+  }
+
+  private async resolveOpenContributionMember(
+    collection: Collection & { members: CollectionMember[] },
+    input: { memberId?: string; payerName?: string; amount?: number }
+  ): Promise<CollectionMember> {
+    const checkoutAmount = input.amount;
+    if (!checkoutAmount || checkoutAmount <= 0) {
+      throw new BadRequestException("Enter an amount to contribute");
+    }
+
+    if (input.memberId) {
+      const member = collection.members.find((row) => row.id === input.memberId);
+      if (!member) throw new NotFoundException("Member not found");
+      if (await this.hasPendingPayment(member.id)) {
+        throw new BadRequestException("This member already has a payment in progress");
+      }
+
+      return prisma.collectionMember.update({
+        where: { id: member.id },
+        data: {
+          expectedAmount: member.paidAmount + checkoutAmount,
+          status: member.paidAmount > 0 ? "underpaid" : "not_paid",
+        },
+      });
+    }
+
+    const payerName = input.payerName?.trim();
+    if (!payerName) throw new BadRequestException("Select or enter your name");
+
+    const existing = collection.members.find(
+      (row) => row.displayName.toLowerCase() === payerName.toLowerCase()
+    );
+    if (existing) {
+      if (await this.hasPendingPayment(existing.id)) {
+        throw new BadRequestException("This member already has a payment in progress");
+      }
+
+      return prisma.collectionMember.update({
+        where: { id: existing.id },
+        data: {
+          expectedAmount: existing.paidAmount + checkoutAmount,
+          status: existing.paidAmount > 0 ? "underpaid" : "not_paid",
+        },
+      });
+    }
+
+    return prisma.collectionMember.create({
+      data: {
+        collectionId: collection.id,
+        displayName: payerName,
+        expectedAmount: checkoutAmount,
+      },
+    });
+  }
+
+  private async hasPendingPayment(memberId: string): Promise<boolean> {
+    const pending = await prisma.pendingPayment.findFirst({
+      where: { collectionMemberId: memberId, status: "pending" },
+      select: { id: true },
+    });
+    return pending !== null;
   }
 
   private memberStatus(paid: number, expected: number): CollectionMember["status"] {

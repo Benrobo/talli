@@ -15,12 +15,40 @@ import {
   Coins01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, toPercent } from "@/lib/format";
-import { jars, savingsSummary } from "@/data/mock/savings";
+import { useSavingsJars } from "@/api/http/v1/savings/savings.hooks";
 import { JarCard } from "@/modules/savings/components/jar-card";
 import { NewJarDialog } from "@/modules/savings/components/new-jar-dialog";
+import type { Jar } from "@/modules/savings/types";
+
+function toJar(record: {
+  id: string;
+  name: string;
+  currentAmount: number;
+  targetAmount: number | null;
+  status: string;
+  lockUntil: string | null;
+}): Jar {
+  return {
+    id: record.id,
+    name: record.name,
+    savedMinor: record.currentAmount,
+    targetMinor: record.targetAmount ?? record.currentAmount,
+    targetAmountMinor: record.targetAmount,
+    lockUntil: record.lockUntil,
+    status: record.status === "locked" ? "locked" : "active",
+    lockText: record.lockUntil ? `unlocks ${new Date(record.lockUntil).toLocaleDateString("en-NG")}` : "no lock",
+    canEditAmounts: record.currentAmount === 0,
+    deposits: [],
+  };
+}
 
 export function SavingsPage() {
-  const { totalSavedMinor, totalTargetMinor, jarCount, lockedCount } = savingsSummary;
+  const { data: response, isLoading, isError } = useSavingsJars();
+  const jars = (response?.data ?? []).map(toJar);
+  const totalSavedMinor = jars.reduce((sum, jar) => sum + jar.savedMinor, 0);
+  const totalTargetMinor = jars.reduce((sum, jar) => sum + jar.targetMinor, 0);
+  const jarCount = jars.length;
+  const lockedCount = jars.filter((jar) => jar.status === "locked").length;
   const overallPct = toPercent(totalSavedMinor, totalTargetMinor);
 
   const newJar = (
@@ -40,7 +68,23 @@ export function SavingsPage() {
         actions={jars.length > 0 ? newJar : null}
       />
 
-      {jars.length === 0 ? (
+      {isLoading ? (
+        <FadeIn delay={0.05}>
+          <EmptyState
+            icon={MoneySavingJarIcon}
+            title="Loading jars…"
+            description="Fetching your latest savings jars."
+          />
+        </FadeIn>
+      ) : isError ? (
+        <FadeIn delay={0.05}>
+          <EmptyState
+            icon={MoneySavingJarIcon}
+            title="Couldn't load jars"
+            description="Please refresh and try again."
+          />
+        </FadeIn>
+      ) : jars.length === 0 ? (
         <FadeIn delay={0.05}>
           <EmptyState
             icon={MoneySavingJarIcon}

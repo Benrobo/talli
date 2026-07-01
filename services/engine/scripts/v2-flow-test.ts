@@ -23,7 +23,7 @@ async function main() {
     bankName: "Nombank MFB",
   });
   let paid = false;
-  nomba.checkout.confirmReceipt = async () => ({ status: paid, order: { orderReference: "x", amount: 5000 } });
+  nomba.checkout.confirmReceipt = async () => ({ status: paid, order: { orderReference: "x", amount: 50 } });
 
   const wallet = await walletService.ensureWallet(user.id);
   const start = wallet.balance;
