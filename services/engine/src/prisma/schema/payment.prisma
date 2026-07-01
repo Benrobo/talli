@@ -2,6 +2,18 @@ enum PaymentProvider {
   nomba
 }
 
+enum PendingPaymentStatus {
+  pending
+  completed
+  expired
+  failed
+}
+
+enum PendingPaymentPurpose {
+  topup
+  collection
+}
+
 enum PaymentStatus {
   pending
   successful
@@ -42,4 +54,31 @@ model Payment {
   @@index([providerOrderId])
   @@index([status])
   @@map("payments")
+}
+
+/// A queued inbound bank transfer reconciled by polling (not webhooks). Serves
+/// wallet top-ups (walletId) and collection payments (collectionMemberId). The
+/// flash account number is what the payer transfers to.
+model PendingPayment {
+  id                  String                @id @default(cuid())
+  orderRefId          String                @unique
+  purpose             PendingPaymentPurpose
+  walletId            String?
+  collectionId        String?
+  collectionMemberId  String?
+  payerPlatformUserId String?
+  amount              Int
+  flashAccountNumber  String?
+  flashBankName       String?
+  flashAccountName    String?
+  status              PendingPaymentStatus  @default(pending)
+  pollAttempts        Int                   @default(0)
+  expiresAt           DateTime?
+  completedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("pending_payments")
 }
