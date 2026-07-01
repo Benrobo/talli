@@ -15,6 +15,11 @@ export interface RouterContext {
   queryClient: QueryClient;
 }
 
+const META_TITLE = "Talli — AI Treasurer & Savings Assistant";
+const META_DESCRIPTION =
+  "Talli is an AI treasurer and savings assistant for collecting, sending, splitting, and tracking payments.";
+const META_IMAGE_ALT = "Talli — AI treasurer and savings assistant";
+
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location, context }) => {
     if (!isProtectedPath(location.pathname)) return { user: null };
@@ -36,20 +41,20 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     return  {
       meta: [
         {
-          title: "Talli",
-          description: "Talli is an AI-powered group treasurer that helps people collect, split, save, send, and track money directly inside their chats.",
+          title: META_TITLE,
+          description: META_DESCRIPTION,
         },
         {
           name: "description",
-          content: "Talli is an AI-powered group treasurer that helps people collect, split, save, send, and track money directly inside their chats.",
+          content: META_DESCRIPTION,
         },
         {
           property: "og:title",
-          content: "Talli",
+          content: META_TITLE,
         },
         {
           property: "og:description",
-          content: "Talli is an AI-powered group treasurer that helps people collect, split, save, send, and track money directly inside their chats.",
+          content: META_DESCRIPTION,
         },
         {
           property: "og:image",
@@ -81,7 +86,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         },
         {
           property: "og:image:alt",
-          content: "Talli is a platform for creating and managing collections.",
+          content: META_IMAGE_ALT,
         },
       ]
     }

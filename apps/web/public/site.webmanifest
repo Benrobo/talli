@@ -1,7 +1,7 @@
 {
   "name": "Talli",
   "short_name": "Talli",
-  "description": "The AI treasurer for group money — collect, split, save and track payments in chat.",
+  "description": "Talli is an AI treasurer and savings assistant for collecting, sending, splitting, and tracking payments.",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
