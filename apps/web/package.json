@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:portless": "portless talli.localhost vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview --port 7194",
     "type-check": "tsc --noEmit",
     "lint": "echo 'no lint configured'",
