@@ -3,6 +3,7 @@ import type {
   Collection,
   CollectionMember,
   CollectionType,
+  Payment,
   Prisma,
 } from "@prisma/client";
 import prisma from "../prisma/index.js";
@@ -159,6 +160,41 @@ class CollectionService {
     ]);
 
     return { members, total, page, pageSize };
+  }
+
+  /**
+   * Lists the successful payments made into a collection, paginated and
+   * newest-first. Reads the permanent {@link Payment} ledger (the system of
+   * record written when a transfer settles), not the in-flight pending rows.
+   * Validates the collection belongs to the workspace before reading, and
+   * returns the page plus total count for page metadata.
+   */
+  async listPayments(
+    workspaceId: string,
+    collectionId: string,
+    options: { page: number; pageSize: number }
+  ): Promise<{ payments: Payment[]; total: number; page: number; pageSize: number }> {
+    const collection = await prisma.collection.findFirst({
+      where: { id: collectionId, workspaceId },
+      select: { id: true },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+
+    const page = Math.max(1, options.page);
+    const pageSize = Math.min(100, Math.max(1, options.pageSize));
+    const where = { collectionId, status: "successful" as const };
+
+    const [payments, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        orderBy: { paidAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.payment.count({ where }),
+    ]);
+
+    return { payments, total, page, pageSize };
   }
 
   /** Updates a collection's status (e.g. close or cancel it). */

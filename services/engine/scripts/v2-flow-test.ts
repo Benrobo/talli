@@ -1,7 +1,7 @@
 import prisma from "../src/prisma/index.js";
 import { nomba } from "../src/integrations/nomba/index.js";
 import { walletService } from "../src/services/wallet.service.js";
-import { pendingPaymentService } from "../src/services/pending-payment.service.js";
+import { paymentService } from "../src/services/payment.service.js";
 import { savingsService } from "../src/services/savings.service.js";
 
 function check(label: string, ok: boolean) {
@@ -34,18 +34,18 @@ async function main() {
   check("pending payment created (pending)", topup.pendingPayment.status === "pending");
 
   console.log("\n=== reconcile before payment (not yet paid) ===");
-  let done = await pendingPaymentService.reconcile(topup.pendingPayment.id);
+  let done = await paymentService.reconcile(topup.pendingPayment.id);
   let w = await walletService.getByUser(user.id);
   check("not credited while unpaid", !done && w!.balance === start);
 
   console.log("\n=== reconcile after payment lands ===");
   paid = true;
-  done = await pendingPaymentService.reconcile(topup.pendingPayment.id);
+  done = await paymentService.reconcile(topup.pendingPayment.id);
   w = await walletService.getByUser(user.id);
   check("wallet credited 5000", done && w!.balance === start + 5000);
 
   console.log("\n=== reconcile again (idempotent — no double credit) ===");
-  await pendingPaymentService.reconcile(topup.pendingPayment.id);
+  await paymentService.reconcile(topup.pendingPayment.id);
   w = await walletService.getByUser(user.id);
   check("no double credit (status guard)", w!.balance === start + 5000);
 

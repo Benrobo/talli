@@ -1,7 +1,7 @@
 import prisma from "../../../prisma/index.js";
 import logger from "../../../lib/logger.js";
 import { collectionService } from "../../../services/collection.service.js";
-import { pendingPaymentService } from "../../../services/pending-payment.service.js";
+import { paymentService } from "../../../services/payment.service.js";
 import { messages } from "../ui/messages.js";
 import { payButton } from "../ui/keyboards.js";
 import type { TalliContext } from "../types.js";
@@ -39,7 +39,7 @@ export async function handlePay(ctx: TalliContext, collectionId: string): Promis
       return;
     }
 
-    const { flashAccountNumber, flashBankName } = await pendingPaymentService.create({
+    const { flashAccountNumber, flashBankName } = await paymentService.create({
       purpose: "collection",
       amount: member.expectedAmount,
       collectionId,

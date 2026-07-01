@@ -24,6 +24,8 @@ router.get("/collections/:id", useCatchErrors(isAuthenticated(c.get.bind(c))));
 
 router.get("/collections/:id/members", useCatchErrors(isAuthenticated(c.listMembers.bind(c))));
 
+router.get("/collections/:id/payments", useCatchErrors(isAuthenticated(c.listPayments.bind(c))));
+
 router.post(
   "/collections/:id/members",
   validateSchema(addMemberSchema),

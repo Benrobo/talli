@@ -5,7 +5,7 @@ import type {
   WalletTransactionReason,
 } from "@prisma/client";
 import prisma from "../prisma/index.js";
-import { pendingPaymentService, type CreatedPending } from "./pending-payment.service.js";
+import { paymentService, type CreatedPending } from "./payment.service.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
 export type LedgerReason = WalletTransactionReason;
@@ -68,7 +68,7 @@ class WalletService {
     const wallet = await this.ensureWallet(userId);
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
 
-    return pendingPaymentService.create({
+    return paymentService.create({
       purpose: "topup",
       amount,
       walletId: wallet.id,

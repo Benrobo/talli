@@ -61,6 +61,27 @@ class CollectionController {
     });
   }
 
+  async listPayments(ctx: Context) {
+    const workspaceId = await this.workspaceId(ctx);
+    const page = Number(ctx.req.query("page") ?? "1");
+    const pageSize = Number(ctx.req.query("pageSize") ?? "20");
+
+    const result = await collectionService.listPayments(workspaceId, ctx.req.param("id") ?? "", {
+      page: Number.isFinite(page) ? page : 1,
+      pageSize: Number.isFinite(pageSize) ? pageSize : 20,
+    });
+
+    return sendResponse.success(ctx, "Payments fetched", 200, {
+      payments: result.payments,
+      pagination: {
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.pageSize),
+      },
+    });
+  }
+
   async addMember(ctx: Context) {
     const workspaceId = await this.workspaceId(ctx);
     const input = ctx.get("validatedData") as AddMemberInput;

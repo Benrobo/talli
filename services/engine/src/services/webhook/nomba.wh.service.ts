@@ -4,7 +4,7 @@ import { webhookService } from "./webhook.service.js";
 
 /**
  * Verifies and records Nomba webhooks. In v2 crediting happens via polling (see
- * `pending-payment.service` + the reconcile cron), so this only stores the event
+ * `payment.service` + the reconcile cron), so this only stores the event
  * for audit; it is not load-bearing.
  */
 class NombaWebhookService {

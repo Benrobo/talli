@@ -1,7 +1,7 @@
 import type { Collection } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import { collectionService } from "./collection.service.js";
-import { pendingPaymentService } from "./pending-payment.service.js";
+import { paymentService } from "./payment.service.js";
 import { BadRequestException } from "../lib/exception.js";
 import type { Intent, SplitMode } from "../schemas/intent.schema.js";
 
@@ -138,7 +138,7 @@ class SplitService {
           displayName: share.name,
           expectedAmount: share.amount,
         });
-        const pending = await pendingPaymentService.create({
+        const pending = await paymentService.create({
           purpose: "collection",
           amount: share.amount,
           collectionId: collection.id,
