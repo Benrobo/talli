@@ -70,3 +70,4 @@ src/routeTree.gen.ts
 
 # Local git history tooling (never commit)
 scripts/rewrite-commit-dates*
+.vercel
