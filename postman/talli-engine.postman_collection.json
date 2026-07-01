@@ -16,6 +16,7 @@
     { "key": "linkedChatId", "value": "" },
     { "key": "collectionId", "value": "" },
     { "key": "collectionMemberId", "value": "" },
+    { "key": "savingsJarId", "value": "" },
     { "key": "billSplitId", "value": "" },
     { "key": "billSplitToken", "value": "" },
     { "key": "billSplitItemId", "value": "" },
@@ -322,6 +323,56 @@
             "description": "Hits LIVE Nomba — returns a real flash account number. Transfer to it from a bank app; the cron credits the wallet.",
             "body": { "mode": "raw", "raw": "{\n  \"amount\": 1000\n}" },
             "url": { "raw": "{{baseUrl}}/wallet/topup", "host": ["{{baseUrl}}"], "path": ["wallet", "topup"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Savings",
+      "description": "Savings jars for the active workspace.",
+      "item": [
+        {
+          "name": "List savings jars",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/savings", "host": ["{{baseUrl}}"], "path": ["savings"] }
+          }
+        },
+        {
+          "name": "Create savings jar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) pm.collectionVariables.set('savingsJarId', res.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Emergency\",\n  \"targetAmount\": 1000000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/savings", "host": ["{{baseUrl}}"], "path": ["savings"] }
+          }
+        },
+        {
+          "name": "Get savings jar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/savings/{{savingsJarId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["savings", "{{savingsJarId}}"]
+            }
           }
         }
       ]
