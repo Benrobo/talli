@@ -69,6 +69,7 @@ What each intent means (classify the message into exactly one):
   and a caption like "let everyone pick what they chose" or "each person selects
   their items". Set status "ready" when a title is implied or can default to
   "Receipt split"; items come from the receipt parser, not from you — omit "items".
+  "Identify the quantity of each item that is on the receipt and if that does not exist set it to 1"
   Do NOT use this for even/custom/by_count splits — those are split_payment.
 
 Fields:
