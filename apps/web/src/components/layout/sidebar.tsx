@@ -83,7 +83,7 @@ export function Sidebar() {
           <div className="font-display tabular text-[24px] font-bold leading-none tracking-[-0.02em]">
             {formatNaira(totalBalance)}
           </div>
-          <div className="mt-1.5 text-[11px] text-white/65">across jars &amp; collections</div>
+          <div className="mt-1.5 text-[11px] text-white/65">across all workspaces</div>
         </Spotlight>
       </div>
     </aside>
