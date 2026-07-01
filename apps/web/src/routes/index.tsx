@@ -78,34 +78,37 @@ function PixelEyebrow({ children, onDark }: { children: ReactNode; onDark?: bool
   );
 }
 
+function StruckWord({ children }: { children: ReactNode }) {
+  return (
+    <span className="relative inline-block whitespace-nowrap text-iris">
+      {children}
+      <svg
+        aria-hidden
+        viewBox="0 0 200 28"
+        preserveAspectRatio="none"
+        className="absolute left-[-3%] top-1/2 h-[0.5em] w-[106%] -translate-y-[36%] text-iris/40"
+        fill="none"
+      >
+        <path d="M3 22 L197 7" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
 function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-hairline">
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-stretch lg:grid-cols-[1fr_0.92fr]">
         <div className="flex flex-col justify-center px-6 py-16 sm:px-8 lg:py-24">
-          <PixelEyebrow>Chat-native treasurer</PixelEyebrow>
-          <h1 className="mt-6 font-display text-[clamp(42px,6.2vw,68px)] font-bold leading-[0.95] tracking-[-0.045em]">
-            Everyone paid?
+          <PixelEyebrow>Built for chat</PixelEyebrow>
+          <h1 className="mt-6 font-display text-[3.5rem] font-bold leading-[0.95] tracking-[-0.045em]">
+            Collect money where you already talk.
             <br />
-            Talli keeps{" "}
-            <span className="relative inline-block whitespace-nowrap text-iris">
-              count
-              <svg
-                aria-hidden
-                viewBox="0 0 200 28"
-                preserveAspectRatio="none"
-                className="absolute left-[-3%] top-1/2 h-[0.5em] w-[106%] -translate-y-[36%] text-iris/40"
-                fill="none"
-              >
-                <path d="M3 22 L197 7" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
-              </svg>
-            </span>
-            .
+            Talli keeps the <StruckWord>count</StruckWord>.
           </h1>
           <p className="mt-7 max-w-[440px] text-[16px] leading-relaxed text-content-muted sm:text-[17px]">
-            The AI treasurer for groups that collect money in chat. Talli collects, tracks who paid,
-            runs savings jars and answers payment questions — without spreadsheets, screenshots or
-            manual reminders.
+            Message Talli to open a collection, savings jar, or payout. Transfers reconcile on
+            their own — payment status stays in the conversation, not a spreadsheet.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button asChild size="lg" trailingIcon={<Icon icon={ArrowRight01Icon} size={17} />}>
