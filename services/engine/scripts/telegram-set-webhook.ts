@@ -28,6 +28,7 @@ async function set(): Promise<void> {
   await bot.api.setMyCommands([
     { command: "start", description: "Connect this chat with a code" },
     { command: "info", description: "About Talli, status, and commands" },
+    { command: "balance", description: "Your wallet, savings, and collections (DM only)" },
     { command: "disconnect", description: "Unlink this chat (admin only in groups)" },
   ]);
   console.log("✅ command menu registered");

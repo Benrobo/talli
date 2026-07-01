@@ -5,8 +5,7 @@ import { CORS_ORIGINS } from "./config/internal-config.js";
 import env from "./config/env.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import logger from "./lib/logger.js";
-import { modelKitRouter, modelKit } from "./config/modelkit.config.js";
-import { requireAdmin } from "./middleware/auth.js";
+import { modelKitRouter } from "./config/modelkit.config.js";
 
 /**
  * Hono application wrapper. Construct the instance, register middleware
@@ -40,8 +39,8 @@ export default class App {
   }
 
   initializeRoutes(routers: Hono[]) {
-    if (modelKit.enabled && modelKitRouter) {
-      this.app.use("/api/modelkit/*", requireAdmin(["admin", "super_admin"]));
+    if (env.OPENROUTER_API_KEY) {
+      // this.app.use("/api/modelkit/*", requireAdmin(["admin", "super_admin"]));
       this.app.route("/api/modelkit", modelKitRouter);
     }
 

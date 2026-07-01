@@ -37,15 +37,33 @@ export interface CancelCheckoutParams {
   forceCancel?: boolean;
 }
 
+export interface FlashAccount {
+  accountNumber: string;
+  accountName: string;
+  bankName: string;
+}
+
+export interface CheckoutReceipt {
+  status: boolean;
+  message?: string;
+  order?: {
+    orderId?: string;
+    orderReference: string;
+    amount: number;
+    currency?: string;
+    [key: string]: unknown;
+  };
+}
+
 /**
- * Hosted Checkout — create an order, get a `checkoutLink` to send the payer to,
- * and verify/cancel the resulting transaction. Used for collection payments and
- * savings-jar funding. See `docs/nomba-api.md` §4.
+ * Hosted Checkout — create an order, fetch a per-order flash account number for
+ * pay-by-transfer, and poll the transaction's status. Talli v2 funds wallets and
+ * collections this way (flash account + polling, not virtual accounts/webhooks).
  */
 export class CheckoutResource {
   constructor(private readonly http: NombaHttpClient) {}
 
-  /** Creates a hosted checkout order. `currency` defaults to NGN (spec-only enum). */
+  /** Creates a checkout order. `currency` defaults to NGN (spec-only enum). */
   async createOrder(params: CreateCheckoutOrderParams): Promise<CreateCheckoutOrderResult> {
     return this.http.request<CreateCheckoutOrderResult>({
       method: "POST",
@@ -84,6 +102,23 @@ export class CheckoutResource {
         transactionId: params.transactionId,
         forceCancel: params.forceCancel ?? false,
       },
+    });
+  }
+
+  /** Fetches the per-order flash account number the payer transfers to. */
+  async getFlashAccount(orderReference: string): Promise<FlashAccount> {
+    return this.http.request<FlashAccount>({
+      method: "GET",
+      path: `/v1/checkout/get-checkout-kta/${orderReference}`,
+    });
+  }
+
+  /** Polls a checkout order's status. `status: true` means the transfer landed. */
+  async confirmReceipt(orderReference: string): Promise<CheckoutReceipt> {
+    return this.http.request<CheckoutReceipt>({
+      method: "POST",
+      path: "/v1/checkout/confirm-transaction-receipt",
+      body: { orderReference },
     });
   }
 }

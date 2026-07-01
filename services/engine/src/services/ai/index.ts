@@ -1,10 +1,15 @@
 import { generateText, streamText as _streamText, type LanguageModel } from "ai";
 import retry from "async-retry";
+import type { OpenRouterModelId } from "@benrobo/modelkit";
 import { MODELS, DEFAULT_MODEL } from "./models.js";
+import { openrouter } from "./provider.js";
+import { modelKit } from "../../config/modelkit.config.js";
+import type { FeatureId } from "../../modelkit.generated.js";
 import logger from "../../lib/logger.js";
 
 type ModelInstance = Exclude<LanguageModel, string>;
 
+const DEFAULT_FALLBACK_MODEL = "google/gemini-2.5-flash";
 const DEFAULT_TEMPERATURE = 0.3;
 const DEFAULT_MAX_TOKENS = 8192;
 
@@ -18,6 +23,41 @@ export interface AIOptions {
   model?: ModelInstance;
   temperature?: number;
   maxTokens?: number;
+}
+
+export interface ModelForFeatureResult {
+  model: ModelInstance;
+  temperature: number;
+  maxTokens: number;
+}
+
+/**
+ * Resolves a feature id to a model + options, honouring Redis overrides set via
+ * the modelkit admin router. On first use it persists the fallback as the
+ * override so the feature shows up in the modelkit studio and can be retuned
+ * without a redeploy.
+ */
+export async function getModelForFeature(
+  featureId: FeatureId,
+  fallbackOpenRouterId: string = DEFAULT_FALLBACK_MODEL
+): Promise<ModelForFeatureResult> {
+  const existing = await modelKit.getConfig(featureId);
+  if (!existing) {
+    await modelKit.setOverride(featureId, {
+      modelId: fallbackOpenRouterId as OpenRouterModelId,
+      temperature: DEFAULT_TEMPERATURE,
+      maxTokens: DEFAULT_MAX_TOKENS,
+    });
+  }
+
+  const modelId = await modelKit.getModel(featureId, fallbackOpenRouterId as OpenRouterModelId);
+  const config = await modelKit.getConfig(featureId);
+
+  return {
+    model: openrouter(modelId) as ModelInstance,
+    temperature: config?.temperature ?? DEFAULT_TEMPERATURE,
+    maxTokens: config?.maxTokens ?? DEFAULT_MAX_TOKENS,
+  };
 }
 
 function getModelId(model: ModelInstance): string {
@@ -101,6 +141,6 @@ export async function streamText(
   return result.textStream;
 }
 
-export const ai = { generate, streamText };
+export const ai = { generate, streamText, getModelForFeature };
 export { MODELS, DEFAULT_MODEL } from "./models.js";
 export { openrouter } from "./provider.js";

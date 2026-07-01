@@ -1,14 +1,14 @@
 import logger from "../../../lib/logger.js";
 import { collectionService } from "../../../services/collection.service.js";
-import { paymentService } from "../../../services/payment.service.js";
+import { pendingPaymentService } from "../../../services/pending-payment.service.js";
 import { messages } from "../ui/messages.js";
 import type { TalliContext } from "../types.js";
 import { safeReply } from "./shared.js";
 
 /**
  * A "Pay" button tap. The tap is the trusted identity, so we upsert the member
- * from `ctx.from`, open a Nomba checkout, and answer the callback with the pay
- * URL (which opens the hosted page). `arg` is the collection id.
+ * from `ctx.from`, issue a flash account number for them to transfer to, and
+ * show it. The polling cron credits the member once the transfer lands.
  */
 export async function handlePay(ctx: TalliContext, collectionId: string): Promise<void> {
   try {
@@ -19,15 +19,28 @@ export async function handlePay(ctx: TalliContext, collectionId: string): Promis
       firstName: ctx.from?.first_name,
       username: ctx.from?.username,
     });
+    if (member.expectedAmount <= 0) {
+      await ctx.answerCallbackQuery({ text: "No amount set for this collection yet." }).catch(() => {});
+      return;
+    }
 
-    const { checkoutLink } = await paymentService.startCollectionPayment({
+    const { flashAccountNumber, flashBankName } = await pendingPaymentService.create({
+      purpose: "collection",
+      amount: member.expectedAmount,
       collectionId,
-      memberId: member.id,
-      platform: "telegram",
-      platformUserId: String(ctx.from!.id),
+      collectionMemberId: member.id,
+      payerPlatformUserId: String(ctx.from!.id),
     });
 
-    await ctx.answerCallbackQuery({ url: checkoutLink });
+    await ctx.answerCallbackQuery().catch(() => {});
+    const payerName = ctx.from?.first_name || member.displayName || "member";
+    await safeReply(
+      ctx,
+      messages.flashAccount(member.expectedAmount, flashAccountNumber, flashBankName, {
+        id: String(ctx.from!.id),
+        name: payerName,
+      })
+    );
   } catch (err) {
     logger.error(`[telegram] pay tap failed for collection ${collectionId}: ${(err as Error).message}`);
     await ctx.answerCallbackQuery({ text: "Couldn't start the payment. Please try again." }).catch(() => {});

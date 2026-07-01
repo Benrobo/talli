@@ -27,12 +27,26 @@ export interface UpsertMemberInput {
   username?: string | null;
 }
 
+export interface CollectionWithProgress extends Collection {
+  collected: number;
+  paidCount: number;
+  enrolledCount: number;
+}
+
 export interface CreditResult {
   member: CollectionMember;
   collection: Collection;
   paidCount: number;
   memberName: string;
   chatId: string | null;
+  collectedTotal: number;
+  /**
+   * Whether the collection's monetary target has been reached. Only meaningful
+   * when `collection.targetAmount` is set — with pay-to-enroll there is no roster
+   * and no headcount, so completion can only be judged against a target. Always
+   * false for targetless collections (they never auto-complete).
+   */
+  targetReached: boolean;
 }
 
 /**
@@ -67,10 +81,27 @@ class CollectionService {
     });
   }
 
-  async list(workspaceId: string): Promise<Collection[]> {
-    return prisma.collection.findMany({
+  /**
+   * Lists a workspace's collections with a paid-progress summary on each, so the
+   * dashboard listing can show metadata (collected vs target, who's paid, status,
+   * deadline) without a follow-up call per row.
+   */
+  async list(workspaceId: string): Promise<CollectionWithProgress[]> {
+    const collections = await prisma.collection.findMany({
       where: { workspaceId },
       orderBy: { createdAt: "desc" },
+      include: { members: { select: { paidAmount: true, expectedAmount: true, status: true } } },
+    });
+
+    return collections.map(({ members, ...collection }) => {
+      const collected = members.reduce((sum, m) => sum + m.paidAmount, 0);
+      const paidCount = members.filter((m) => m.paidAmount >= m.expectedAmount && m.expectedAmount > 0).length;
+      return {
+        ...collection,
+        collected,
+        paidCount,
+        enrolledCount: members.length,
+      };
     });
   }
 
@@ -86,6 +117,40 @@ class CollectionService {
     const collected = collection.members.reduce((sum, m) => sum + m.paidAmount, 0);
 
     return { ...collection, paidCount, totalMembers: collection.members.length, collected };
+  }
+
+  /**
+   * Lists the members enrolled in a collection, paginated and newest-first.
+   * Optionally filtered by payment status. Validates the collection belongs to
+   * the workspace before reading. Returns the page plus total count so the
+   * caller can compute page metadata.
+   */
+  async listMembers(
+    workspaceId: string,
+    collectionId: string,
+    options: { page: number; pageSize: number; status?: CollectionMember["status"] }
+  ): Promise<{ members: CollectionMember[]; total: number; page: number; pageSize: number }> {
+    const collection = await prisma.collection.findFirst({
+      where: { id: collectionId, workspaceId },
+      select: { id: true },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+
+    const page = Math.max(1, options.page);
+    const pageSize = Math.min(100, Math.max(1, options.pageSize));
+    const where = { collectionId, ...(options.status ? { status: options.status } : {}) };
+
+    const [members, total] = await Promise.all([
+      prisma.collectionMember.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.collectionMember.count({ where }),
+    ]);
+
+    return { members, total, page, pageSize };
   }
 
   /** Updates a collection's status (e.g. close or cancel it). */
@@ -184,11 +249,14 @@ class CollectionService {
         where: { collectionId: member.collectionId },
       });
       const paidCount = members.filter((m) => m.paidAmount >= m.expectedAmount && m.expectedAmount > 0).length;
-      const allPaid = members.length > 0 && paidCount === members.length;
+      const collectedTotal = members.reduce((sum, m) => sum + m.paidAmount, 0);
+
+      const current = await tx.collection.findUniqueOrThrow({ where: { id: member.collectionId } });
+      const targetReached = current.targetAmount != null && collectedTotal >= current.targetAmount;
 
       const collection = await tx.collection.update({
         where: { id: member.collectionId },
-        data: { status: allPaid ? "paid" : "partially_paid" },
+        data: { status: targetReached ? "paid" : "partially_paid" },
         include: { linkedChat: { select: { platformChatId: true } } },
       });
 
@@ -198,6 +266,8 @@ class CollectionService {
         paidCount,
         memberName: fresh.displayName,
         chatId: collection.linkedChat?.platformChatId ?? null,
+        collectedTotal,
+        targetReached,
       };
     });
   }

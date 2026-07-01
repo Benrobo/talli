@@ -115,8 +115,12 @@ model BotCommand {
   confidence       Float?
   status           BotCommandStatus @default(received)
   errorMessage     String?
+  clarifyMessageId Int?
+  askedBy          String?
+  clarifyRounds    Int              @default(0)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([workspaceId])
   @@index([linkedChatId])

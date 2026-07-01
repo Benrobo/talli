@@ -32,6 +32,7 @@ model User {
   collectionMemberships CollectionMember[]
   savingsJars           SavingsJar[]
   paymentsAsPayer       Payment[]          @relation("PaymentPayer")
+  wallet                Wallet?
   auditLogs             AuditLog[]
 
   @@map("users")

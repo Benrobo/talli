@@ -4,6 +4,7 @@ import type { TalliContext } from "../types.js";
 import { handleInfo } from "./info.handler.js";
 import { handleDisconnect } from "./disconnect.handler.js";
 import { handlePay } from "./pay.handler.js";
+import { handleConfirm } from "./confirm.handler.js";
 
 /**
  * Inline-button taps. Decodes the `action:arg` callback data and dispatches.
@@ -31,6 +32,12 @@ export async function handleCallback(ctx: TalliContext): Promise<void> {
       break;
     case CALLBACK_ACTION.disconnect:
       await handleDisconnect(ctx);
+      break;
+    case CALLBACK_ACTION.confirm:
+      await handleConfirm(ctx, arg, "confirm");
+      break;
+    case CALLBACK_ACTION.cancel:
+      await handleConfirm(ctx, arg, "cancel");
       break;
   }
 }
