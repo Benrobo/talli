@@ -8,7 +8,10 @@ import { telegram } from "../integrations/telegram/bot.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
 import { walletService } from "./wallet.service.js";
 import { collectionService } from "./collection.service.js";
+import { billSplitService } from "./bill-split.service.js";
+import { mailService } from "./mail.service.js";
 import { receiptService } from "./receipt/index.js";
+import { emitToBill } from "../socket/server.js";
 import logger from "../lib/logger.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
@@ -133,41 +136,111 @@ class PaymentService {
     return true;
   }
 
-  /**
-   * Credits the destination, then marks the payment completed. Credit runs first
-   * so a failure leaves the row `pending` for the next poll to retry — the money
-   * is never lost. Crediting is idempotent (wallet dedupes on the order ref;
-   * collection settle claims the row), so a retry can't double-credit.
-   */
   private async settle(pending: PendingPayment, amount: number): Promise<void> {
     if (pending.purpose === "topup" && pending.walletId) {
       await walletService.credit(pending.walletId, amount, "topup", pending.orderRefId);
     } else if (pending.purpose === "collection" && pending.collectionMemberId) {
-      const claim = await prisma.pendingPayment.updateMany({
-        where: { id: pending.id, status: "pending" },
-        data: { status: "completed", completedAt: new Date() },
-      });
-      if (claim.count === 0) return;
-
-      let credit;
-      try {
-        credit = await collectionService.creditMember(pending.collectionMemberId, amount);
-        await this.recordCollectionPayment(pending, amount);
-      } catch (err) {
-        await prisma.pendingPayment.update({
-          where: { id: pending.id },
-          data: { status: "pending", completedAt: null },
+      const claim = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.pendingPayment.updateMany({
+          where: { id: pending.id, status: "pending" },
+          data: { status: "completed", completedAt: new Date() },
         });
-        throw err;
-      }
+        if (claimed.count === 0) return null;
+        return collectionService.creditMember(pending.collectionMemberId!, amount, tx);
+      });
+      if (!claim) return;
 
-      await this.announcePayment(credit, amount);
+      await this.recordCollectionPayment(pending, amount);
+
+      let handledByBillSplit = false;
+      try {
+        handledByBillSplit = await this.settleBillSplitIfAny(pending, amount);
+      } catch (err) {
+        logger.error(`[payment] bill split settle failed for ${pending.orderRefId}: ${(err as Error).message}`);
+      }
+      if (!handledByBillSplit) {
+        await this.announcePayment(claim, amount);
+      }
       return;
     }
 
     await prisma.pendingPayment.update({
       where: { id: pending.id },
       data: { status: "completed", completedAt: new Date() },
+    });
+  }
+
+  private async settleBillSplitIfAny(pending: PendingPayment, amount: number): Promise<boolean> {
+    const settled = await billSplitService.settleByPendingPaymentId(pending.id);
+    if (!settled) return false;
+
+    const { billSplit, selection, items, conflicted } = settled;
+    const labels = items.map((i) => i.label);
+
+    if (conflicted) {
+      logger.warn(
+        `[payment] bill split over-payment: selection ${selection.id} paid for items already claimed by others (billSplit ${billSplit.id})`
+      );
+    }
+
+    try {
+      emitToBill(billSplit.token, "items.claimed", {
+        selectionId: selection.id,
+        payerName: selection.payerName,
+        itemIds: items.map((i) => i.id),
+        amount,
+      });
+    } catch (err) {
+      logger.warn(`[payment] bill ws emit failed: ${(err as Error).message}`);
+    }
+
+    try {
+      await this.deliverBillSplitReceipt(billSplit, selection.payerName, labels, amount);
+    } catch (err) {
+      logger.warn(`[payment] bill receipt delivery failed: ${(err as Error).message}`);
+    }
+    return true;
+  }
+
+  private async deliverBillSplitReceipt(
+    billSplit: { id: string; workspaceId: string; title: string; source: string; linkedChatId: string | null },
+    payerName: string,
+    itemLabels: string[],
+    amount: number
+  ): Promise<void> {
+    if (billSplit.source === "telegram" && billSplit.linkedChatId) {
+      const linkedChat = await prisma.linkedChat.findUnique({
+        where: { id: billSplit.linkedChatId },
+        select: { platformChatId: true },
+      });
+      if (!linkedChat) return;
+      const caption = messages.billSplitItemsPaid(payerName, itemLabels, amount, billSplit.title);
+      const receipt = await receiptService.render({
+        amount: amount.toLocaleString("en-NG"),
+        purpose: "Bill split payment",
+        highlight: billSplit.title,
+        rows: [
+          { icon: "from", label: "From", value: payerName },
+          { icon: "to", label: "For", value: itemLabels.join(", ") },
+          { icon: "date", label: "Date", value: dayjs().format("DD MMM YYYY, h:mm A") },
+        ],
+      });
+      await telegram.sendPhoto(linkedChat.platformChatId, receipt, caption);
+      return;
+    }
+
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: billSplit.workspaceId },
+      select: { owner: { select: { email: true } } },
+    });
+    const email = workspace?.owner?.email;
+    if (!email) return;
+    await mailService.send({
+      to: email,
+      subject: `${payerName} paid ₦${amount.toLocaleString("en-NG")} on "${billSplit.title}"`,
+      html: `<p><strong>${payerName}</strong> just paid <strong>₦${amount.toLocaleString(
+        "en-NG"
+      )}</strong> for: ${itemLabels.join(", ")} on your bill split <strong>${billSplit.title}</strong>.</p>`,
     });
   }
 

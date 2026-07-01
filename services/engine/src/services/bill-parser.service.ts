@@ -44,11 +44,6 @@ Rules:
 - When confident and in Naira, set "reason" to null.
 - Return ONLY the JSON. No commentary.`;
 
-/**
- * Reads a photographed bill using a vision model. Returns the extracted total and
- * line items (whole-number naira) so they can seed a person-picker split — the
- * caller must always confirm with the user before acting, since OCR can misread.
- */
 class BillParserService {
   async parse(image: Buffer): Promise<ParsedBill> {
     const raw = await ai.generateFromImage(PROMPT, image);

@@ -39,7 +39,8 @@ class AuthService {
   async verifyOtp(
     email: string,
     code: string,
-    context: SessionContext
+    context: SessionContext,
+    name?: string
   ): Promise<{ user: AuthUser; tokens: TokenPair }> {
     const stored = await redis.get(`otp:${email}`);
     if (!stored || stored !== code) {
@@ -47,10 +48,11 @@ class AuthService {
     }
     await redis.del(`otp:${email}`);
 
+    const cleanName = name?.trim() || undefined;
     const user = await prisma.user.upsert({
       where: { email },
-      create: { email, isVerified: true },
-      update: { isVerified: true },
+      create: { email, isVerified: true, name: cleanName },
+      update: { isVerified: true, ...(cleanName ? { name: cleanName } : {}) },
     });
 
     await workspaceService.ensureDefaultWorkspace(user.id);

@@ -217,11 +217,11 @@ export const messages = {
   billReading: "🧾 Reading your bill…",
 
   billUnreadable:
-    "🧾 I couldn't read that image. Try a clearer photo, or just type the amount — e.g. _“split ₦30,000 between Tolu and Ada”_.",
+    "🧾 I couldn't read the items on that bill. Send a clearer photo of the full receipt and I'll set up the split.",
 
   billRejected(reason: string | null): string {
-    const why = reason ? `🧾 ${escapeMarkdown(reason)}` : "🧾 I couldn't read a total off that image.";
-    return `${why}\n\nTry a clearer photo, or just type the amount — e.g. _“split ₦30,000 between Tolu and Ada”_.`;
+    const why = reason ? `🧾 ${escapeMarkdown(reason)}` : "🧾 I couldn't read the items off that bill.";
+    return `${why}\n\nSend a clearer photo of the full receipt and I'll set up the split.`;
   },
 
   /**
@@ -298,15 +298,9 @@ export const messages = {
       "_“collect ₦5,000 from everyone for jerseys”_",
       "_“raise 200k for the party, 10k each, by July 20”_",
       "",
-      "✂️ *Split a bill*",
-      "Even, custom, or by count — each person gets a pay link, no account needed.",
-      "_“split ₦30k between Tolu, Ada and me”_",
-      "_“Tolu 10k, Ada 5k, Bola 15k”_",
-      "📸 _Or send a photo of the bill_ — I'll read the total and split it.",
-      "",
-      "🧾 *Person picker*",
-      "Send a receipt photo — each person picks their items on a link and pays their share.",
-      "_“@talli let everyone pick what they chose”_ (with a bill photo)",
+      "🧾 *Split a bill*",
+      "📸 Send a photo of the receipt — everyone opens a link, picks the items they had, and pays for them. No account needed.",
+      "_“split this”_ (with a bill photo)",
       "",
       "📊 *Check progress*",
       "_“how much have we raised?”_",
@@ -363,69 +357,48 @@ export const messages = {
       .join("\n");
   },
 
-  confirmSplit(plan: {
-    title: string;
-    total: number;
-    mode: string;
-    perHead?: number;
-    count?: number;
-    shares: { name: string; amount: number }[];
-  }): string {
-    const lines = [`✂️ *Split — ${escapeMarkdown(plan.title)}*`, "", `Total: *${formatNaira(plan.total)}*`, ""];
-    if (plan.mode === "by_count") {
-      lines.push(`Split *${plan.count}* ways — *${formatNaira(plan.perHead ?? 0)}* each.`);
-    } else {
-      plan.shares.forEach((s) => lines.push(`• ${escapeMarkdown(s.name)} — *${formatNaira(s.amount)}*`));
-    }
-    lines.push("", "*Should I set it up?*");
-    return lines.join("\n");
-  },
+  billSplitNeedsPhoto:
+    "📸 To split a bill, send me a photo of the receipt — then everyone can pick what they had and pay their share.",
 
-  splitCreated(title: string, links: { name: string; amount: number; checkoutLink: string }[]): string {
-    const lines = [`✂️ *${escapeMarkdown(title)}* is set up!`, "", "Send each person their pay link:", ""];
-    links.forEach((l) =>
-      lines.push(`• *${escapeMarkdown(l.name)}* — ${formatNaira(l.amount)}\n  ${markdownCode(l.checkoutLink)}`)
-    );
-    lines.push("", "_Anyone can pay their link — no Talli account needed. I'll confirm here as each lands._");
-    return lines.join("\n");
-  },
-
-  confirmPersonPicker(plan: {
+  confirmBillSplit(plan: {
     title: string;
     total: number;
     items: { name: string; unitPrice: number }[];
   }): string {
     const lines = [
-      `🧾 *Person picker — ${escapeMarkdown(plan.title)}*`,
+      `🧾 *Bill split — ${escapeMarkdown(plan.title)}*`,
       "",
       `Receipt total: *${formatNaira(plan.total)}*`,
       "",
-      "*Items everyone can pick from:*",
+      "*Items on the bill:*",
     ];
     plan.items.slice(0, 12).forEach((item) => {
-      lines.push(`• ${escapeMarkdown(item.name)} — *${formatNaira(item.unitPrice)}* each`);
+      lines.push(`• ${escapeMarkdown(item.name)} — *${formatNaira(item.unitPrice)}*`);
     });
     if (plan.items.length > 12) lines.push(`_…and ${plan.items.length - 12} more_`);
-    lines.push("", "Each person gets a link to pick quantities and pay their share.", "", "*Should I set it up?*");
+    lines.push("", "Everyone gets a link to pick what they had and pay for it.", "", "*Should I set it up?*");
     return lines.join("\n");
   },
 
-  personPickerCreated(title: string, url: string): string {
+  billSplitCreated(title: string, url: string): string {
     return [
       `🧾 *${escapeMarkdown(title)}* is ready!`,
       "",
-      "Share this link so each person can pick what they had and pay their share:",
+      "Share this link so each person can pick what they had and pay for it:",
       markdownCode(url),
       "",
       "_No Talli account needed. I'll confirm here as each payment lands._",
     ].join("\n");
   },
 
-  splitByCountCreated(title: string, amount: number, count: number): string {
+  billSplitItemsPaid(payerName: string, itemLabels: string[], amount: number, title: string): string {
+    const items = itemLabels.slice(0, 6).map((l) => `• ${escapeMarkdown(l)}`);
+    if (itemLabels.length > 6) items.push(`_…and ${itemLabels.length - 6} more_`);
     return [
-      `✂️ *${escapeMarkdown(title)}* is live — split *${count}* ways.`,
+      `✅ *${escapeMarkdown(payerName)}* paid *${formatNaira(amount)}* on *${escapeMarkdown(title)}*`,
       "",
-      `Each share is *${formatNaira(amount)}*. Tap below to pay yours.`,
+      "*For:*",
+      ...items,
     ].join("\n");
   },
 

@@ -268,52 +268,58 @@ class CollectionService {
     });
   }
 
-  /**
-   * Credits a member by `amount` and rolls up member + collection status. Atomic.
-   * Returns progress for a chat announcement. The caller must ensure this runs
-   * once per payment (the webhook dedupes on the event id first).
-   */
-  async creditMember(memberId: string, amount: number): Promise<CreditResult> {
-    return prisma.$transaction(async (tx) => {
-      const member = await tx.collectionMember.update({
-        where: { id: memberId },
-        data: {
-          paidAmount: { increment: amount },
-          status: "paid",
-        },
-      });
+  async creditMember(
+    memberId: string,
+    amount: number,
+    tx?: Prisma.TransactionClient
+  ): Promise<CreditResult> {
+    if (tx) return this.creditMemberTx(tx, memberId, amount);
+    return prisma.$transaction((client) => this.creditMemberTx(client, memberId, amount));
+  }
 
-      const fresh = await tx.collectionMember.findUniqueOrThrow({ where: { id: memberId } });
-      const memberStatus = this.memberStatus(fresh.paidAmount, fresh.expectedAmount);
-      if (memberStatus !== fresh.status) {
-        await tx.collectionMember.update({ where: { id: memberId }, data: { status: memberStatus } });
-      }
-
-      const members = await tx.collectionMember.findMany({
-        where: { collectionId: member.collectionId },
-      });
-      const paidCount = members.filter((m) => m.paidAmount >= m.expectedAmount && m.expectedAmount > 0).length;
-      const collectedTotal = members.reduce((sum, m) => sum + m.paidAmount, 0);
-
-      const current = await tx.collection.findUniqueOrThrow({ where: { id: member.collectionId } });
-      const targetReached = current.targetAmount != null && collectedTotal >= current.targetAmount;
-
-      const collection = await tx.collection.update({
-        where: { id: member.collectionId },
-        data: { status: targetReached ? "paid" : "partially_paid" },
-        include: { linkedChat: { select: { platformChatId: true } } },
-      });
-
-      return {
-        member: fresh,
-        collection,
-        paidCount,
-        memberName: fresh.displayName,
-        chatId: collection.linkedChat?.platformChatId ?? null,
-        collectedTotal,
-        targetReached,
-      };
+  private async creditMemberTx(
+    tx: Prisma.TransactionClient,
+    memberId: string,
+    amount: number
+  ): Promise<CreditResult> {
+    const member = await tx.collectionMember.update({
+      where: { id: memberId },
+      data: {
+        paidAmount: { increment: amount },
+        status: "paid",
+      },
     });
+
+    const fresh = await tx.collectionMember.findUniqueOrThrow({ where: { id: memberId } });
+    const memberStatus = this.memberStatus(fresh.paidAmount, fresh.expectedAmount);
+    if (memberStatus !== fresh.status) {
+      await tx.collectionMember.update({ where: { id: memberId }, data: { status: memberStatus } });
+    }
+
+    const members = await tx.collectionMember.findMany({
+      where: { collectionId: member.collectionId },
+    });
+    const paidCount = members.filter((m) => m.paidAmount >= m.expectedAmount && m.expectedAmount > 0).length;
+    const collectedTotal = members.reduce((sum, m) => sum + m.paidAmount, 0);
+
+    const current = await tx.collection.findUniqueOrThrow({ where: { id: member.collectionId } });
+    const targetReached = current.targetAmount != null && collectedTotal >= current.targetAmount;
+
+    const collection = await tx.collection.update({
+      where: { id: member.collectionId },
+      data: { status: targetReached ? "paid" : "partially_paid" },
+      include: { linkedChat: { select: { platformChatId: true } } },
+    });
+
+    return {
+      member: fresh,
+      collection,
+      paidCount,
+      memberName: fresh.displayName,
+      chatId: collection.linkedChat?.platformChatId ?? null,
+      collectedTotal,
+      targetReached,
+    };
   }
 
   private memberStatus(paid: number, expected: number): CollectionMember["status"] {

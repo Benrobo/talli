@@ -72,16 +72,23 @@ side-by-side. Each decision states what we chose, what we rejected, and why.
   source of truth across web, marketing, and (in the mobile starter) RN
   through Uniwind.
 
-## Icons: vendored SVGs from `~/projects/design-icons` (HugeIcons Pro)
+## Icons: `@benrobo/iconary` from GitHub Packages (HugeIcons Pro source)
 
-- **Picked**: copy SVG files into `packages/icons/svg/<style>/` and ship a
-  small inline-SVG `<Icon />` component with a `--icon-tone` CSS variable
-  for the duotone secondary layer.
-- **Rejected**: `lucide-react` (style mismatch), `@hugeicons/react` (large
-  bundle, license-key complications in CI), inline pasting in components
-  (no shared registry).
-- **Why**: zero runtime weight per icon (we ship only what we use), zero
-  license key in CI, fully portable.
+- **Picked**: consume `@benrobo/iconary` (our private icon package, built from
+  `~/projects/design-icons`) from **GitHub Packages** — a private npm registry.
+  Root `.npmrc` authenticates with `${GITHUB_TOKEN}` (scope `read:packages`); no
+  token is committed. Usage is data + one renderer:
+  `import { Icon } from "@benrobo/iconary/react"` + data from
+  `@benrobo/iconary/core/<style>`, rendered `<Icon icon={X} color=... />`.
+- **Rejected / removed**: the old local `@app/icons` package + `bun icons:add`
+  CLI (vendored SVGs in-repo — deleted); `lucide-react` (style mismatch);
+  committing the built package (leaks paid assets in a public repo).
+- **Why the registry**: keeps paid Hugeicons-derived data out of any public
+  repo (consumers bring their own token), tree-shakes to near-zero runtime, and
+  sidesteps bun's broken private-GitHub-tarball install (registry protocol works).
+- iconary itself was re-architected to data-only + a single renderer (dropped
+  per-icon component wrappers), cutting the package from 572MB to a 17MB tarball.
+  See the `benrobo-iconary` skill for the consumer API.
 
 ## Mail: Plunk by default, swappable via `MailProvider`
 

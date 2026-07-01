@@ -51,7 +51,7 @@ model Collection {
 
   members      CollectionMember[]
   payments     Payment[]
-  personPicker PersonPicker?
+  billSplit    BillSplit?
 
   @@index([workspaceId])
   @@index([workspaceId, status])
@@ -79,7 +79,7 @@ model CollectionMember {
   updatedAt DateTime @updatedAt
 
   payments           Payment[]
-  personPickerSelection PersonPickerSelection?
+  billSplitSelection BillSplitSelection?
 
   @@index([collectionId])
   @@index([collectionId, platformUserId])

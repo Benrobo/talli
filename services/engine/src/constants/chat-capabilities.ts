@@ -31,15 +31,14 @@ export const GROUP_ALLOWED_INTENTS: IntentName[] = [
   "status_query",
   "help_query",
   "pay_collection",
-  "split_payment",
-  "person_picker",
+  "bill_split",
 ];
 
 /**
  * Group-allowed intents that additionally require the sender to be a group
  * admin — anything that creates a shared, payable artifact for the whole group.
  */
-export const ADMIN_ONLY_IN_GROUP_INTENTS: IntentName[] = ["create_collection", "split_payment", "person_picker"];
+export const ADMIN_ONLY_IN_GROUP_INTENTS: IntentName[] = ["create_collection", "bill_split"];
 
 /** The intents permitted for a given chat scope. */
 export function allowedIntents(scope: ChatScope): IntentName[] {

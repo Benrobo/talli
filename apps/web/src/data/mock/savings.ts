@@ -1,4 +1,4 @@
-import type { Jar } from "@/modules/savings/types";
+import type { Jar, SavingsSummary } from "@/modules/savings/types";
 
 export const jars: Jar[] = [
   {
@@ -41,3 +41,11 @@ export function getJar(id: string): Jar | undefined {
 
 /** Total saved across every jar, in minor units. */
 export const totalSavedMinor = jars.reduce((sum, jar) => sum + jar.savedMinor, 0);
+
+/** Roll-up figures for the savings overview hero. */
+export const savingsSummary: SavingsSummary = {
+  totalSavedMinor,
+  totalTargetMinor: jars.reduce((sum, jar) => sum + jar.targetMinor, 0),
+  jarCount: jars.length,
+  lockedCount: jars.filter((jar) => jar.status === "locked").length,
+};

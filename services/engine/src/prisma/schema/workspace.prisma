@@ -31,7 +31,7 @@ model Workspace {
   beneficiaries Beneficiary[]
   transfers     Transfer[]
   auditLogs     AuditLog[]
-  personPickers PersonPicker[]
+  billSplits    BillSplit[]
 
   @@index([ownerUserId])
   @@index([status])

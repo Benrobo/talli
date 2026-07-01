@@ -29,8 +29,13 @@ export function startSocketServer(httpServer: ServerType): Server {
       socket.join(`user:${userId}`);
       logger.info(`[socket] ✅ connected user=${userId} sid=${socket.id}`);
     } else {
-      logger.warn(`[socket] connected without userId sid=${socket.id}`);
+      logger.info(`[socket] connected anonymous sid=${socket.id}`);
     }
+
+    socket.on("join-bill", (token: unknown) => {
+      if (typeof token !== "string" || !token) return;
+      socket.join(`bill:${token}`);
+    });
 
     socket.on("disconnect", (reason) => {
       logger.info(`[socket] disconnected sid=${socket.id} reason=${reason}`);
@@ -59,4 +64,9 @@ export function getIo(): Server {
 export function emitToUser(userId: string, event: string, payload: unknown) {
   if (!io) return;
   io.to(`user:${userId}`).emit(event, payload);
+}
+
+export function emitToBill(token: string, event: string, payload: unknown) {
+  if (!io) return;
+  io.to(`bill:${token}`).emit(event, payload);
 }

@@ -19,3 +19,10 @@ export interface Jar {
   lockText: string;
   deposits: Deposit[];
 }
+
+export interface SavingsSummary {
+  totalSavedMinor: number;
+  totalTargetMinor: number;
+  jarCount: number;
+  lockedCount: number;
+}

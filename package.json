@@ -26,8 +26,6 @@
     "db:push": "bun --filter @app/engine db:push",
     "db:migrate": "bun --filter @app/engine db:migrate",
     "db:studio": "bun --filter @app/engine db:studio",
-    "icons:add": "bun packages/icons/scripts/add-icon.ts",
-    "icons:list": "bun packages/icons/scripts/add-icon.ts --list",
     "skills:install": "bash scripts/install-skills.sh",
     "tunnel:push": "bash scripts/tunnel-push.sh"
   },

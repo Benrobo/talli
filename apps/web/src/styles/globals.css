@@ -89,3 +89,12 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@keyframes spinnerBar {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.25;
+  }
+}

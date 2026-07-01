@@ -16,5 +16,11 @@ export interface Receipt {
   detail: string;
   date: string;
   amountMinor: number;
+  kind: ReceiptKind;
   link: ReceiptLink;
+}
+
+export interface ReceiptsSummary {
+  count: number;
+  totalMinor: number;
 }

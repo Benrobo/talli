@@ -29,7 +29,7 @@ model User {
   platformIdentities    PlatformUser[]     @relation("PlatformUserAccount")
   chatLinkCodesCreated  ChatLinkCode[]
   collectionsCreated    Collection[]
-  personPickersCreated  PersonPicker[]
+  billSplitsCreated     BillSplit[]
   collectionMemberships CollectionMember[]
   savingsJars           SavingsJar[]
   paymentsAsPayer       Payment[]          @relation("PaymentPayer")

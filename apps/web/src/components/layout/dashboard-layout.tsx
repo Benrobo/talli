@@ -13,8 +13,8 @@ export function DashboardLayout({ children, className }: DashboardLayoutProps) {
       <div className="sticky top-0 h-dvh">
         <Sidebar />
       </div>
-      <main className={cn("flex-1 overflow-x-hidden px-8 py-8", className)}>
-        <div className="mx-auto max-w-5xl">{children}</div>
+      <main className={cn("flex-1 overflow-x-hidden px-8 py-7", className)}>
+        <div className="mx-auto max-w-6xl">{children}</div>
       </main>
     </div>
   );

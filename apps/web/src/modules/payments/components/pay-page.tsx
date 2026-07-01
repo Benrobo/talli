@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@app/ui";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, StatusPill, FadeIn } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
+import { Icon } from "@benrobo/iconary/react";
+import type { IconData } from "@benrobo/iconary/core";
 import {
   BankIcon,
+  Calendar03Icon,
   CreditCardIcon,
-  Icon,
   LockIcon,
   SmartPhone01Icon,
   Tick02Icon,
-} from "@app/icons";
-import type { IconData } from "@app/icons";
+  User02Icon,
+  UserMultipleIcon,
+} from "@benrobo/iconary/core/duotone-rounded";
+
 import { formatNaira } from "@/lib/format";
 import { paymentRequest } from "@/data/mock/payments";
 import type { PayMethod } from "@/modules/payments/types";
@@ -19,19 +23,18 @@ import type { PayMethod } from "@/modules/payments/types";
 interface MethodOption {
   id: PayMethod;
   label: string;
+  hint: string;
   icon: IconData;
 }
 
 const METHODS: MethodOption[] = [
-  { id: "bank", label: "Bank transfer", icon: BankIcon },
-  { id: "card", label: "Card", icon: CreditCardIcon },
-  { id: "ussd", label: "USSD", icon: SmartPhone01Icon },
+  { id: "bank", label: "Bank transfer", hint: "Send from any bank app", icon: BankIcon },
+  { id: "card", label: "Card", hint: "Debit or credit card", icon: CreditCardIcon },
+  { id: "ussd", label: "USSD", hint: "Dial a short code", icon: SmartPhone01Icon },
 ];
 
-/** Public Pay page — a member settles a collection in two taps (screen 3a). */
 export function PayPage() {
-  const { reference, purpose, amountMinor, payingAs, payTo, due } =
-    paymentRequest;
+  const { reference, purpose, amountMinor, payingAs, payTo, due } = paymentRequest;
   const [method, setMethod] = useState<PayMethod>("bank");
 
   return (
@@ -44,80 +47,104 @@ export function PayPage() {
             </Button>
           </Link>
           <div className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-content-faint">
-            <Icon data={LockIcon} size={12} />
+            <Icon icon={LockIcon} size={12} />
             Secured by Nomba · money goes straight to the group
           </div>
         </div>
       }
     >
-      <div className="mb-6 flex justify-center">
-        <span className="inline-flex items-center gap-1.5 rounded-[11px] border border-hairline bg-card px-3 py-2 font-mono text-[11.5px] text-content-muted">
-          <Icon data={LockIcon} size={13} />
+      <FadeIn className="mb-6 flex items-center justify-between" y={8}>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-3 py-1.5 text-[11.5px] font-medium text-content-muted shadow-card">
+          <Icon icon={LockIcon} size={12} className="text-content-faint" />
           pay.talli.money
         </span>
-      </div>
+        <StatusPill status="info" dot>
+          Awaiting payment
+        </StatusPill>
+      </FadeIn>
 
-      <div className="mb-6 text-center">
-        <div className="mb-1.5 text-[13px] text-content-muted">
-          You're paying for
-        </div>
-        <div className="mb-4 font-serif text-[25px] font-normal leading-tight">
-          {purpose}
-        </div>
-        <div className="tabular text-[44px] font-bold tracking-tight">
-          {formatNaira(amountMinor)}
-        </div>
-      </div>
+      <FadeIn delay={0.05}>
+        <Card className="mb-4 items-center text-center">
+          <div className="mb-1.5 text-[12.5px] font-medium text-content-muted">You're paying for</div>
+          <div className="mb-4 text-[17px] font-semibold tracking-[-0.01em] text-foreground">
+            {purpose}
+          </div>
+          <div className="tabular text-[38px] font-bold leading-none tracking-[-0.02em] text-foreground">
+            {formatNaira(amountMinor)}
+          </div>
+        </Card>
+      </FadeIn>
 
-      <Card className="mb-5">
+      <FadeIn delay={0.1}>
+        <Card padded={false} className="mb-5 overflow-hidden">
+          <DetailRow icon={User02Icon} label="Paying as" value={payingAs} />
+          <DetailRow icon={UserMultipleIcon} label="To" value={payTo} />
+          <DetailRow icon={Calendar03Icon} label="Due" value={due} last />
+        </Card>
+      </FadeIn>
+
+      <FadeIn delay={0.14}>
+        <div className="mb-2.5 text-[13px] font-semibold text-foreground">Pay with</div>
         <div className="flex flex-col gap-2.5">
-          <div className="flex justify-between text-[13.5px]">
-            <span className="text-content-muted">Paying as</span>
-            <span className="font-medium">{payingAs}</span>
-          </div>
-          <div className="flex justify-between text-[13.5px]">
-            <span className="text-content-muted">To</span>
-            <span className="font-medium">{payTo}</span>
-          </div>
-          <div className="flex justify-between text-[13.5px]">
-            <span className="text-content-muted">Due</span>
-            <span className="font-medium">{due}</span>
-          </div>
-        </div>
-      </Card>
-
-      <div className="mb-3 font-mono text-[10.5px] tracking-[0.1em] text-content-faint">
-        PAY WITH
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {METHODS.map((option) => {
-          const selected = option.id === method;
-          return (
-            <Card
-              key={option.id}
-              onClick={() => setMethod(option.id)}
-              className={cn(
-                "flex cursor-pointer items-center gap-3 p-3.5",
-                selected && "border-iris ring-[3px] ring-iris-soft"
-              )}
-            >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-iris-soft text-iris-deep">
-                <Icon data={option.icon} size={18} />
-              </span>
-              <span className="flex-1 text-[14px] font-medium">
-                {option.label}
-              </span>
-              {selected ? (
-                <span className="flex size-5 items-center justify-center rounded-full bg-iris text-white">
-                  <Icon data={Tick02Icon} size={12} />
+          {METHODS.map((option) => {
+            const selected = option.id === method;
+            return (
+              <Card
+                key={option.id}
+                onClick={() => setMethod(option.id)}
+                className={cn(
+                  "flex-row items-center gap-3 p-3.5 transition-colors cursor-pointer",
+                  selected ? "border-iris ring-[3px] ring-iris-soft" : "hover:bg-muted/40"
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-[10px]",
+                    selected ? "bg-iris-soft text-iris-deep" : "bg-muted text-content-muted"
+                  )}
+                >
+                  <Icon icon={option.icon} size={18} />
                 </span>
-              ) : (
-                <span className="size-[19px] rounded-full border-[1.5px] border-[#cfccdd]" />
-              )}
-            </Card>
-          );
-        })}
-      </div>
+                <span className="flex-1">
+                  <span className="block text-[14px] font-medium text-foreground">{option.label}</span>
+                  <span className="block text-[11.5px] text-content-faint">{option.hint}</span>
+                </span>
+                {selected ? (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-iris text-white">
+                    <Icon icon={Tick02Icon} size={12} />
+                  </span>
+                ) : (
+                  <span className="size-[19px] rounded-full border-[1.5px] border-hairline" />
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      </FadeIn>
     </MobileScreen>
+  );
+}
+
+interface DetailRowProps {
+  icon: IconData;
+  label: string;
+  value: string;
+  last?: boolean;
+}
+
+function DetailRow({ icon, label, value, last }: DetailRowProps) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 px-4 py-3",
+        !last && "border-b border-hairline-soft"
+      )}
+    >
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-muted text-content-muted">
+        <Icon icon={icon} size={15} />
+      </span>
+      <span className="flex-1 text-[13px] text-content-muted">{label}</span>
+      <span className="text-[13.5px] font-medium text-foreground">{value}</span>
+    </div>
   );
 }

@@ -8,13 +8,9 @@ export const INTENTS = [
   "status_query",
   "help_query",
   "pay_collection",
-  "split_payment",
-  "person_picker",
+  "bill_split",
   "unknown",
 ] as const;
-
-export const SPLIT_MODES = ["even", "custom", "by_count"] as const;
-export type SplitMode = (typeof SPLIT_MODES)[number];
 
 /**
  * Optional field that also tolerates an explicit `null` from the model (LLMs
@@ -42,22 +38,14 @@ export const intentSchema = z.object({
   /** Filled by the dispatcher after a Nomba lookup — not produced by the LLM. */
   resolvedAccountName: opt(z.string()),
   resolvedBankCode: opt(z.string()),
-  splitMode: opt(z.enum(SPLIT_MODES)),
-  count: opt(z.number().int().positive()),
-  members: opt(
-    z.array(
-      z.object({
-        name: z.string(),
-        amount: opt(z.number().int().positive()),
-      })
-    )
-  ),
+  /** Optional payer names captured up front for a bill split (the "who's paying" pool). */
+  payerNames: opt(z.array(z.string())),
+  /** Receipt line items for a bill split — each is one claimable line (no quantities). */
   items: opt(
     z.array(
       z.object({
         name: z.string(),
         unitPrice: z.number().int().positive(),
-        quantity: opt(z.number().int().positive()),
       })
     )
   ),

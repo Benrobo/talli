@@ -1,81 +1,131 @@
 import { Link } from "@tanstack/react-router";
 import { cn } from "@app/ui";
-import { Badge, Button, PageHeader, ProgressBar } from "@/components/ui";
-import { ArrowRight01Icon, Icon, PlusSignIcon } from "@app/icons";
+import {
+  Button,
+  EmptyState,
+  PageHeader,
+  ProgressBar,
+  StatusPill,
+  Stagger,
+  StaggerItem,
+  Pressable,
+} from "@/components/ui";
+import { Icon } from "@benrobo/iconary/react";
+import {
+  ArrowRight01Icon,
+  Coins01Icon,
+  PlusSignIcon,
+  UserGroupIcon,
+} from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira, toPercent } from "@/lib/format";
 import { collections } from "@/data/mock/collections";
+import { NewCollectionDialog } from "@/modules/collections/components/new-collection-dialog";
 import type { Collection, CollectionStatus } from "@/modules/collections/types";
 
-const STATUS_BADGE: Record<CollectionStatus, { tone: "iris" | "neutral" | "amber"; label: string }> = {
-  live: { tone: "iris", label: "LIVE" },
-  closed: { tone: "neutral", label: "CLOSED" },
-  draft: { tone: "amber", label: "DRAFT" },
+const STATUS: Record<CollectionStatus, { status: "info" | "neutral" | "pending"; label: string }> = {
+  live: { status: "info", label: "Live" },
+  closed: { status: "neutral", label: "Closed" },
+  draft: { status: "pending", label: "Draft" },
 };
 
-/** Collections list — every pot, live, closed, and draft (screen 2c). */
 export function CollectionsPage() {
+  const live = collections.filter((c) => c.status === "live").length;
+  const closed = collections.filter((c) => c.status === "closed").length;
+  const draft = collections.filter((c) => c.status === "draft").length;
+
   return (
     <div>
       <PageHeader
         title="Collections"
-        subtitle="1 live · 1 closed · 1 draft"
+        subtitle={`${live} live · ${closed} closed · ${draft} draft`}
         actions={
-          <Button size="default" leadingIcon={<Icon data={PlusSignIcon} size={16} />}>
-            New collection
-          </Button>
+          <NewCollectionDialog
+            trigger={
+              <Button leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>New collection</Button>
+            }
+          />
         }
       />
-      <div className="flex flex-col gap-3">
-        {collections.map((collection) => (
-          <CollectionRow key={collection.slug} collection={collection} />
-        ))}
-      </div>
+
+      {collections.length === 0 ? (
+        <EmptyState
+          icon={UserGroupIcon}
+          title="No collections yet"
+          description="Start a collection to gather money from a group — dues, a shared bill, contributions."
+          action={
+            <NewCollectionDialog
+              trigger={
+                <Button leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>New collection</Button>
+              }
+            />
+          }
+        />
+      ) : (
+        <Stagger className="flex flex-col gap-3.5">
+          {collections.map((collection) => (
+            <StaggerItem key={collection.slug}>
+              <CollectionRow collection={collection} />
+            </StaggerItem>
+          ))}
+        </Stagger>
+      )}
     </div>
   );
 }
 
-interface CollectionRowProps {
-  collection: Collection;
-}
+function CollectionRow({ collection }: { collection: Collection }) {
+  const badge = STATUS[collection.status];
+  const pct = toPercent(collection.collectedMinor, collection.targetMinor);
+  const isDraft = collection.status === "draft";
 
-function CollectionRow({ collection }: CollectionRowProps) {
-  const badge = STATUS_BADGE[collection.status];
   return (
-    <Link
-      to="/collections/$slug"
-      params={{ slug: collection.slug }}
-      className={cn(
-        "flex items-center gap-5 rounded-[14px] border border-hairline bg-card px-5 py-[18px] shadow-card",
-        collection.status === "draft" && "opacity-[.84]"
-      )}
-    >
-      <div className="min-w-0 flex-1">
-        <div className="mb-1.5 flex items-center gap-2.5">
-          <span className="text-[15px] font-medium">{collection.title}</span>
-          <Badge tone={badge.tone}>{badge.label}</Badge>
-        </div>
-        <div className="text-[12.5px] text-content-muted">{subLine(collection)}</div>
-      </div>
-      <div className="w-[180px] shrink-0">
-        {collection.status === "draft" ? (
-          <div className="text-[12px] text-content-faint">Waiting to launch</div>
-        ) : (
-          <>
-            <div className="mb-1.5 flex items-center justify-between text-[12px]">
-              <span className="tabular font-medium">
-                {formatNaira(collection.collectedMinor)}
-              </span>
-              <span className="tabular text-content-muted">{countLabel(collection)}</span>
-            </div>
-            <ProgressBar
-              value={toPercent(collection.collectedMinor, collection.targetMinor)}
-              className="h-1.5"
-            />
-          </>
+    <Pressable>
+      <Link
+        to="/collections/$slug"
+        params={{ slug: collection.slug }}
+        className={cn(
+          "flex items-center gap-4 rounded-[16px] border border-hairline bg-card px-5 py-[18px] shadow-card transition-colors hover:border-iris/30",
+          isDraft && "opacity-[.86]"
         )}
-      </div>
-      <Icon data={ArrowRight01Icon} size={18} className="shrink-0 text-content-faint" />
-    </Link>
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-muted text-content-muted">
+          <Icon icon={Coins01Icon} size={18} />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center gap-2.5">
+            <span className="truncate text-[15.5px] font-medium">{collection.title}</span>
+            <StatusPill status={badge.status} dot={collection.status === "live"}>
+              {badge.label}
+            </StatusPill>
+          </div>
+          <div className="text-[12.5px] text-content-muted">{subLine(collection)}</div>
+        </div>
+
+        <div className="w-[190px] shrink-0">
+          {isDraft ? (
+            <div className="text-[12px] text-content-faint">Waiting to launch</div>
+          ) : (
+            <>
+              <div className="mb-1.5 flex items-baseline justify-between text-[12px]">
+                <span className="tabular font-semibold">
+                  {formatNaira(collection.collectedMinor)}
+                </span>
+                <span className="tabular text-content-muted">{countLabel(collection)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ProgressBar value={pct} className="h-1.5 flex-1" />
+                <span className="tabular w-8 text-right text-[11px] font-medium text-content-faint">
+                  {pct}%
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <Icon icon={ArrowRight01Icon} size={18} className="shrink-0 text-content-faint" />
+      </Link>
+    </Pressable>
   );
 }
 
@@ -92,7 +142,7 @@ function subLine(collection: Collection): string {
 
 function countLabel(collection: Collection): string {
   if (collection.status === "closed") {
-    return `${toPercent(collection.collectedMinor, collection.targetMinor)}%`;
+    return "Complete";
   }
-  return `${collection.paidCount}/${collection.memberCount}`;
+  return `${collection.paidCount}/${collection.memberCount} paid`;
 }

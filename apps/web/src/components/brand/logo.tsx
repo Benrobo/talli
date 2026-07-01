@@ -1,17 +1,11 @@
 import { cn } from "@app/ui";
 
 interface LogoMarkProps {
-  /** Height of the bars in px. */
   size?: number;
   className?: string;
-  /** Color of the diagonal slash overlay. */
   slashClassName?: string;
 }
 
-/**
- * The Talli wordmark glyph: four vertical bars struck through by a diagonal —
- * a tally mark. Rendered purely with utility classes so it tints with theme.
- */
 export function LogoMark({ size = 18, className, slashClassName }: LogoMarkProps) {
   const bars = [0, 1, 2, 3];
   return (
@@ -41,12 +35,11 @@ interface LogoProps {
   markSize?: number;
 }
 
-/** Glyph + "Talli" serif wordmark, for the sidebar and headers. */
 export function Logo({ className, markSize = 17 }: LogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark size={markSize} />
-      <span className="font-serif text-[23px] leading-none text-white">Talli</span>
+      <span className="text-[19px] font-bold tracking-[-0.02em] text-foreground">Talli</span>
     </span>
   );
 }
