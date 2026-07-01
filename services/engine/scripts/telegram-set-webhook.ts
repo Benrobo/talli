@@ -29,6 +29,8 @@ async function set(): Promise<void> {
     { command: "start", description: "Connect this chat with a code" },
     { command: "info", description: "About Talli, status, and commands" },
     { command: "balance", description: "Your wallet, savings, and collections (DM only)" },
+    { command: "receipt", description: "Get a receipt for your latest payment (DM only)" },
+    { command: "receipts", description: "List recent payments & pick a receipt (DM only)" },
     { command: "disconnect", description: "Unlink this chat (admin only in groups)" },
   ]);
   console.log("✅ command menu registered");

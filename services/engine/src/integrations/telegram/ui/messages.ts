@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import env from "../../../config/env.js";
 import { formatNaira } from "./keyboards.js";
 
@@ -186,6 +187,9 @@ export const messages = {
       "*Commands*",
       "• `/start <code>` — connect this chat",
       `• mention ${botMention} with a request once connected`,
+      "• `/balance` — your wallet, savings & collections (DM)",
+      "• `/receipt` — your latest payment receipt (DM)",
+      "• `/receipts` — pick a receipt from recent payments (DM)",
       "• `/disconnect` — unlink this chat (admin only in groups)",
       "• `/info` — show this message"
     );
@@ -242,12 +246,15 @@ export const messages = {
     const heading = payer
       ? `💸 [${escapeMarkdown(payer.name)}](tg://user?id=${payer.id}), pay *${formatNaira(amount)}*`
       : `💸 *Pay ${formatNaira(amount)}*`;
+    const owner = payer ? `*${escapeMarkdown(payer.name)}*` : "you";
     return [
       heading,
       "",
       "Transfer to this account from your bank app:",
       `• Account: \`${accountNumber}\``,
       `• Bank: *${bankName}*`,
+      "",
+      `⚠️ This account belongs to ${owner}. *Any* money sent here, even from someone else's bank, is credited to ${owner}. Don't share it.`,
       "",
       "I'll confirm here automatically once it lands (usually under a minute).",
     ].join("\n");
@@ -291,7 +298,8 @@ export const messages = {
         "I verify the account name before anything leaves your wallet.",
         "_“send ₦10,000 to GTB 0123456789”_",
         "",
-        "👛 *See your balance*  — just tap /balance or ask _“what's my balance?”_"
+        "👛 *See your balance*  — just tap /balance or ask _“what's my balance?”_",
+        "🧾 *Get a receipt*  — /receipt for your latest, or /receipts to pick one"
       );
     } else {
       lines.push(
@@ -411,6 +419,21 @@ export const messages = {
     return `✅ Collection *${title}* is live. Members can tap the pay button to contribute.`;
   },
 
+  noPayableCollections: "💰 There are no active collections to pay in this group right now.",
+
+  pickCollection(items: { title: string; amount: number; createdAt: Date }[]): string {
+    const lines = ["💰 *Which collection do you want to pay?*", ""];
+    items.forEach((c) => {
+      lines.push(`• *${c.title}* — ${formatNaira(c.amount)}/person  ·  _${dayjs(c.createdAt).format("DD MMM")}_`);
+    });
+    lines.push("", "Tap one below to pay.");
+    return lines.join("\n");
+  },
+
+  collectionCard(title: string, amount: number): string {
+    return [`💰 *${title}*`, "", `Amount: *${formatNaira(amount)}* per person`, "", "Tap below to pay."].join("\n");
+  },
+
   jarCreated(name: string): string {
     return `✅ Savings jar *${name}* created.`;
   },
@@ -473,6 +496,19 @@ export const messages = {
   actionFailed: "⚠️ That didn't go through. Please try again.",
 
   balanceDmOnly: "🔒 Your balance is private — check it in a *direct message* with me, not in a group.",
+
+  receiptDmOnly: "🔒 Receipts are private — ask me for them in a *direct message*, not in a group.",
+
+  noReceipts: "🧾 You don't have any receipts yet. Once you send money or top up, I'll have one ready.",
+
+  receiptList:
+    "🧾 *Your recent payments*\n\nTap any one to get its receipt.",
+
+  receiptCaption: "🧾 Here's your receipt.",
+
+  receiptNotFound(reference: string): string {
+    return `🧾 I couldn't find a receipt for *${reference}*. Try /receipt for your latest one.`;
+  },
 
   balance(o: {
     walletBalance: number;

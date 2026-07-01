@@ -10,6 +10,8 @@ export const CALLBACK_ACTION = {
   cancel: "cancel",
   info: "info",
   disconnect: "disconnect",
+  receipt: "receipt",
+  selectCollection: "selcol",
 } as const;
 
 export type CallbackAction = (typeof CALLBACK_ACTION)[keyof typeof CALLBACK_ACTION];

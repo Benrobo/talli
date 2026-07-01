@@ -105,6 +105,14 @@ class CollectionService {
     });
   }
 
+  async listPayableForChat(linkedChatId: string): Promise<Collection[]> {
+    return prisma.collection.findMany({
+      where: { linkedChatId, status: { in: ["active", "partially_paid"] } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+  }
+
   /** A collection with its members and a paid-progress summary. */
   async getWithProgress(workspaceId: string, collectionId: string) {
     const collection = await prisma.collection.findFirst({

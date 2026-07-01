@@ -3,6 +3,13 @@ import prisma from "../../prisma/index.js";
 import { NotFoundException } from "../../lib/exception.js";
 import { renderReceipt, type ReceiptData } from "./renderer.js";
 
+export interface ReceiptListItem {
+  reference: string;
+  amount: number;
+  label: string;
+  date: Date;
+}
+
 function money(amount: number): string {
   return amount.toLocaleString("en-NG");
 }
@@ -66,6 +73,92 @@ class ReceiptService {
   async renderByReference(reference: string, workspaceId?: string): Promise<Buffer> {
     const data = await this.buildByReference(reference, workspaceId);
     return renderReceipt(data);
+  }
+
+  async recentList(workspaceId: string, ownerUserId: string, limit = 8): Promise<ReceiptListItem[]> {
+    const wallet = await prisma.wallet.findUnique({ where: { userId: ownerUserId }, select: { id: true } });
+    const collections = await prisma.collection.findMany({ where: { workspaceId }, select: { id: true } });
+    const collectionIds = collections.map((c) => c.id);
+
+    const transfers = await prisma.transfer.findMany({
+      where: { workspaceId, status: "sent" },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { merchantTxRef: true, amount: true, accountName: true, createdAt: true },
+    });
+
+    const paymentScopes = [
+      ...(collectionIds.length ? [{ collectionId: { in: collectionIds } }] : []),
+      ...(wallet ? [{ walletId: wallet.id }] : []),
+    ];
+    const payments = paymentScopes.length
+      ? await prisma.pendingPayment.findMany({
+          where: { status: "completed", OR: paymentScopes },
+          orderBy: { completedAt: "desc" },
+          take: limit,
+          select: { orderRefId: true, amount: true, purpose: true, collectionId: true, completedAt: true, createdAt: true },
+        })
+      : [];
+
+    const titles = new Map<string, string>();
+    const payCollectionIds = payments.map((p) => p.collectionId).filter((id): id is string => !!id);
+    if (payCollectionIds.length) {
+      const rows = await prisma.collection.findMany({
+        where: { id: { in: payCollectionIds } },
+        select: { id: true, title: true },
+      });
+      rows.forEach((r) => titles.set(r.id, r.title));
+    }
+
+    const items: ReceiptListItem[] = [
+      ...transfers.map((t) => ({
+        reference: t.merchantTxRef,
+        amount: t.amount,
+        label: `Sent to ${t.accountName}`,
+        date: t.createdAt,
+      })),
+      ...payments.map((p) => ({
+        reference: p.orderRefId,
+        amount: p.amount,
+        label:
+          p.purpose === "collection"
+            ? (p.collectionId ? titles.get(p.collectionId) ?? "Collection" : "Collection")
+            : "Wallet top-up",
+        date: p.completedAt ?? p.createdAt,
+      })),
+    ];
+
+    return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
+  }
+
+  async latestReference(workspaceId: string, ownerUserId: string): Promise<string | null> {
+    const wallet = await prisma.wallet.findUnique({ where: { userId: ownerUserId }, select: { id: true } });
+    const collections = await prisma.collection.findMany({ where: { workspaceId }, select: { id: true } });
+    const collectionIds = collections.map((c) => c.id);
+
+    const transfer = await prisma.transfer.findFirst({
+      where: { workspaceId, status: "sent" },
+      orderBy: { createdAt: "desc" },
+      select: { merchantTxRef: true, createdAt: true },
+    });
+    const paymentScopes = [
+      ...(collectionIds.length ? [{ collectionId: { in: collectionIds } }] : []),
+      ...(wallet ? [{ walletId: wallet.id }] : []),
+    ];
+    const payment = paymentScopes.length
+      ? await prisma.pendingPayment.findFirst({
+          where: { status: "completed", OR: paymentScopes },
+          orderBy: { completedAt: "desc" },
+          select: { orderRefId: true, completedAt: true },
+        })
+      : null;
+
+    if (!transfer && !payment) return null;
+    if (!transfer) return payment!.orderRefId;
+    if (!payment) return transfer.merchantTxRef;
+    const tDate = transfer.createdAt.getTime();
+    const pDate = (payment.completedAt ?? new Date(0)).getTime();
+    return tDate >= pDate ? transfer.merchantTxRef : payment.orderRefId;
   }
 
   async render(data: ReceiptData): Promise<Buffer> {

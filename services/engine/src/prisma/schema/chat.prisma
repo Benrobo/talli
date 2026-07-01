@@ -26,6 +26,9 @@ enum BotCommandStatus {
   failed
 }
 
+/// A chat (Telegram DM or group) bound to a workspace, so messages there can act
+/// on that workspace's money. Created when someone redeems a `ChatLinkCode` via
+/// `/start <code>`; everything the bot does is scoped through this link.
 model LinkedChat {
   id               String           @id @default(cuid())
   workspaceId      String
@@ -54,6 +57,9 @@ model LinkedChat {
   @@map("linked_chats")
 }
 
+/// A short-lived, single-use code generated from the dashboard to connect a chat.
+/// The user sends `/start <code>` in the chat; redeeming it creates the LinkedChat.
+/// Stored hashed, expires, and is marked `usedAt` once redeemed.
 model ChatLinkCode {
   id              String          @id @default(cuid())
   workspaceId     String
@@ -102,6 +108,11 @@ model PlatformUser {
   @@map("platform_users")
 }
 
+/// One message the bot processed: the raw text, the parsed intent, the reply, and
+/// status. Doubles as conversation state for the ask-back flow — a pending
+/// clarification is stored here (`clarifyMessageId`/`askedBy`/`clarifyRounds`) and
+/// the user's next message is matched back to it. Recent rows feed the parser as
+/// short-term chat history.
 model BotCommand {
   id               String           @id @default(cuid())
   workspaceId      String

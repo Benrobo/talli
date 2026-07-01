@@ -1,9 +1,24 @@
+import prisma from "../../../prisma/index.js";
 import logger from "../../../lib/logger.js";
 import { collectionService } from "../../../services/collection.service.js";
 import { pendingPaymentService } from "../../../services/pending-payment.service.js";
 import { messages } from "../ui/messages.js";
+import { payButton } from "../ui/keyboards.js";
 import type { TalliContext } from "../types.js";
 import { safeReply } from "./shared.js";
+
+export async function handleSelectCollection(ctx: TalliContext, collectionId: string): Promise<void> {
+  const collection = await prisma.collection.findUnique({
+    where: { id: collectionId },
+    select: { title: true, amountPerMember: true, status: true },
+  });
+  if (!collection || !["active", "partially_paid"].includes(collection.status)) {
+    await safeReply(ctx, messages.noPayableCollections);
+    return;
+  }
+  const amount = collection.amountPerMember ?? 0;
+  await safeReply(ctx, messages.collectionCard(collection.title, amount), payButton(collectionId, amount));
+}
 
 /**
  * A "Pay" button tap. The tap is the trusted identity, so we upsert the member

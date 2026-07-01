@@ -25,7 +25,7 @@ export interface ParseContext {
 }
 
 const DM_ONLY: IntentName[] = ["send_money", "save_to_jar", "create_jar"];
-const GROUP_OK: IntentName[] = ["create_collection", "status_query", "help_query"];
+const GROUP_OK: IntentName[] = ["create_collection", "status_query", "help_query", "pay_collection"];
 
 /**
  * Turns a chat message into one structured intent using the LLM. Parses and

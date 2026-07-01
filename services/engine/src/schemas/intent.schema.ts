@@ -7,6 +7,7 @@ export const INTENTS = [
   "send_money",
   "status_query",
   "help_query",
+  "pay_collection",
   "unknown",
 ] as const;
 

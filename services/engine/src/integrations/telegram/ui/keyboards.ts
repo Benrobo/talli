@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { InlineKeyboard } from "grammy";
 import { CALLBACK_ACTION, encodeCallback } from "../types.js";
 
@@ -11,6 +12,27 @@ export function payButton(collectionId: string, amount: number): InlineKeyboard 
     `Pay ${formatNaira(amount)}`,
     encodeCallback(CALLBACK_ACTION.pay, collectionId)
   );
+}
+
+export function receiptListKeyboard(
+  items: { reference: string; amount: number; label: string }[]
+): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  for (const item of items) {
+    kb.text(`🧾 ${formatNaira(item.amount)} · ${item.label}`, encodeCallback(CALLBACK_ACTION.receipt, item.reference)).row();
+  }
+  return kb;
+}
+
+export function selectCollectionKeyboard(
+  items: { id: string; title: string; amount: number; createdAt: Date }[]
+): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  for (const item of items) {
+    const date = dayjs(item.createdAt).format("DD MMM");
+    kb.text(`💰 ${item.title} · ${formatNaira(item.amount)} · ${date}`, encodeCallback(CALLBACK_ACTION.selectCollection, item.id)).row();
+  }
+  return kb;
 }
 
 export function confirmCancel(actionId: string): InlineKeyboard {

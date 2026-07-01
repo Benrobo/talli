@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
-import { confirmCancel, payButton } from "../integrations/telegram/ui/keyboards.js";
+import { confirmCancel, payButton, selectCollectionKeyboard } from "../integrations/telegram/ui/keyboards.js";
 import type { InlineKeyboard } from "grammy";
 import { commandParserService, type ChatScope } from "./command-parser.service.js";
 import { botCommandService, type CommandContext } from "./bot-command.service.js";
@@ -76,6 +76,11 @@ class IntentDispatcherService {
       const reply = messages.help(ctx.scope === "group" ? "group" : "private");
       await botCommandService.recordConversational(ctx, text, intent, reply);
       return { text: reply };
+    }
+    if (intent.intent === "pay_collection") {
+      const result = await this.runPayCollection(ctx);
+      await botCommandService.recordConversational(ctx, text, intent, result.text);
+      return result;
     }
     const prepared = await this.prepareIntent(intent, ctx);
     if (intent.status === "needs_clarification" || prepared.clarify) {
@@ -358,6 +363,27 @@ class IntentDispatcherService {
       return { text: messages.collectionsOverview(overview.collections) };
     }
     return { text: messages.balance(overview) };
+  }
+
+  private async runPayCollection(ctx: DispatchContext): Promise<DispatchResult> {
+    const collections = await collectionService.listPayableForChat(ctx.linkedChatId);
+    if (collections.length === 0) {
+      return { text: messages.noPayableCollections };
+    }
+    if (collections.length === 1) {
+      const c = collections[0]!;
+      return { text: messages.collectionCard(c.title, c.amountPerMember ?? 0), keyboard: payButton(c.id, c.amountPerMember ?? 0) };
+    }
+    const items = collections.map((c) => ({
+      id: c.id,
+      title: c.title,
+      amount: c.amountPerMember ?? 0,
+      createdAt: c.createdAt,
+    }));
+    return {
+      text: messages.pickCollection(items),
+      keyboard: selectCollectionKeyboard(items),
+    };
   }
 
   private async loadCommand(commandId: string) {
