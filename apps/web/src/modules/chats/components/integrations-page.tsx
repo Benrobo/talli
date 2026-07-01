@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -15,6 +15,7 @@ import {
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowRight01Icon,
+  BubbleChatIcon,
   Copy01Icon,
   Delete02Icon,
   Link01Icon,
@@ -22,17 +23,40 @@ import {
   MoreHorizontalIcon,
   RefreshIcon,
   Tick02Icon,
+  UserGroupIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import {
   useConnectedChats,
   useCreateLinkCode,
   useDisconnectChat,
 } from "@/api/http/v1/chat/chat.hooks";
-import type { ConnectedChat, LinkCodeData } from "@/api/http/v1/chat/chat.types";
+import type { ConnectedChat, CreateLinkCodePayload, LinkCodeData } from "@/api/http/v1/chat/chat.types";
 import { PlatformTile } from "@/modules/chats/components/platform-tile";
 import type { ChatPlatform } from "@/modules/chats/types";
 
 const TELEGRAM_BOT_USERNAME = "trytalli_bot";
+
+type LinkPurpose = CreateLinkCodePayload["purpose"];
+
+const LINK_PURPOSE_OPTIONS: {
+  purpose: LinkPurpose;
+  title: string;
+  description: string;
+  icon: typeof UserGroupIcon;
+}[] = [
+  {
+    purpose: "group_link",
+    title: "Group chat",
+    description: "Add the bot to a Telegram group, then post a /start command as an admin.",
+    icon: UserGroupIcon,
+  },
+  {
+    purpose: "private_link",
+    title: "Direct message",
+    description: "Open a tap-to-start link in Telegram to link your private chat with the bot.",
+    icon: BubbleChatIcon,
+  },
+];
 
 interface Integration {
   platform: ChatPlatform;
@@ -75,9 +99,18 @@ function formatExpiry(expiresAt: string): string {
   return `Single-use · expires in ${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
-function linkCommand(linkData: LinkCodeData | null): string | null {
-  if (!linkData) return null;
-  return linkData.command ?? `/start ${linkData.code}`;
+function linkDisplay(linkData: LinkCodeData, purpose: LinkPurpose): string {
+  if (purpose === "group_link") {
+    return linkData.command ?? `/start ${linkData.code}`;
+  }
+  return linkData.deepLink ?? "";
+}
+
+function linkHint(purpose: LinkPurpose): string {
+  if (purpose === "group_link") {
+    return "Group admins only";
+  }
+  return "Opens a DM with the bot to link your private chat";
 }
 
 export function IntegrationsPage() {
@@ -151,18 +184,33 @@ function PanelHeader({
 function TelegramPanel({ chats }: { chats: ConnectedChat[] }) {
   const createLinkCode = useCreateLinkCode();
   const disconnectChat = useDisconnectChat();
+  const [selectedPurpose, setSelectedPurpose] = useState<LinkPurpose | null>(null);
   const [linkData, setLinkData] = useState<LinkCodeData | null>(null);
+  const [activePurpose, setActivePurpose] = useState<LinkPurpose | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const command = linkCommand(linkData);
+  const displayValue = linkData && activePurpose ? linkDisplay(linkData, activePurpose) : null;
+
+  function selectPurpose(purpose: LinkPurpose) {
+    setSelectedPurpose(purpose);
+    setLinkData(null);
+    setActivePurpose(null);
+    setCopied(false);
+  }
 
   async function generateCode() {
+    if (!selectedPurpose) {
+      toast.error("Choose whether you're linking a group or a direct message");
+      return;
+    }
+
     try {
       const result = await createLinkCode.mutateAsync({
         platform: "telegram",
-        purpose: "group_link",
+        purpose: selectedPurpose,
       });
       setLinkData(result.data);
+      setActivePurpose(selectedPurpose);
       setCopied(false);
     } catch (error) {
       const message =
@@ -172,15 +220,11 @@ function TelegramPanel({ chats }: { chats: ConnectedChat[] }) {
     }
   }
 
-  useEffect(() => {
-    generateCode();
-  }, []);
-
   function copy() {
-    if (!command) return;
-    navigator.clipboard.writeText(command).then(() => {
+    if (!displayValue) return;
+    navigator.clipboard.writeText(displayValue).then(() => {
       setCopied(true);
-      toast.success("Command copied");
+      toast.success(activePurpose === "group_link" ? "Command copied" : "Link copied");
       setTimeout(() => setCopied(false), 1600);
     });
   }
@@ -218,42 +262,106 @@ function TelegramPanel({ chats }: { chats: ConnectedChat[] }) {
             </a>{" "}
             on Telegram, or add it to your group.
           </Step>
-          <Step index={2} title="Send the code">
-            Paste the command below. Talli links that chat to this workspace instantly.
+          <Step index={2} title="Generate your code">
+            Choose group or direct message, then generate a single-use link code for that chat type.
           </Step>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 rounded-[12px] border border-hairline bg-inset px-4 py-2.5">
-          <span className="flex-1 font-mono text-[15px] font-semibold tracking-[0.06em] text-foreground">
-            {createLinkCode.isPending && !command ? "Generating…" : command ?? "—"}
-          </span>
-          <button
-            type="button"
-            onClick={generateCode}
-            disabled={createLinkCode.isPending}
-            title="Generate a new code"
-            className="t-press flex size-8 items-center justify-center rounded-[10px] text-content-muted hover:bg-card hover:text-foreground disabled:opacity-50"
-          >
-            <Icon icon={RefreshIcon} size={15} className={createLinkCode.isPending ? "animate-spin" : undefined} />
-          </button>
-          <button
-            type="button"
-            onClick={copy}
-            disabled={!command}
-            title="Copy command"
-            className={cn(
-              "t-press flex size-8 items-center justify-center rounded-[10px] disabled:opacity-50",
-              copied ? "bg-emerald-soft text-emerald-deep" : "bg-iris-soft text-iris-deep"
-            )}
-          >
-            <Icon icon={copied ? Tick02Icon : Copy01Icon} size={15} />
-          </button>
+        <div className="mt-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.11em] text-content-faint">
+            What are you linking?
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {LINK_PURPOSE_OPTIONS.map((option) => {
+              const selected = selectedPurpose === option.purpose;
+              return (
+                <button
+                  key={option.purpose}
+                  type="button"
+                  onClick={() => selectPurpose(option.purpose)}
+                  className={cn(
+                    "t-press rounded-[13px] border bg-inset/50 p-3.5 text-left transition-colors",
+                    selected
+                      ? "border-iris ring-[3px] ring-iris-soft"
+                      : "border-hairline hover:border-hairline-soft hover:bg-inset"
+                  )}
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "flex size-8 items-center justify-center rounded-[10px]",
+                        selected ? "bg-iris-soft text-iris-deep" : "bg-card text-content-muted"
+                      )}
+                    >
+                      <Icon icon={option.icon} size={16} />
+                    </span>
+                    <span className="text-[13.5px] font-semibold text-foreground">{option.title}</span>
+                  </div>
+                  <p className="text-[12.5px] leading-relaxed text-content-muted">{option.description}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <p className="mt-2 flex items-center gap-1 text-[11.5px] text-content-faint">
-          <Icon icon={Location01Icon} size={12} />
-          Group admins only
-          {linkData ? ` · ${formatExpiry(linkData.expiresAt)}` : ""}
-        </p>
+
+        {displayValue ? (
+          <>
+            <div className="mt-3 flex items-center gap-2 rounded-[12px] border border-hairline bg-inset px-4 py-2.5">
+              <span className="flex-1 break-all font-mono text-[14px] font-semibold tracking-[0.04em] text-foreground sm:text-[15px] sm:tracking-[0.06em]">
+                {displayValue}
+              </span>
+              <button
+                type="button"
+                onClick={generateCode}
+                disabled={createLinkCode.isPending}
+                title="Generate a new code"
+                className="t-press flex size-8 shrink-0 items-center justify-center rounded-[10px] text-content-muted hover:bg-card hover:text-foreground disabled:opacity-50"
+              >
+                <Icon icon={RefreshIcon} size={15} className={createLinkCode.isPending ? "animate-spin" : undefined} />
+              </button>
+              <button
+                type="button"
+                onClick={copy}
+                title={activePurpose === "group_link" ? "Copy command" : "Copy link"}
+                className={cn(
+                  "t-press flex size-8 shrink-0 items-center justify-center rounded-[10px]",
+                  copied ? "bg-emerald-soft text-emerald-deep" : "bg-iris-soft text-iris-deep"
+                )}
+              >
+                <Icon icon={copied ? Tick02Icon : Copy01Icon} size={15} />
+              </button>
+            </div>
+            {activePurpose === "private_link" && linkData?.deepLink ? (
+              <div className="mt-2">
+                <a href={linkData.deepLink} target="_blank" rel="noreferrer">
+                  <Button block variant="secondary" size="sm" trailingIcon={<Icon icon={ArrowRight01Icon} size={14} />}>
+                    Open in Telegram
+                  </Button>
+                </a>
+              </div>
+            ) : null}
+            <p className="mt-2 flex items-center gap-1 text-[11.5px] text-content-faint">
+              <Icon icon={Location01Icon} size={12} />
+              {activePurpose ? linkHint(activePurpose) : ""}
+              {linkData ? ` · ${formatExpiry(linkData.expiresAt)}` : ""}
+            </p>
+          </>
+        ) : (
+          <div className="mt-3 rounded-[12px] border border-dashed border-hairline bg-inset/50 px-4 py-5 text-center">
+            <p className="mb-3 text-[13px] text-content-muted">
+              {selectedPurpose
+                ? `Generate a single-use code for your ${selectedPurpose === "group_link" ? "group" : "direct message"}.`
+                : "Select group or direct message above, then generate a code."}
+            </p>
+            <Button
+              onClick={generateCode}
+              disabled={!selectedPurpose || createLinkCode.isPending}
+              leadingIcon={<Icon icon={Link01Icon} size={16} />}
+            >
+              {createLinkCode.isPending ? "Generating…" : "Generate link code"}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-hairline-soft px-5 pb-1 pt-4">
@@ -267,7 +375,7 @@ function TelegramPanel({ chats }: { chats: ConnectedChat[] }) {
           <EmptyState
             icon={Link01Icon}
             title="No chats linked yet"
-            description="Send the code above in a Telegram chat to connect one."
+            description="Generate a link code above and send it in a Telegram chat to connect one."
             className="rounded-[12px] border-0 bg-inset/50 py-8 shadow-none"
           />
         ) : (
