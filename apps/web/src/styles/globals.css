@@ -128,6 +128,24 @@ main {
   scrollbar-color: rgba(27, 24, 48, 0.12) transparent;
 }
 
+.t-dither {
+  background-color: #efedf9;
+  background-image:
+    radial-gradient(120% 120% at 85% 12%, rgba(109, 74, 230, 0.28) 0%, transparent 55%),
+    radial-gradient(90% 90% at 15% 100%, rgba(124, 91, 240, 0.18) 0%, transparent 60%);
+  position: relative;
+}
+.t-dither::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(27, 24, 48, 0.16) 1px, transparent 1px);
+  background-size: 6px 6px;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .t-press {
   transition:
     transform 0.14s ease,
