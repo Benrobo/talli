@@ -19,6 +19,11 @@ function escapeMarkdown(text: string): string {
   return text.replace(/[\[\]()*_`]/g, "").trim() || "member";
 }
 
+/** Wraps literal text for Telegram legacy Markdown (code span — safe for URLs with `_`). */
+function markdownCode(text: string): string {
+  return `\`${text.replace(/`/g, "'")}\``;
+}
+
 interface CollectionLine {
   title: string;
   amountPerMember: number | null;
@@ -299,6 +304,10 @@ export const messages = {
       "_“Tolu 10k, Ada 5k, Bola 15k”_",
       "📸 _Or send a photo of the bill_ — I'll read the total and split it.",
       "",
+      "🧾 *Person picker*",
+      "Send a receipt photo — each person picks their items on a link and pays their share.",
+      "_“@talli let everyone pick what they chose”_ (with a bill photo)",
+      "",
       "📊 *Check progress*",
       "_“how much have we raised?”_",
       "_“status of the jersey collection”_",
@@ -374,9 +383,42 @@ export const messages = {
 
   splitCreated(title: string, links: { name: string; amount: number; checkoutLink: string }[]): string {
     const lines = [`✂️ *${escapeMarkdown(title)}* is set up!`, "", "Send each person their pay link:", ""];
-    links.forEach((l) => lines.push(`• *${escapeMarkdown(l.name)}* — ${formatNaira(l.amount)}\n  ${l.checkoutLink}`));
+    links.forEach((l) =>
+      lines.push(`• *${escapeMarkdown(l.name)}* — ${formatNaira(l.amount)}\n  ${markdownCode(l.checkoutLink)}`)
+    );
     lines.push("", "_Anyone can pay their link — no Talli account needed. I'll confirm here as each lands._");
     return lines.join("\n");
+  },
+
+  confirmPersonPicker(plan: {
+    title: string;
+    total: number;
+    items: { name: string; unitPrice: number }[];
+  }): string {
+    const lines = [
+      `🧾 *Person picker — ${escapeMarkdown(plan.title)}*`,
+      "",
+      `Receipt total: *${formatNaira(plan.total)}*`,
+      "",
+      "*Items everyone can pick from:*",
+    ];
+    plan.items.slice(0, 12).forEach((item) => {
+      lines.push(`• ${escapeMarkdown(item.name)} — *${formatNaira(item.unitPrice)}* each`);
+    });
+    if (plan.items.length > 12) lines.push(`_…and ${plan.items.length - 12} more_`);
+    lines.push("", "Each person gets a link to pick quantities and pay their share.", "", "*Should I set it up?*");
+    return lines.join("\n");
+  },
+
+  personPickerCreated(title: string, url: string): string {
+    return [
+      `🧾 *${escapeMarkdown(title)}* is ready!`,
+      "",
+      "Share this link so each person can pick what they had and pay their share:",
+      markdownCode(url),
+      "",
+      "_No Talli account needed. I'll confirm here as each payment lands._",
+    ].join("\n");
   },
 
   splitByCountCreated(title: string, amount: number, count: number): string {

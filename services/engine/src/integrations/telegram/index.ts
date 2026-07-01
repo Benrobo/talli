@@ -14,6 +14,12 @@ import { handleMyChatMember } from "./handlers/membership.handler.js";
 
 export { bot, telegram };
 
+// bot.use(async (ctx, next) => {
+//   logger.debug("[telegram] webhook update", ctx.update);
+//   logger.debug(ctx.update);
+//   await next();
+// });
+
 bot.command("start", handleStart);
 bot.command("disconnect", handleDisconnect);
 bot.command("info", handleInfo);
