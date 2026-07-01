@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { AUTH_API } from "./auth.api";
 import type {
@@ -17,37 +24,55 @@ export const authQueryKeys = {
   me: () => [...authQueryKeys.all, "me"] as const,
 };
 
-export const useMe = () => {
-  return useQuery<MeResponse, AxiosError>({
+export const meQueryOptions = () =>
+  queryOptions<MeResponse, AxiosError>({
     queryKey: authQueryKeys.me(),
     queryFn: AUTH_API.ME,
+    staleTime: 5 * 60 * 1000,
   });
+
+export const useMe = (): UseQueryResult<MeResponse, AxiosError> => {
+  return useQuery(meQueryOptions());
 };
 
-export const useRequestOtp = () => {
+export const useRequestOtp = (): UseMutationResult<
+  RequestOtpResponse,
+  AxiosError,
+  RequestOtpPayload
+> => {
   return useMutation<RequestOtpResponse, AxiosError, RequestOtpPayload>({
     mutationFn: AUTH_API.REQUEST_OTP,
   });
 };
 
-export const useVerifyOtp = () => {
+export const useVerifyOtp = (): UseMutationResult<
+  VerifyOtpResponse,
+  AxiosError,
+  VerifyOtpPayload
+> => {
   const queryClient = useQueryClient();
 
   return useMutation<VerifyOtpResponse, AxiosError, VerifyOtpPayload>({
     mutationFn: AUTH_API.VERIFY_OTP,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authQueryKeys.me() });
+    onSuccess: (response) => {
+      queryClient.setQueryData<MeResponse>(authQueryKeys.me(), {
+        data: { user: response.data.user },
+      });
     },
   });
 };
 
-export const useRefreshToken = () => {
+export const useRefreshToken = (): UseMutationResult<
+  RefreshTokenResponse,
+  AxiosError,
+  RefreshTokenPayload | undefined
+> => {
   return useMutation<RefreshTokenResponse, AxiosError, RefreshTokenPayload | undefined>({
     mutationFn: (payload) => AUTH_API.REFRESH(payload),
   });
 };
 
-export const useLogout = () => {
+export const useLogout = (): UseMutationResult<LogoutResponse, AxiosError, void> => {
   const queryClient = useQueryClient();
 
   return useMutation<LogoutResponse, AxiosError>({
