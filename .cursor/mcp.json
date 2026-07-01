@@ -1,0 +1,11 @@
+{
+  "$schema": "https://cursor.sh/schemas/mcp.json",
+  "mcpServers": {
+    "notion": {
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "figma": {
+      "url": "https://mcp.figma.com/mcp"
+    }
+  }
+}

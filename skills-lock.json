@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-06",
+  "skills": {
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "tanstack-router-best-practices": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "web-perf": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "workers-best-practices": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "wrangler": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "agents-sdk": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "durable-objects": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "sandbox-sdk": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "find-skills": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "scope": "agents"
+    },
+    "create-rule": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    },
+    "create-skill": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    },
+    "split-to-prs": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    },
+    "babysit": {
+      "source": "cursor/skills",
+      "sourceType": "github",
+      "scope": "cursor"
+    }
+  }
+}

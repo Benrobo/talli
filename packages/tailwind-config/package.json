@@ -1,0 +1,20 @@
+{
+  "name": "@app/tailwind-config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./theme.ts",
+  "types": "./theme.ts",
+  "exports": {
+    ".": "./theme.ts",
+    "./globals.css": "./globals.css",
+    "./fonts": "./fonts.ts",
+    "./theme": "./theme.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

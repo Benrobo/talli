@@ -1,0 +1,6 @@
+{
+  "watch": ["src", ".env", "src/prisma/schema"],
+  "ext": "ts,prisma,json",
+  "ignore": ["dist", "node_modules", ".trigger"],
+  "exec": "tsx src/server.ts"
+}

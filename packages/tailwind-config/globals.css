@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: oklch(96.5% 0.025 80);
+  --color-brand-100: oklch(92% 0.05 80);
+  --color-brand-200: oklch(85% 0.08 80);
+  --color-brand-300: oklch(76% 0.12 80);
+  --color-brand-400: oklch(67% 0.15 80);
+  --color-brand-500: oklch(58% 0.17 80);
+  --color-brand-600: oklch(49% 0.16 80);
+  --color-brand-700: oklch(41% 0.14 80);
+  --color-brand-800: oklch(33% 0.10 80);
+  --color-brand-900: oklch(25% 0.07 80);
+
+  --color-ink: oklch(18% 0.01 250);
+  --color-paper: oklch(98.5% 0.005 90);
+  --color-muted: oklch(54% 0.005 250);
+
+  --color-surface: oklch(100% 0 0);
+  --color-surface-elevated: oklch(99% 0 0);
+  --color-surface-subtle: oklch(96.5% 0.005 90);
+  --color-border: oklch(91% 0.005 250);
+
+  --color-success: oklch(60% 0.18 145);
+  --color-warning: oklch(75% 0.16 80);
+  --color-danger: oklch(60% 0.21 27);
+  --color-info: oklch(65% 0.15 240);
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+@custom-variant dark ([data-theme="dark"] &);
+
+[data-theme="dark"] {
+  --color-ink: oklch(96% 0.01 90);
+  --color-paper: oklch(15% 0.01 250);
+  --color-muted: oklch(64% 0.005 250);
+  --color-surface: oklch(18% 0.01 250);
+  --color-surface-elevated: oklch(22% 0.01 250);
+  --color-surface-subtle: oklch(20% 0.005 250);
+  --color-border: oklch(28% 0.01 250);
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-ink);
+  }
+}

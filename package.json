@@ -1,0 +1,37 @@
+{
+  "name": "ai-fullstack-starter",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Opinionated, AI-friendly fullstack starter (Bun + Turbo + Hono + Vite + Next.js + Prisma + Trigger.dev). Comes with portable agent skills, curated memory, and the design-icons duotone set baked in.",
+  "packageManager": "bun@1.2.19",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --concurrency=20",
+    "dev:engine": "turbo run dev --filter=@app/engine",
+    "dev:web": "turbo run dev --filter=@app/web",
+    "dev:marketing": "turbo run dev --filter=@app/marketing",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "turbo run clean",
+    "db:generate": "bun --filter @app/engine db:generate",
+    "db:push": "bun --filter @app/engine db:push",
+    "db:migrate": "bun --filter @app/engine db:migrate",
+    "db:studio": "bun --filter @app/engine db:studio",
+    "icons:add": "bun packages/icons/scripts/add-icon.ts",
+    "icons:list": "bun packages/icons/scripts/add-icon.ts --list",
+    "skills:install": "bash scripts/install-skills.sh"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.2"
+  }
+}
