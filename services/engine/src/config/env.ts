@@ -46,6 +46,8 @@ const envSchema = z.object({
     .string()
     .default("https://res.cloudinary.com/dmi4vivcw/image/upload/v1782595988/talli-img-banner.png"),
 
+  BRAND_LOGO_URL: z.string().url().default("https://talli.benlabtest.space/talli-logo.png"),
+
   CHAT_LINK_CODE_TTL_MINUTES: z.coerce.number().default(15),
   PAYMENT_PAGE_BASE_URL: z.string().url().optional(),
 });

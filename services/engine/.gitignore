@@ -6,3 +6,6 @@ dist/
 *.config.js.map
 *.config.d.ts
 *.config.d.ts.map
+
+# receipt font disk cache
+data/.font-cache/

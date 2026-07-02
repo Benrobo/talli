@@ -1,11 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import satori from "satori";
 import sharp from "sharp";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const assetsDir = path.join(__dirname, "..", "..", "assets");
+import env from "../../config/env.js";
+import logger from "../../lib/logger.js";
+import { receiptFontManager } from "./font-manager.js";
 
 type Node = { type: string; props: Record<string, unknown> };
 
@@ -28,28 +25,30 @@ function naira(color: string, size: number): Node {
   return { type: "img", props: { src: dataUri, width: size, height: size, style: { display: "flex" } } };
 }
 
-let fonts: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800; style: "normal" }[] | null = null;
-
-function loadFonts() {
-  if (fonts) return fonts;
-  const f = (file: string) => fs.readFileSync(path.join(assetsDir, "fonts", file));
-  fonts = [
-    { name: "Sora", data: f("Sora-400.ttf"), weight: 400, style: "normal" },
-    { name: "Sora", data: f("Sora-600.ttf"), weight: 600, style: "normal" },
-    { name: "Sora", data: f("Sora-700.ttf"), weight: 700, style: "normal" },
-    { name: "Sora", data: f("Sora-800.ttf"), weight: 800, style: "normal" },
-    { name: "Space Mono", data: f("SpaceMono-700.ttf"), weight: 700, style: "normal" },
-  ];
-  return fonts;
-}
 
 let logoDataUri: string | null = null;
 
+/**
+ * Fetches the brand logo from its public URL once and caches it as a data URI, so
+ * satori renders self-contained (no per-receipt network call) and the receipt
+ * never depends on a file bundled into the container. If the fetch fails the logo
+ * is skipped rather than crashing the whole receipt.
+ */
+async function ensureLogo(): Promise<void> {
+  if (logoDataUri !== null) return;
+  try {
+    const res = await fetch(env.BRAND_LOGO_URL);
+    if (!res.ok) throw new Error(`logo fetch ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    logoDataUri = `data:image/png;base64,${buf.toString("base64")}`;
+  } catch (err) {
+    logger.warn(`[receipt] logo fetch failed, rendering without it: ${(err as Error).message}`);
+    logoDataUri = "";
+  }
+}
+
 function logo(): string {
-  if (logoDataUri) return logoDataUri;
-  const buf = fs.readFileSync(path.join(assetsDir, "brand", "talli-logo.png"));
-  logoDataUri = `data:image/png;base64,${buf.toString("base64")}`;
-  return logoDataUri;
+  return logoDataUri ?? "";
 }
 
 const COLORS = {
@@ -158,7 +157,7 @@ function buildTree(data: ReceiptData): Node {
         { display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
         [
           h("div", { display: "flex", flexDirection: "row", alignItems: "center" }, [
-            img(logo(), { width: 52, height: 52, marginRight: 14, borderRadius: 10 }),
+            ...(logo() ? [img(logo(), { width: 52, height: 52, marginRight: 14, borderRadius: 10 })] : []),
             h("div", { display: "flex", flexDirection: "column" }, [
               h("div", { display: "flex", fontSize: 26, fontWeight: 800, letterSpacing: -0.5 }, "Talli"),
               h(
@@ -265,7 +264,8 @@ function buildTree(data: ReceiptData): Node {
 }
 
 export async function renderReceipt(data: ReceiptData): Promise<Buffer> {
+  const [, fonts] = await Promise.all([ensureLogo(), receiptFontManager.getFonts()]);
   const tree = buildTree(data);
-  const svgOut = await satori(tree as never, { width: 720, fonts: loadFonts() as never });
+  const svgOut = await satori(tree as never, { width: 720, fonts: fonts as never });
   return sharp(Buffer.from(svgOut)).png({ compressionLevel: 8 }).toBuffer();
 }

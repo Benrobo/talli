@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "bun build src/server.ts --outdir dist --target node --format esm --external sharp --external @prisma/client --external @prisma/adapter-pg && cp -r src/assets dist/assets",
+    "build": "bun build src/server.ts --outdir dist --target node --format esm --external sharp --external @prisma/client --external @prisma/adapter-pg",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist .turbo",
