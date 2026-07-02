@@ -41,7 +41,7 @@ const INTEGRATIONS: Integration[] = [
   {
     platform: "whatsapp",
     name: "WhatsApp",
-    blurb: "Split bills and send money right inside a WhatsApp chat.",
+    blurb: "Private-chat collections, savings and payment updates. Group support is on the way.",
     available: false,
   },
 ];

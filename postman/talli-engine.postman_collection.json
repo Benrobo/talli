@@ -14,8 +14,19 @@
     { "key": "linkCode", "value": "" },
     { "key": "deepLink", "value": "" },
     { "key": "linkedChatId", "value": "" },
-    { "key": "pickerToken", "value": "" },
-    { "key": "pickerItemId", "value": "" }
+    { "key": "collectionId", "value": "" },
+    { "key": "collectionMemberId", "value": "" },
+    { "key": "billSplitId", "value": "" },
+    { "key": "billSplitToken", "value": "" },
+    { "key": "billSplitItemId", "value": "" },
+    { "key": "accountNumber", "value": "0123456789" },
+    { "key": "bankName", "value": "Access Bank" },
+    { "key": "orderReference", "value": "" },
+    { "key": "flashAccountNumber", "value": "" },
+    { "key": "transferReference", "value": "" },
+    { "key": "receiptReference", "value": "" },
+    { "key": "nombaSignature", "value": "" },
+    { "key": "nombaTimestamp", "value": "" }
   ],
   "auth": {
     "type": "bearer",
@@ -333,10 +344,280 @@
       ]
     },
     {
-      "name": "Person Picker",
+      "name": "Collections",
       "item": [
         {
-          "name": "Get picker by token",
+          "name": "Create collection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) pm.collectionVariables.set('collectionId', res.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Office lunch\",\n  \"purpose\": \"Team lunch contribution\",\n  \"collectionType\": \"named_members\",\n  \"targetAmount\": 25000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/collections", "host": ["{{baseUrl}}"], "path": ["collections"] }
+          }
+        },
+        {
+          "name": "List collections",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (Array.isArray(res.data) && res.data[0]) pm.collectionVariables.set('collectionId', res.data[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/collections", "host": ["{{baseUrl}}"], "path": ["collections"] }
+          }
+        },
+        {
+          "name": "Get collection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}"]
+            }
+          }
+        },
+        {
+          "name": "List collection members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}/members?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}", "members"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "status", "value": "paid", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List collection payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}/payments?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}", "payments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add collection member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) pm.collectionVariables.set('collectionMemberId', res.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Tolu\",\n  \"expectedAmount\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}", "members"]
+            }
+          }
+        },
+        {
+          "name": "Update collection status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/collections/{{collectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collections", "{{collectionId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transfers",
+      "description": "Bank lookup and outbound transfers. Lookup and send call live Nomba services.",
+      "item": [
+        {
+          "name": "List banks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transfers/banks",
+              "host": ["{{baseUrl}}"],
+              "path": ["transfers", "banks"],
+              "query": [{ "key": "q", "value": "access", "disabled": true }]
+            }
+          }
+        },
+        {
+          "name": "Transfer history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/transfers", "host": ["{{baseUrl}}"], "path": ["transfers"] }
+          }
+        },
+        {
+          "name": "Look up bank account",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"{{accountNumber}}\",\n  \"bankName\": \"{{bankName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transfers/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["transfers", "lookup"]
+            }
+          }
+        },
+        {
+          "name": "Send money",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.transferRef) {",
+                  "  pm.collectionVariables.set('transferReference', res.data.transferRef);",
+                  "  pm.collectionVariables.set('receiptReference', res.data.transferRef);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Sends real money from the active workspace wallet when Nomba credentials are live.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"{{accountNumber}}\",\n  \"bankName\": \"{{bankName}}\",\n  \"amount\": 1000,\n  \"alias\": \"Test beneficiary\",\n  \"narration\": \"Postman transfer\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transfers", "host": ["{{baseUrl}}"], "path": ["transfers"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bill Splits",
+      "item": [
+        {
+          "name": "Create bill split from image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) pm.collectionVariables.set('billSplitToken', res.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "Select a receipt image in the image form-data field before sending.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image", "type": "file", "src": [] },
+                { "key": "title", "value": "Friday dinner", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/bill-splits", "host": ["{{baseUrl}}"], "path": ["bill-splits"] }
+          }
+        },
+        {
+          "name": "List bill splits",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const split = res.data && res.data.billSplits && res.data.billSplits[0];",
+                  "if (split) {",
+                  "  pm.collectionVariables.set('billSplitId', split.id);",
+                  "  pm.collectionVariables.set('billSplitToken', split.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/bill-splits", "host": ["{{baseUrl}}"], "path": ["bill-splits"] }
+          }
+        },
+        {
+          "name": "Get bill split details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bill-splits/{{billSplitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bill-splits", "{{billSplitId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get public bill split by token",
           "event": [
             {
               "listen": "test",
@@ -345,7 +626,7 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res.data && res.data.items && res.data.items[0]) {",
-                  "  pm.collectionVariables.set('pickerItemId', res.data.items[0].id);",
+                  "  pm.collectionVariables.set('billSplitItemId', res.data.items[0].id);",
                   "}"
                 ]
               }
@@ -356,38 +637,97 @@
             "auth": { "type": "noauth" },
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/person-pickers/by-token/{{pickerToken}}",
+              "raw": "{{baseUrl}}/bill-splits/by-token/{{billSplitToken}}",
               "host": ["{{baseUrl}}"],
-              "path": ["person-pickers", "by-token", "{{pickerToken}}"]
+              "path": ["bill-splits", "by-token", "{{billSplitToken}}"]
             }
           }
         },
         {
-          "name": "Checkout selection",
+          "name": "Checkout bill split items",
           "request": {
             "method": "POST",
             "auth": { "type": "noauth" },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"payerName\": \"Tolu\",\n  \"selections\": [\n    { \"itemId\": \"{{pickerItemId}}\", \"quantity\": 2 }\n  ]\n}"
+              "raw": "{\n  \"payerName\": \"Tolu\",\n  \"itemIds\": [\"{{billSplitItemId}}\"]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/person-pickers/by-token/{{pickerToken}}/checkout",
+              "raw": "{{baseUrl}}/bill-splits/by-token/{{billSplitToken}}/checkout",
               "host": ["{{baseUrl}}"],
-              "path": ["person-pickers", "by-token", "{{pickerToken}}", "checkout"]
+              "path": ["bill-splits", "by-token", "{{billSplitToken}}", "checkout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Receipts",
+      "item": [
+        {
+          "name": "Download transfer receipt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Returns an image/png receipt for a transfer in the active workspace.",
+            "url": {
+              "raw": "{{baseUrl}}/receipts/{{receiptReference}}.png",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts", "{{receiptReference}}.png"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Webhook discovery",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/webhook", "host": ["{{baseUrl}}"], "path": ["webhook"] }
+          }
+        },
+        {
+          "name": "Telegram webhook",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"update_id\": 10000001,\n  \"message\": {\n    \"message_id\": 1,\n    \"date\": 1710000000,\n    \"chat\": { \"id\": 123456789, \"type\": \"private\" },\n    \"from\": { \"id\": 123456789, \"is_bot\": false, \"first_name\": \"Tolu\" },\n    \"text\": \"/start\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/telegram",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "telegram"]
             }
           }
         },
         {
-          "name": "List pickers (auth)",
+          "name": "Nomba webhook",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "nomba-signature", "value": "{{nombaSignature}}" },
+              { "key": "nomba-timestamp", "value": "{{nombaTimestamp}}" }
+            ],
+            "description": "Set nombaSignature and nombaTimestamp to values generated with the configured NOMBA_WEBHOOK_SECRET.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"payment_success\",\n  \"requestId\": \"postman-event-001\",\n  \"data\": {\n    \"userId\": \"user_001\",\n    \"walletId\": \"wallet_001\",\n    \"transactionId\": \"transaction_001\",\n    \"type\": \"CREDIT\",\n    \"time\": \"2026-07-01T00:00:00.000Z\",\n    \"responseCode\": \"00\"\n  }\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/person-pickers",
+              "raw": "{{baseUrl}}/webhook/nomba",
               "host": ["{{baseUrl}}"],
-              "path": ["person-pickers"]
+              "path": ["webhook", "nomba"]
             }
           }
         }
