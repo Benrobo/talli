@@ -31,6 +31,35 @@ export interface TopUpData {
   expiresAt: string;
 }
 
+export interface MetricDelta {
+  value: string;
+  direction: "up" | "down";
+}
+
+export interface WalletMetricsData {
+  currency: string;
+  totalBalance: {
+    amount: number;
+    delta: MetricDelta | null;
+  };
+  savedAcrossJars: {
+    amount: number;
+    activeJars: number;
+    delta: MetricDelta | null;
+  };
+  collectingNow: {
+    amount: number;
+    collectionsCount: number;
+    delta: MetricDelta | null;
+  };
+  sentThisMonth: {
+    amount: number;
+    transfersCount: number;
+    delta: MetricDelta | null;
+  };
+}
+
 export type WalletBalanceResponse = ApiSuccess<WalletBalanceData>;
 export type WalletHistoryResponse = ApiSuccess<WalletTransaction[]>;
+export type WalletMetricsResponse = ApiSuccess<WalletMetricsData>;
 export type TopUpResponse = ApiSuccess<TopUpData>;
