@@ -92,6 +92,29 @@ class AuthService {
     return jwtService.createTokenPair(user.id, user.email, session.id);
   }
 
+  async updateProfile(
+    userId: string,
+    name: string,
+    accessToken?: string | null
+  ): Promise<AuthUser> {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { name: name.trim() },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (accessToken) {
+      await cacheAdapter.del(`session:${accessToken}`, true);
+    }
+
+    return user;
+  }
+
   async logout(accessToken: string): Promise<void> {
     await cacheAdapter.del(`session:${accessToken}`, true);
     let sessionId: string;

@@ -8,7 +8,7 @@ import sendResponse from "../lib/send-response.js";
 import { UnauthorizedException } from "../lib/exception.js";
 import type { TokenPair } from "../lib/jwt.js";
 import { authService } from "../services/auth.service.js";
-import type { RequestOtpInput, VerifyOtpInput } from "../schemas/auth.schema.js";
+import type { RequestOtpInput, UpdateProfileInput, VerifyOtpInput } from "../schemas/auth.schema.js";
 
 class AuthController {
   async requestOtp(ctx: Context) {
@@ -44,6 +44,15 @@ class AuthController {
     const user = ctx.get("user") as AuthUser | undefined;
     if (!user) throw new UnauthorizedException();
     return sendResponse.success(ctx, null, 200, { user });
+  }
+
+  async updateMe(ctx: Context) {
+    const userId = ctx.get("userId") as string;
+    const { name } = ctx.get("validatedData") as UpdateProfileInput;
+    const accessToken =
+      ctx.req.header("Authorization")?.replace("Bearer ", "") ?? getCookie(ctx, AUTH_COOKIE_NAME);
+    const user = await authService.updateProfile(userId, name, accessToken);
+    return sendResponse.success(ctx, "Profile updated", 200, { user });
   }
 
   async logout(ctx: Context) {

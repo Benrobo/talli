@@ -20,6 +20,10 @@ export const authEmailFieldSchema = z.string().email("A valid email is required"
 export const authNameFieldSchema = z.string().trim().min(1, "What should we call you?").max(80);
 export const authCodeFieldSchema = z.string().regex(/^\d{6}$/u, "Code must be 6 digits");
 
+export const updateProfileSchema = z.object({
+  name: authNameFieldSchema,
+});
+
 export type AuthFormValues = {
   mode: "login" | "signup";
   name: string;
@@ -30,6 +34,7 @@ export type AuthFormValues = {
 export type RequestOtpPayload = z.infer<typeof requestOtpSchema>;
 export type VerifyOtpPayload = z.infer<typeof verifyOtpSchema>;
 export type RefreshTokenPayload = z.infer<typeof refreshTokenSchema>;
+export type UpdateProfilePayload = z.infer<typeof updateProfileSchema>;
 
 export interface AuthTokens {
   accessToken: string;
@@ -46,6 +51,7 @@ export interface VerifyOtpData extends AuthTokens {
 }
 
 export type MeResponse = ApiSuccess<{ user: User }>;
+export type UpdateProfileResponse = ApiSuccess<{ user: User }>;
 export type RequestOtpResponse = ApiSuccess<RequestOtpData>;
 export type VerifyOtpResponse = ApiSuccess<VerifyOtpData>;
 export type RefreshTokenResponse = ApiSuccess<AuthTokens>;

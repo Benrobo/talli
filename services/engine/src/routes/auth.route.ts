@@ -4,6 +4,7 @@ import {
   requestOtpSchema,
   verifyOtpSchema,
   refreshSchema,
+  updateProfileSchema,
 } from "../schemas/auth.schema.js";
 import useCatchErrors from "../lib/use-catch-errors.js";
 import { validateSchema } from "../middleware/validate.js";
@@ -45,6 +46,13 @@ router.post(
 router.get(
   "/auth/me",
   useCatchErrors(isAuthenticated(authController.me.bind(authController)))
+);
+
+router.patch(
+  "/auth/me",
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 10, keyPrefix: "auth:profile" }),
+  validateSchema(updateProfileSchema),
+  useCatchErrors(isAuthenticated(authController.updateMe.bind(authController)))
 );
 
 router.post(

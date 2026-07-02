@@ -6,6 +6,8 @@ import type {
   RefreshTokenResponse,
   RequestOtpPayload,
   RequestOtpResponse,
+  UpdateProfilePayload,
+  UpdateProfileResponse,
   VerifyOtpPayload,
   VerifyOtpResponse,
 } from "./auth.types";
@@ -29,6 +31,9 @@ export const AUTH_API = {
     apiClient.post(AUTH_ENDPOINTS.refresh, payload ?? {}).then((res) => res.data),
 
   ME: async (): Promise<MeResponse> => apiClient.get(AUTH_ENDPOINTS.me).then((res) => res.data),
+
+  UPDATE_ME: async (payload: UpdateProfilePayload): Promise<UpdateProfileResponse> =>
+    apiClient.patch(AUTH_ENDPOINTS.me, payload).then((res) => res.data),
 
   LOGOUT: async (): Promise<LogoutResponse> =>
     apiClient.post(AUTH_ENDPOINTS.logout).then((res) => res.data),

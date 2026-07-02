@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Icon } from "@benrobo/iconary/react";
-import { Logout01Icon } from "@benrobo/iconary/core/duotone-rounded";
+import { Logout01Icon, UserIcon } from "@benrobo/iconary/core/duotone-rounded";
 import { LogoMark } from "@/components/brand/logo";
 import {
   DropdownMenu,
@@ -12,12 +13,14 @@ import {
   UserAvatar,
 } from "@/components/ui";
 import { useMe, useLogout } from "@/api/http/v1/auth/auth.hooks";
+import { EditProfileDialog } from "@/components/layout/edit-profile-dialog";
 import { APP_NAV } from "./navigation";
 import { TopbarNavLink } from "./topbar-nav-link";
 
 export function Topbar() {
   const { data: meResponse } = useMe();
   const logout = useLogout();
+  const [profileOpen, setProfileOpen] = useState(false);
   const me = meResponse?.data.user;
   const avatarSeed = me?.email || me?.name;
 
@@ -66,6 +69,15 @@ export function Topbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setProfileOpen(true);
+              }}
+            >
+              <Icon icon={UserIcon} size={15} />
+              Edit profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onSelect={() => logout.mutate()}
               className="text-rose-deep focus:text-rose-deep"
             >
@@ -74,6 +86,7 @@ export function Topbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <EditProfileDialog open={profileOpen} onOpenChange={setProfileOpen} user={me} />
       </div>
     </header>
   );

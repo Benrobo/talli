@@ -70,7 +70,7 @@ Wallet-to-wallet and receipt-based split payment are post-MVP.
   `RefreshToken` table in `auth.prisma` is now **unused/dead** — removable.
 - Token TTLs: access 15 min, refresh 30 days.
 - Endpoints: `POST /api/auth/request-otp`, `/verify-otp`, `/refresh`;
-  `GET /api/auth/me`; `POST /api/auth/logout`.
+  `GET /api/auth/me`; `PATCH /api/auth/me` (update display name); `POST /api/auth/logout`.
 
 ### 3.3 Email → Cloudflare (elorah pattern), simplified
 - Uses Cloudflare email-sending via the `cloudflare` SDK.

@@ -15,6 +15,8 @@ import type {
   RefreshTokenResponse,
   RequestOtpPayload,
   RequestOtpResponse,
+  UpdateProfilePayload,
+  UpdateProfileResponse,
   VerifyOtpPayload,
   VerifyOtpResponse,
 } from "./auth.types";
@@ -80,6 +82,23 @@ export const useLogout = (): UseMutationResult<LogoutResponse, AxiosError, void>
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: authQueryKeys.all });
       window.location.href = "/auth";
+    },
+  });
+};
+
+export const useUpdateProfile = (): UseMutationResult<
+  UpdateProfileResponse,
+  AxiosError,
+  UpdateProfilePayload
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateProfileResponse, AxiosError, UpdateProfilePayload>({
+    mutationFn: AUTH_API.UPDATE_ME,
+    onSuccess: (response) => {
+      queryClient.setQueryData<MeResponse>(authQueryKeys.me(), {
+        data: { user: response.data.user },
+      });
     },
   });
 };
