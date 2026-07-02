@@ -313,99 +313,77 @@ function TgRow({ label, value }: { label: string; value: string }) {
 function ProofChapter() {
   return (
     <Chapter tone="paper" className="lg:py-14">
-      <LiveActivity />
+      <LiveChat />
       <p className="mt-4 flex items-center gap-1.5 text-[12.5px] text-content-faint">
         <Icon icon={Tick02Icon} size={13} strokeWidth={2.5} className="text-emerald" />
-        Every payment lands with a verified receipt in the chat.
+        This is Talli working — a real split, start to settled.
       </p>
     </Chapter>
   );
 }
 
-const FEED_EVENTS = [
-  { who: "Tobi", initials: "TO", amount: "₦2,800", label: "Friday dinner", tone: "bg-iris" },
-  { who: "Ada", initials: "AD", amount: "₦20,000", label: "Event Planning", tone: "bg-emerald" },
-  { who: "Chidi", initials: "CH", amount: "₦5,000", label: "Estate dues", tone: "bg-amber" },
-  { who: "Zainab", initials: "ZA", amount: "₦3,500", label: "Suya night", tone: "bg-[#3A6EA5]" },
-  { who: "Femi", initials: "FE", amount: "₦12,000", label: "Flat rent", tone: "bg-iris" },
+type ChatStep =
+  | { kind: "user"; text: ReactNode }
+  | { kind: "typing" }
+  | { kind: "card" }
+  | { kind: "pay"; who: string; initials: string; amount: string; tone: string; count: string };
+
+const CHAT_SCRIPT: ChatStep[] = [
+  { kind: "user", text: <><span className="text-[#8fd0ff]">@trytalli_bot</span> collect ₦5,000 from everyone for Saturday football</> },
+  { kind: "typing" },
+  { kind: "card" },
+  { kind: "pay", who: "Ada", initials: "AD", amount: "₦5,000", tone: "bg-emerald", count: "1 of 6 paid" },
+  { kind: "pay", who: "Tobi", initials: "TO", amount: "₦5,000", tone: "bg-iris", count: "2 of 6 paid" },
+  { kind: "pay", who: "Chidi", initials: "CH", amount: "₦5,000", tone: "bg-amber", count: "3 of 6 paid" },
 ];
 
-const COUNT_STOPS = [312500, 318200, 326900, 341000, 358500];
+const STEP_DELAYS = [1500, 1100, 1700, 1400, 1400, 2600];
 
-function LiveActivity() {
-  const [tick, setTick] = useState(0);
+function LiveChat() {
+  const [shown, setShown] = useState(1);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 2200);
-    return () => clearInterval(id);
-  }, []);
+    const delay = STEP_DELAYS[(shown - 1) % STEP_DELAYS.length];
+    const id = setTimeout(() => {
+      setShown((s) => (s >= CHAT_SCRIPT.length ? 1 : s + 1));
+    }, delay);
+    return () => clearTimeout(id);
+  }, [shown]);
 
-  const visible = [0, 1, 2].map((offset) => FEED_EVENTS[(tick + offset) % FEED_EVENTS.length]);
-  const total = COUNT_STOPS[tick % COUNT_STOPS.length];
+  const steps = CHAT_SCRIPT.slice(0, shown);
 
   return (
-    <div className="relative overflow-hidden rounded-[22px] border border-hairline bg-paper shadow-[0_30px_70px_-42px_rgba(23,20,39,0.55)]">
-      <div className="band-iris relative overflow-hidden px-6 py-6 text-white">
-        <div aria-hidden className="absolute -right-8 -top-10 size-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex items-center justify-between">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/70" />
-              <span className="relative inline-flex size-2 rounded-full bg-white" />
-            </span>
-            Live now
+    <div className="mx-auto max-w-[400px]">
+      <div className="overflow-hidden rounded-[26px] border-[6px] border-[#0b1120] bg-[#0b1120] shadow-[0_36px_80px_-42px_rgba(11,17,32,0.9)]">
+        <div className="flex items-center gap-2.5 border-b border-white/[0.06] bg-[#131c2b] px-4 py-3">
+          <span className="grad-chip flex size-8 items-center justify-center rounded-[10px] border border-white/10">
+            <img src="/talli-logo.png" alt="" className="size-5 rounded-[5px]" />
           </span>
-          <span className="text-[11.5px] text-white/70">across Talli today</span>
+          <div className="flex-1">
+            <div className="text-[13px] font-bold text-white">Saturday Squad</div>
+            <div className="text-[10.5px] text-white/45">Talli · 6 members</div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2 py-1 text-[10px] font-medium text-white/60">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald/80" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald" />
+            </span>
+            live
+          </span>
         </div>
-        <div className="relative mt-4 text-[11px] uppercase tracking-[0.16em] text-white/60">Collected today</div>
-        <div className="relative mt-1 flex items-baseline gap-1">
-          <span className="font-display text-[26px] font-bold">₦</span>
-          <AnimatePresence mode="popLayout">
-            <motion.span
-              key={total}
-              initial={{ y: 14, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -14, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 320, damping: 26 }}
-              className="font-display text-[42px] font-bold leading-none tracking-tight tabular"
-            >
-              {total.toLocaleString("en-NG")}
-            </motion.span>
-          </AnimatePresence>
-        </div>
-      </div>
 
-      <div className="px-3 py-3">
-        <div className="mb-1 px-2 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-content-faint">
-          Just paid
-        </div>
-        <div className="space-y-1.5">
+        <div className="flex h-[420px] flex-col justify-end gap-2.5 overflow-hidden px-3.5 py-4">
           <AnimatePresence initial={false} mode="popLayout">
-            {visible.map((e, idx) => (
+            {steps.map((step, i) => (
               <motion.div
-                key={`${tick}-${idx}-${e.who}`}
+                key={`${shown}-${i}`}
                 layout
-                initial={idx === 0 ? { opacity: 0, y: -10, scale: 0.98 } : false}
-                animate={{ opacity: idx === 2 ? 0.55 : 1, y: 0, scale: 1 }}
+                initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ type: "spring", stiffness: 360, damping: 30 }}
-                className="flex items-center gap-3 rounded-[13px] bg-inset/70 px-3 py-2.5"
+                transition={{ type: "spring", stiffness: 420, damping: 32 }}
               >
-                <span className={cn("flex size-8 items-center justify-center rounded-full text-[10.5px] font-bold text-white", e.tone)}>
-                  {e.initials}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-semibold text-foreground">
-                    {e.who} <span className="font-normal text-content-muted">paid</span>
-                  </div>
-                  <div className="text-[11px] text-content-faint">{e.label}</div>
-                </div>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="font-display tabular text-[13.5px] font-bold text-foreground">{e.amount}</span>
-                  <span className="flex size-4 items-center justify-center rounded-full bg-emerald text-white">
-                    <Icon icon={Tick02Icon} size={9} strokeWidth={3} />
-                  </span>
-                </span>
+                <ChatStepView step={step} />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -415,63 +393,66 @@ function LiveActivity() {
   );
 }
 
-function TgReceipt() {
-  return (
-    <div className="mx-auto max-w-[380px] overflow-hidden rounded-[20px] bg-paper shadow-[0_30px_70px_-42px_rgba(23,20,39,0.6)]">
-      <div className="band-iris relative px-6 pb-8 pt-6 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="grad-chip flex size-9 items-center justify-center rounded-[11px] border border-white/20">
-              <img src="/talli-logo.png" alt="" className="size-6 rounded-[6px]" />
-            </span>
-            <div>
-              <div className="font-display text-[15px] font-bold leading-none">Talli</div>
-              <div className="mt-1 text-[9.5px] uppercase tracking-[0.16em] text-white/60">AI Treasurer</div>
-            </div>
-          </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold">
-            <Icon icon={Tick02Icon} size={12} strokeWidth={2.75} />
-            Successful
+function ChatStepView({ step }: { step: ChatStep }) {
+  if (step.kind === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[86%] rounded-2xl rounded-tr-md bg-[#2b5278] px-4 py-2.5 text-[13px] leading-relaxed text-white">
+          {step.text}
+          <span className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/55">
+            9:41 <Icon icon={Tick02Icon} size={11} strokeWidth={2.5} className="text-[#6fc2ff]" />
           </span>
         </div>
-        <div className="mt-6 text-[10.5px] uppercase tracking-[0.16em] text-white/60">Payment receipt</div>
-        <div className="mt-1 flex items-baseline gap-1 font-display text-[46px] font-bold leading-none tracking-tight">
-          <span className="text-[28px]">₦</span>20,000
+      </div>
+    );
+  }
+  if (step.kind === "typing") {
+    return (
+      <div className="flex justify-start">
+        <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-md bg-[#182533] px-4 py-3">
+          {[0, 1, 2].map((d) => (
+            <motion.span
+              key={d}
+              className="size-1.5 rounded-full bg-white/50"
+              animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+              transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }}
+            />
+          ))}
         </div>
-        <div className="mt-2 text-[12.5px] text-white/70">Collection payment · Event Planning</div>
       </div>
-
-      <div className="relative h-4 bg-paper">
-        <span className="absolute -left-2 top-1/2 size-4 -translate-y-1/2 rounded-full bg-canvas" />
-        <span className="absolute -right-2 top-1/2 size-4 -translate-y-1/2 rounded-full bg-canvas" />
-        <span className="absolute inset-x-4 top-1/2 -translate-y-1/2 border-t border-dashed border-line" />
-      </div>
-
-      <div className="space-y-3 px-6 pb-5">
-        {[
-          ["From", "Benaiah"],
-          ["To", "Event Planning"],
-          ["Date", "28 Jun 2026, 7:06 PM"],
-        ].map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between border-b border-line/70 pb-3 last:border-0 last:pb-0">
-            <span className="text-[12px] text-content-muted">{k}</span>
-            <span className="text-[13px] font-semibold">{v}</span>
+    );
+  }
+  if (step.kind === "card") {
+    return (
+      <div className="flex justify-start">
+        <div className="w-full max-w-[92%] rounded-2xl rounded-tl-md bg-[#182533] px-4 py-3 text-white">
+          <div className="mb-2 text-[12.5px] font-bold text-[#e9a23b]">Talli</div>
+          <div className="text-[13px] font-semibold">💰 Create collection</div>
+          <div className="mt-2 space-y-1">
+            <TgRow label="Title:" value="Saturday football" />
+            <TgRow label="Amount:" value="₦5,000 per person" />
+            <TgRow label="Deadline:" value="Fri, 20 Jul" />
           </div>
-        ))}
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] text-content-muted">Reference</span>
-          <span className="rounded-md bg-iris-soft px-2 py-0.5 font-mono text-[11px] text-iris-deep">cmqy3e0r30…6ilb</span>
+          <div className="mt-2.5 text-[12.5px] font-medium">Should I create it?</div>
+          <TgActions />
         </div>
       </div>
-
-      <div className="flex items-center justify-between border-t border-line px-6 py-3.5">
-        <div>
-          <div className="text-[11.5px] font-semibold">Thank you for using Talli</div>
-          <div className="text-[10.5px] text-content-faint">trytalli.app</div>
+    );
+  }
+  return (
+    <div className="flex justify-start">
+      <div className="flex w-full max-w-[92%] items-center gap-3 rounded-2xl rounded-tl-md bg-[#182533] px-3.5 py-2.5 text-white">
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full text-[10.5px] font-bold text-white", step.tone)}>
+          {step.initials}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[12.5px]">
+            🎉 <span className="font-semibold">{step.who}</span> just paid <span className="font-semibold">{step.amount}</span>
+          </div>
+          <div className="text-[11px] text-white/50">{step.count}</div>
         </div>
-        <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-iris-deep">
-          <Icon icon={Tick02Icon} size={12} strokeWidth={2.75} />
-          Verified
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald text-white">
+          <Icon icon={Tick02Icon} size={11} strokeWidth={3} />
         </span>
       </div>
     </div>
