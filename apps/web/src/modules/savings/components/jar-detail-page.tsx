@@ -19,6 +19,7 @@ import {
   PlusSignIcon,
   SquareLock02Icon,
   Coins01Icon,
+  MoneyReceive01Icon,
   Target01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { TransactionIcon } from "@/modules/transactions/components/transaction-icon";
@@ -26,6 +27,7 @@ import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
 import { EditJarDialog } from "@/modules/savings/components/edit-jar-dialog";
 import { DeleteJarDialog } from "@/modules/savings/components/delete-jar-dialog";
 import { AddMoneySheet } from "@/modules/savings/components/add-money-sheet";
+import { WithdrawJarSheet } from "@/modules/savings/components/withdraw-jar-sheet";
 import { jarIconFor } from "@/modules/savings/jar-style";
 import type { Jar } from "@/modules/savings/types";
 
@@ -39,6 +41,7 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
   const remaining = Math.max(0, jar.targetMinor - jar.savedMinor);
   const unlockDate = locked ? jar.lockText.replace(/^unlocks\s*/i, "") : "—";
   const [addOpen, setAddOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   return (
     <div>
@@ -84,6 +87,15 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
               >
                 Add money
               </Button>
+              {jar.savedMinor > 0 ? (
+                <Button
+                  variant="secondary"
+                  leadingIcon={<Icon icon={MoneyReceive01Icon} size={16} />}
+                  onClick={() => setWithdrawOpen(true)}
+                >
+                  Withdraw
+                </Button>
+              ) : null}
               <EditJarDialog
                 jar={jar}
                 trigger={
@@ -185,6 +197,13 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
       </FadeIn>
 
       <AddMoneySheet open={addOpen} onOpenChange={setAddOpen} jarId={jar.id} jarName={jar.name} />
+      <WithdrawJarSheet
+        open={withdrawOpen}
+        onOpenChange={setWithdrawOpen}
+        jarId={jar.id}
+        jarName={jar.name}
+        available={jar.savedMinor}
+      />
     </div>
   );
 }

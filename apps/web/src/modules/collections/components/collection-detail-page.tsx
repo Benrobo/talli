@@ -27,12 +27,18 @@ import {
   Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { CheckmarkCircle02Icon } from "@benrobo/iconary/core/solid-rounded";
-import { useUpdateCollectionStatus } from "@/api/http/v1/collections/collections.hooks";
+import {
+  useUpdateCollectionStatus,
+  useCollectionWithdrawable,
+  useWithdrawCollection,
+} from "@/api/http/v1/collections/collections.hooks";
 import { formatNaira, toPercent } from "@/lib/format";
 import { MemberRow } from "@/modules/collections/components/member-row";
 import { EditCollectionDialog } from "@/modules/collections/components/edit-collection-dialog";
 import { DeleteCollectionDialog } from "@/modules/collections/components/delete-collection-dialog";
 import { CollectionTypeInfo } from "@/modules/collections/components/collection-type-info";
+import { WithdrawToBankSheet } from "@/modules/payments/components/withdraw-to-bank-sheet";
+import { MoneyReceive01Icon } from "@benrobo/iconary/core/duotone-rounded";
 import type { Collection, CollectionStatus } from "@/modules/collections/types";
 
 const STATUS: Record<CollectionStatus, { status: "info" | "neutral" | "pending"; label: string }> = {
@@ -46,7 +52,11 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
   const pct = toPercent(collection.collectedMinor, collection.targetMinor);
   const owing = Math.max(0, collection.targetMinor - collection.collectedMinor);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const updateStatus = useUpdateCollectionStatus(collection.slug);
+  const withdrawable = useCollectionWithdrawable(collection.slug);
+  const withdrawCollection = useWithdrawCollection(collection.slug);
+  const available = withdrawable.data?.data.available ?? 0;
 
   const paying = collection.members.filter((m) => m.status === "paying").length;
   const hiddenUnpaid = Math.max(0, collection.memberCount - collection.members.length);
@@ -145,6 +155,15 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
                     Move to draft
                   </Button>
                 </>
+              ) : null}
+              {collection.collectedMinor > 0 ? (
+                <Button
+                  variant="secondary"
+                  leadingIcon={<Icon icon={MoneyReceive01Icon} size={16} className="text-iris-deep" />}
+                  onClick={() => setWithdrawOpen(true)}
+                >
+                  Withdraw
+                </Button>
               ) : null}
               <EditCollectionDialog
                 collection={collection}
@@ -270,6 +289,23 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
           )}
         </SectionCard>
       </FadeIn>
+
+      <WithdrawToBankSheet
+        open={withdrawOpen}
+        onOpenChange={setWithdrawOpen}
+        title={`Withdraw from ${collection.title}`}
+        available={available}
+        submitting={withdrawCollection.isPending}
+        onSubmit={async ({ amount, accountNumber, bankName }) => {
+          const res = await withdrawCollection.mutateAsync({ amount, accountNumber, bankName });
+          return {
+            status: res.data.status,
+            amount: res.data.amount,
+            accountName: res.data.accountName,
+            bankName: res.data.bankName,
+          };
+        }}
+      />
     </div>
   );
 }

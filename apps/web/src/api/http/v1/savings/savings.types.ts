@@ -79,3 +79,14 @@ export type VerifySavingsDepositResponse = ApiSuccess<{
   status: SavingsDepositStatus;
   amount: number;
 }>;
+
+export const withdrawSavingsSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+});
+
+export type WithdrawSavingsPayload = z.infer<typeof withdrawSavingsSchema>;
+
+export type WithdrawSavingsResponse = ApiSuccess<{
+  jar: SavingsJarRecord;
+  walletBalance: number;
+}>;

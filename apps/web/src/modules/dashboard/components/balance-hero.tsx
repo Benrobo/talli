@@ -6,6 +6,7 @@ import {
   ViewIcon,
   ViewOffIcon,
   WalletAdd01Icon,
+  MoneySend01Icon,
   ArrowUpRight01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira } from "@/lib/format";
@@ -16,9 +17,10 @@ interface BalanceHeroProps {
   amount: number;
   delta?: { value: string; direction: "up" | "down" } | null;
   onTopUp: () => void;
+  onWithdraw: () => void;
 }
 
-export function BalanceHero({ amount, delta, onTopUp }: BalanceHeroProps) {
+export function BalanceHero({ amount, delta, onTopUp, onWithdraw }: BalanceHeroProps) {
   const [hidden, setHidden] = useState(false);
 
   return (
@@ -57,7 +59,7 @@ export function BalanceHero({ amount, delta, onTopUp }: BalanceHeroProps) {
         <span className="text-white/65">vs last month</span>
       </div>
 
-      <div className="relative mt-5">
+      <div className="relative mt-5 flex flex-wrap items-center gap-2">
         <motion.button
           type="button"
           onClick={onTopUp}
@@ -67,6 +69,16 @@ export function BalanceHero({ amount, delta, onTopUp }: BalanceHeroProps) {
         >
           <Icon icon={WalletAdd01Icon} size={17} />
           Top up
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={onWithdraw}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 480, damping: 20 }}
+          className="inline-flex items-center gap-2 rounded-[13px] border border-white/25 px-4 py-2.5 text-[13.5px] font-semibold text-white/90 transition-colors hover:bg-white/12"
+        >
+          <Icon icon={MoneySend01Icon} size={17} />
+          Withdraw
         </motion.button>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { paymentService } from "../services/payment.service.js";
 import type {
   CreateSavingsJarInput,
   DepositToSavingsJarInput,
+  WithdrawFromSavingsJarInput,
   UpdateSavingsJarInput,
 } from "../schemas/savings.schema.js";
 
@@ -62,6 +63,18 @@ class SavingsController {
       bankName: result.bankName,
       amount: result.pendingPayment.amount,
       expiresAt: result.pendingPayment.expiresAt,
+    });
+  }
+
+  async withdraw(ctx: Context) {
+    const userId = ctx.get("userId") as string;
+    const jarId = ctx.req.param("id");
+    if (!jarId) throw new BadRequestException("Jar id is required");
+    const { amount } = ctx.get("validatedData") as WithdrawFromSavingsJarInput;
+    const result = await savingsService.withdrawToWallet(userId, jarId, amount);
+    return sendResponse.success(ctx, "Withdrawn to wallet", 200, {
+      jar: result.jar,
+      walletBalance: result.walletBalance,
     });
   }
 

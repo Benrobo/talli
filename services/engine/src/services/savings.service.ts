@@ -176,6 +176,34 @@ class SavingsService {
 
     return { jar: updatedJar, walletBalance: balance };
   }
+
+  /**
+   * Moves money out of a jar back into the wallet. No bank, no Nomba — a jar is an
+   * internal ledger balance, so withdrawing just decrements the jar and credits the
+   * wallet in one transaction. Synchronous and immediately final.
+   */
+  async withdrawToWallet(userId: string, jarId: string, amount: number) {
+    if (amount <= 0) throw new BadRequestException("Amount must be greater than zero");
+
+    const jar = await this.get(userId, jarId);
+    if (jar.currentAmount < amount) {
+      throw new BadRequestException(
+        `This jar only has ₦${jar.currentAmount}, can't withdraw ₦${amount}.`
+      );
+    }
+
+    const { balance } = await ledgerService.credit(userId, "savings_withdrawal", amount, {
+      savingsJarId: jar.id,
+      referenceId: `savings_wd_${jar.id}_${randomToken(8)}`,
+    });
+
+    const updatedJar = await prisma.savingsJar.update({
+      where: { id: jar.id },
+      data: { currentAmount: { decrement: amount } },
+    });
+
+    return { jar: updatedJar, walletBalance: balance };
+  }
 }
 
 export const savingsService = new SavingsService();

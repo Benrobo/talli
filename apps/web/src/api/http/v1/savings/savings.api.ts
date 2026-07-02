@@ -10,6 +10,8 @@ import type {
   UpdateSavingsJarPayload,
   UpdateSavingsJarResponse,
   VerifySavingsDepositResponse,
+  WithdrawSavingsPayload,
+  WithdrawSavingsResponse,
 } from "./savings.types";
 
 export const SAVINGS_ENDPOINTS = {
@@ -21,6 +23,7 @@ export const SAVINGS_ENDPOINTS = {
   deposit: (id: string) => `/api/savings/${id}/deposits`,
   verifyDeposit: (id: string) => `/api/savings/${id}/deposits/verify`,
   cancelDeposit: (id: string) => `/api/savings/${id}/deposits/cancel`,
+  withdraw: (id: string) => `/api/savings/${id}/withdraw`,
 } as const;
 
 export const SAVINGS_API = {
@@ -50,4 +53,7 @@ export const SAVINGS_API = {
   CANCEL_DEPOSIT: async (id: string, pendingPaymentId: string): Promise<void> => {
     await apiClient.post(SAVINGS_ENDPOINTS.cancelDeposit(id), { pendingPaymentId });
   },
+
+  WITHDRAW: async (id: string, payload: WithdrawSavingsPayload): Promise<WithdrawSavingsResponse> =>
+    apiClient.post(SAVINGS_ENDPOINTS.withdraw(id), payload).then((res) => res.data),
 };

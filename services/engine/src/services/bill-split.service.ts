@@ -318,6 +318,26 @@ class BillSplitService {
     };
   }
 
+  /**
+   * Deletes a bill split the owner created. Blocked once any line item has been
+   * paid — that would orphan real money — so a claimed split must be left alone.
+   * Deleting the underlying collection cascades the split, its items and selections.
+   */
+  async remove(ownerUserId: string, billSplitId: string): Promise<void> {
+    const billSplit = await prisma.billSplit.findFirst({
+      where: { id: billSplitId, createdByUserId: ownerUserId },
+      include: { items: { select: { status: true } } },
+    });
+    if (!billSplit) throw new NotFoundException("Bill split not found");
+
+    const hasPaidItem = billSplit.items.some((item) => item.status === "claimed");
+    if (hasPaidItem) {
+      throw new BadRequestException("This bill split has payments and can't be deleted.");
+    }
+
+    await prisma.collection.delete({ where: { id: billSplit.collectionId } });
+  }
+
   private displayStatus(billSplit: {
     status: BillSplit["status"];
     expiresAt: Date | null;

@@ -44,4 +44,8 @@ export const BILL_SPLITS_API = {
     payload: BillSplitCheckoutPayload
   ): Promise<BillSplitCheckoutResponse> =>
     apiClient.post(BILL_SPLITS_ENDPOINTS.checkout(token), payload).then((res) => res.data),
+
+  DELETE: async (billSplitId: string): Promise<void> => {
+    await apiClient.delete(BILL_SPLITS_ENDPOINTS.detail(billSplitId));
+  },
 };

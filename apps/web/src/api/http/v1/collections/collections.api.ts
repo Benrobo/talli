@@ -19,6 +19,9 @@ import type {
   CollectionPayCheckoutPayload,
   CollectionPayCheckoutResponse,
   CollectionPayVerifyResponse,
+  CollectionWithdrawableResponse,
+  WithdrawCollectionPayload,
+  WithdrawCollectionResponse,
 } from "./collections.types";
 
 export const COLLECTIONS_ENDPOINTS = {
@@ -27,6 +30,8 @@ export const COLLECTIONS_ENDPOINTS = {
   get: (collectionId: string) => `/api/collections/${collectionId}`,
   members: (collectionId: string) => `/api/collections/${collectionId}/members`,
   payments: (collectionId: string) => `/api/collections/${collectionId}/payments`,
+  withdrawable: (collectionId: string) => `/api/collections/${collectionId}/withdrawable`,
+  withdraw: (collectionId: string) => `/api/collections/${collectionId}/withdraw`,
   payView: (reference: string) => `/api/collections/pay/${reference}`,
   payCheckout: (reference: string) => `/api/collections/pay/${reference}/checkout`,
   payCancel: (reference: string) => `/api/collections/pay/${reference}/cancel`,
@@ -104,4 +109,13 @@ export const COLLECTIONS_API = {
     apiClient
       .post(COLLECTIONS_ENDPOINTS.payVerify(reference), { pendingPaymentId })
       .then((res) => res.data),
+
+  GET_WITHDRAWABLE: async (collectionId: string): Promise<CollectionWithdrawableResponse> =>
+    apiClient.get(COLLECTIONS_ENDPOINTS.withdrawable(collectionId)).then((res) => res.data),
+
+  WITHDRAW: async (
+    collectionId: string,
+    payload: WithdrawCollectionPayload
+  ): Promise<WithdrawCollectionResponse> =>
+    apiClient.post(COLLECTIONS_ENDPOINTS.withdraw(collectionId), payload).then((res) => res.data),
 };

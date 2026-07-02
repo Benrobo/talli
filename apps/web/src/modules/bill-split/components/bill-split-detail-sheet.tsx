@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
+import toast from "react-hot-toast";
 import { BottomSheet, Button, StatusPill } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { billSplitApi, type BillSplitStatus } from "@/modules/bill-split/api";
+import { useDeleteBillSplit } from "@/api/http/v1/bill-splits/bill-splits.hooks";
 import { Icon } from "@benrobo/iconary/react";
 import {
   AlertCircleIcon,
   Clock01Icon,
   Copy01Icon,
+  Delete02Icon,
   Invoice01Icon,
   Share01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
@@ -39,12 +42,27 @@ export function BillSplitDetailSheet({
   onOpenChange,
 }: BillSplitDetailSheetProps) {
   const [copied, setCopied] = useState(false);
+  const deleteBillSplit = useDeleteBillSplit();
   const query = useQuery({
     queryKey: ["bill-split-detail", billSplitId],
     queryFn: () => billSplitApi.getDetail(billSplitId!),
     enabled: Boolean(billSplitId),
     retry: false,
   });
+
+  async function handleDelete() {
+    if (!billSplitId) return;
+    try {
+      await deleteBillSplit.mutateAsync(billSplitId);
+      toast.success("Bill split deleted");
+      onOpenChange(false);
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Couldn't delete this bill split.";
+      toast.error(message);
+    }
+  }
 
   useEffect(() => {
     setCopied(false);
@@ -164,12 +182,26 @@ export function BillSplitDetailSheet({
             </Button>
           </div>
 
+          {query.data.paidItemCount === 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              block
+              className="mt-2 text-rose-deep hover:bg-rose-soft"
+              loading={deleteBillSplit.isPending}
+              leadingIcon={<Icon icon={Delete02Icon} size={14} />}
+              onClick={handleDelete}
+            >
+              Delete bill split
+            </Button>
+          ) : null}
+
           <div className="mt-5">
             <div className="mb-2.5 flex items-center justify-between">
               <h4 className="text-[12.5px] font-semibold text-foreground">Bill items</h4>
               <span className="text-[11px] text-content-faint">{query.data.itemCount} total</span>
             </div>
-            <div className="space-y-2">
+            <div className="-mr-1 max-h-[280px] space-y-2 overflow-y-auto pr-1">
               {query.data.items.map((item) => {
                 const paid = item.status === "claimed";
                 return (

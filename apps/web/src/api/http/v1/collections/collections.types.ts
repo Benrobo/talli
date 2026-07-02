@@ -163,3 +163,26 @@ export interface CollectionPayVerifyResult {
 export type GetCollectionPayViewResponse = ApiSuccess<CollectionPayView>;
 export type CollectionPayCheckoutResponse = ApiSuccess<CollectionPayCheckoutResult>;
 export type CollectionPayVerifyResponse = ApiSuccess<CollectionPayVerifyResult>;
+
+export const withdrawCollectionSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+  accountNumber: z.string().min(6, "Account number looks too short"),
+  bankName: z.string().min(2, "Bank name is required"),
+  narration: z.string().optional(),
+});
+
+export type WithdrawCollectionPayload = z.infer<typeof withdrawCollectionSchema>;
+
+export type WithdrawCollectionStatus = "sent" | "pending" | "failed";
+
+export interface WithdrawCollectionData {
+  status: WithdrawCollectionStatus;
+  transferRef: string;
+  amount: number;
+  accountName: string;
+  accountNumber: string;
+  bankName: string;
+}
+
+export type CollectionWithdrawableResponse = ApiSuccess<{ available: number }>;
+export type WithdrawCollectionResponse = ApiSuccess<WithdrawCollectionData>;

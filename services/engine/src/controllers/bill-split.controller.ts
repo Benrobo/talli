@@ -64,6 +64,14 @@ class BillSplitController {
     const billSplit = await billSplitService.getDetail(userId, billSplitId);
     return sendResponse.success(ctx, "Bill split fetched", 200, billSplit);
   }
+
+  async remove(ctx: Context) {
+    const userId = ctx.get("userId") as string;
+    const billSplitId = ctx.req.param("id");
+    if (!billSplitId) throw new BadRequestException("Bill split id is required");
+    await billSplitService.remove(userId, billSplitId);
+    return sendResponse.success(ctx, "Bill split deleted", 200, null);
+  }
 }
 
 export const billSplitController = new BillSplitController();

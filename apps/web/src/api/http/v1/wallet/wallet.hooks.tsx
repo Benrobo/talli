@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { WALLET_API } from "./wallet.api";
+import { transactionsQueryKeys } from "../transactions/transactions.hooks";
 import type {
   TopUpPayload,
   TopUpResponse,
   WalletBalanceResponse,
   WalletHistoryResponse,
   WalletMetricsResponse,
+  VerifyTopUpResponse,
+  WithdrawPayload,
+  WithdrawResponse,
 } from "./wallet.types";
 
 export const walletQueryKeys = {
@@ -44,6 +48,32 @@ export const useStartTopUp = () => {
     mutationFn: WALLET_API.START_TOP_UP,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: walletQueryKeys.all() });
+    },
+  });
+};
+
+export const useVerifyTopUp = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<VerifyTopUpResponse, AxiosError, string>({
+    mutationFn: WALLET_API.VERIFY_TOP_UP,
+    onSuccess: (response) => {
+      if (response.data.status === "completed") {
+        queryClient.invalidateQueries({ queryKey: walletQueryKeys.all() });
+        queryClient.invalidateQueries({ queryKey: transactionsQueryKeys.all() });
+      }
+    },
+  });
+};
+
+export const useWithdrawWallet = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WithdrawResponse, AxiosError, WithdrawPayload>({
+    mutationFn: WALLET_API.WITHDRAW,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: walletQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKeys.all() });
     },
   });
 };

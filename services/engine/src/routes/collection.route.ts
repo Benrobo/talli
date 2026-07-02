@@ -6,6 +6,7 @@ import {
   updateCollectionStatusSchema,
   updateCollectionSchema,
   collectionPayCheckoutSchema,
+  withdrawCollectionSchema,
 } from "../schemas/collection.schema.js";
 import useCatchErrors from "../lib/use-catch-errors.js";
 import { validateSchema } from "../middleware/validate.js";
@@ -54,6 +55,15 @@ router.get("/collections/:id", useCatchErrors(isAuthenticated(c.get.bind(c))));
 router.get("/collections/:id/members", useCatchErrors(isAuthenticated(c.listMembers.bind(c))));
 
 router.get("/collections/:id/payments", useCatchErrors(isAuthenticated(c.listPayments.bind(c))));
+
+router.get("/collections/:id/withdrawable", useCatchErrors(isAuthenticated(c.withdrawable.bind(c))));
+
+router.post(
+  "/collections/:id/withdraw",
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 10, keyPrefix: "collection:withdraw" }),
+  validateSchema(withdrawCollectionSchema),
+  useCatchErrors(isAuthenticated(c.withdraw.bind(c)))
+);
 
 router.post(
   "/collections/:id/members",

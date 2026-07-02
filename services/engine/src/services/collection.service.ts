@@ -8,6 +8,7 @@ import type {
 } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import { platformUserService } from "./platform-user.service.js";
+import { transferService } from "./transfer.service.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
 export interface CreateCollectionInput {
@@ -666,6 +667,62 @@ class CollectionService {
     await prisma.pendingPayment.updateMany({
       where: { collectionId, collectionMemberId: memberId, status: "pending" },
       data: { status: "cancelled" },
+    });
+  }
+
+  /**
+   * How much of a collection is still available to withdraw: everything collected
+   * from members minus what has already been paid out (successful/pending payouts,
+   * net of any refunds). Owner-scoped.
+   */
+  async availableToWithdraw(userId: string, collectionId: string): Promise<number> {
+    const collection = await prisma.collection.findFirst({
+      where: { id: collectionId, ownerUserId: userId },
+      include: { members: { select: { paidAmount: true } } },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+
+    const collected = collection.members.reduce((sum, m) => sum + m.paidAmount, 0);
+
+    const payouts = await prisma.payment.aggregate({
+      where: { collectionId, kind: "transfer_out", direction: "debit", status: "successful" },
+      _sum: { amount: true },
+    });
+    const refunds = await prisma.payment.aggregate({
+      where: { collectionId, kind: "refund", direction: "credit", status: "successful" },
+      _sum: { amount: true },
+    });
+
+    const withdrawn = (payouts._sum.amount ?? 0) - (refunds._sum.amount ?? 0);
+    return Math.max(0, collected - withdrawn);
+  }
+
+  /**
+   * Withdraws collected funds from a collection to a bank account. Owner-only. The
+   * amount can't exceed what's available. Funds come from the collection balance, not
+   * the owner's wallet, so `payout` records the outflow against the collection and the
+   * wallet is never touched. Pending/processing is handled by the transfer reconcile.
+   */
+  async withdraw(
+    userId: string,
+    collectionId: string,
+    input: { amount: number; accountNumber: string; bankName: string; senderName: string; narration?: string }
+  ) {
+    const available = await this.availableToWithdraw(userId, collectionId);
+    if (input.amount > available) {
+      throw new BadRequestException(
+        `This collection only has ₦${available} available, can't withdraw ₦${input.amount}.`
+      );
+    }
+
+    return transferService.payout({
+      userId,
+      amount: input.amount,
+      accountNumber: input.accountNumber,
+      bankName: input.bankName,
+      senderName: input.senderName,
+      narration: input.narration,
+      source: { kind: "collection", collectionId },
     });
   }
 

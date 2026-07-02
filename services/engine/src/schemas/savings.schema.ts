@@ -18,6 +18,10 @@ export const depositToSavingsJarSchema = z.object({
   amount: z.number().int().positive("Amount must be greater than zero"),
 });
 
+export const withdrawFromSavingsJarSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+});
+
 export const updateSavingsJarSchema = z.object({
   name: z.string().trim().min(1, "Jar name is required").max(80),
   icon: iconField.optional(),
@@ -28,4 +32,5 @@ export const updateSavingsJarSchema = z.object({
 
 export type CreateSavingsJarInput = z.infer<typeof createSavingsJarSchema>;
 export type DepositToSavingsJarInput = z.infer<typeof depositToSavingsJarSchema>;
+export type WithdrawFromSavingsJarInput = z.infer<typeof withdrawFromSavingsJarSchema>;
 export type UpdateSavingsJarInput = z.infer<typeof updateSavingsJarSchema>;

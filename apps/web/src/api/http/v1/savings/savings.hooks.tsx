@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { SAVINGS_API } from "./savings.api";
+import { walletQueryKeys } from "../wallet/wallet.hooks";
+import { transactionsQueryKeys } from "../transactions/transactions.hooks";
 import type {
   CreateSavingsJarPayload,
   CreateSavingsJarResponse,
@@ -11,6 +13,8 @@ import type {
   UpdateSavingsJarPayload,
   UpdateSavingsJarResponse,
   VerifySavingsDepositResponse,
+  WithdrawSavingsPayload,
+  WithdrawSavingsResponse,
 } from "./savings.types";
 
 export const savingsQueryKeys = {
@@ -90,6 +94,20 @@ export const useDeleteSavingsJar = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all() });
+    },
+  });
+};
+
+export const useWithdrawSavings = (id: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WithdrawSavingsResponse, AxiosError, WithdrawSavingsPayload>({
+    mutationFn: (payload) => SAVINGS_API.WITHDRAW(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: walletQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKeys.all() });
     },
   });
 };

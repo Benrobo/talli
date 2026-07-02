@@ -14,10 +14,12 @@ import {
 } from "@benrobo/iconary/core/solid-rounded";
 import { formatNaira } from "@/lib/format";
 import { useCopy } from "@/modules/payments/hooks/use-copy";
-import { useStartTopUp } from "@/api/http/v1/wallet/wallet.hooks";
+import { useStartTopUp, useVerifyTopUp } from "@/api/http/v1/wallet/wallet.hooks";
 import type { TopUpData } from "@/api/http/v1/wallet/wallet.types";
 
-type View = "amount" | "details";
+type View = "amount" | "details" | "done";
+
+const VERIFY_INTERVAL_MS = 5000;
 
 export function TopUpSheet({
   open,
@@ -33,6 +35,7 @@ export function TopUpSheet({
 
   const { copied, copy } = useCopy();
   const startTopUp = useStartTopUp();
+  const verifyTopUp = useVerifyTopUp();
 
   useEffect(() => {
     if (!open) {
@@ -42,6 +45,23 @@ export function TopUpSheet({
       setDetails(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (view !== "details" || !details) return;
+    let active = true;
+    const id = setInterval(() => {
+      verifyTopUp.mutate(details.orderRefId, {
+        onSuccess: (res) => {
+          if (active && res.data.status === "completed") setView("done");
+        },
+      });
+    }, VERIFY_INTERVAL_MS);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, details?.orderRefId]);
 
   function start() {
     const numeric = Number(amountInput);
@@ -178,6 +198,32 @@ export function TopUpSheet({
             </div>
 
             <Button block variant="secondary" size="lg" className="mt-4" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </motion.div>
+        ) : null}
+
+        {view === "done" && details ? (
+          <motion.div
+            key="done"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-center py-6 text-center"
+          >
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              className="mb-5 flex size-16 items-center justify-center rounded-full bg-emerald text-white"
+            >
+              <Icon icon={Tick02Icon} size={32} />
+            </motion.span>
+            <div className="font-display text-[20px] font-bold tracking-[-0.02em]">Wallet topped up</div>
+            <p className="mt-1.5 text-[13px] text-content-muted">
+              {formatNaira(details.amount)} landed in your wallet.
+            </p>
+            <Button block size="lg" className="mt-6" onClick={() => onOpenChange(false)}>
               Done
             </Button>
           </motion.div>

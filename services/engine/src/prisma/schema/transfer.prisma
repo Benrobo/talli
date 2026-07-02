@@ -16,7 +16,10 @@ model Transfer {
 
   merchantTxRef String  @unique /// idempotency key — stable across retries, never regenerated while pending
   nombaTxId     String? /// Nomba data.id, used to requery the outcome
-  walletRef     String  @unique /// references the wallet debit entry; basis for the refund ref
+  walletRef     String  @unique /// references the wallet/source debit entry; basis for the refund ref
+  /// When set, this payout was funded from a collection's balance (not the wallet),
+  /// so a failed/refunded transfer restores the collection, not the wallet ledger.
+  sourceCollectionId String?
 
   amount                  Int
   accountNumber           String

@@ -33,4 +33,10 @@ router.get("/bill-splits", useCatchErrors(isAuthenticated(c.list.bind(c))));
 
 router.get("/bill-splits/:id", useCatchErrors(isAuthenticated(c.detail.bind(c))));
 
+router.delete(
+  "/bill-splits/:id",
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 20, keyPrefix: "billsplit:delete" }),
+  useCatchErrors(isAuthenticated(c.remove.bind(c)))
+);
+
 export default router;

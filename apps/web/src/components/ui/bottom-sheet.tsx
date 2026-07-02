@@ -40,7 +40,15 @@ export function BottomSheet({
       if (event.key === "Escape") onOpenChange(false);
     };
     const closeOnOutsidePress = (event: PointerEvent) => {
-      if (!sheetRef.current?.contains(event.target as Node)) onOpenChange(false);
+      const target = event.target as Element | null;
+      if (sheetRef.current?.contains(target as Node)) return;
+      // Radix popovers / selects / dropdowns portal their content to the body, so a
+      // click inside one (e.g. the bank picker) isn't inside the sheet DOM. Treat those
+      // as inside so picking an option doesn't dismiss the sheet.
+      if (target?.closest?.("[data-radix-popper-content-wrapper],[data-radix-portal],[role=dialog]")) {
+        return;
+      }
+      onOpenChange(false);
     };
 
     document.addEventListener("keydown", closeOnEscape);

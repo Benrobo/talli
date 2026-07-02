@@ -7,6 +7,26 @@ export const topUpSchema = z.object({
 
 export type TopUpPayload = z.infer<typeof topUpSchema>;
 
+export const withdrawSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+  accountNumber: z.string().min(6, "Account number looks too short"),
+  bankName: z.string().min(2, "Bank name is required"),
+  narration: z.string().optional(),
+});
+
+export type WithdrawPayload = z.infer<typeof withdrawSchema>;
+
+export type WithdrawStatus = "sent" | "pending" | "failed";
+
+export interface WithdrawData {
+  status: WithdrawStatus;
+  transferRef: string;
+  amount: number;
+  accountName: string;
+  accountNumber: string;
+  bankName: string;
+}
+
 export interface WalletBalanceData {
   balance: number;
   currency: string;
@@ -83,7 +103,11 @@ export interface WalletMetricsData {
   }[];
 }
 
+export type TopUpStatus = "pending" | "completed" | "failed" | "expired" | "cancelled";
+
 export type WalletBalanceResponse = ApiSuccess<WalletBalanceData>;
 export type WalletHistoryResponse = ApiSuccess<WalletTransaction[]>;
 export type WalletMetricsResponse = ApiSuccess<WalletMetricsData>;
 export type TopUpResponse = ApiSuccess<TopUpData>;
+export type VerifyTopUpResponse = ApiSuccess<{ status: TopUpStatus; amount: number }>;
+export type WithdrawResponse = ApiSuccess<WithdrawData>;

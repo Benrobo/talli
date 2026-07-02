@@ -12,8 +12,12 @@ import logger from "../lib/logger.js";
  * are read back via the transfer-history endpoint. Each item is isolated.
  */
 export async function reconcileTransfers(): Promise<void> {
+  console.log(`🔍 [cron] reconcileTransfers started`);
   const pending = await transferService.listPendingTransfers();
-  if (pending.length === 0) return;
+  if (pending.length === 0) {
+    console.log(`🔍 [cron] reconcileTransfers no pending transfers`);
+    return;
+  }
 
   let settled = 0;
   for (const item of pending) {

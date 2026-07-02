@@ -20,6 +20,7 @@ export type SendMoneyPayload = z.infer<typeof sendMoneySchema>;
 export interface Bank {
   name: string;
   code: string;
+  logo?: string | null;
 }
 
 export interface LookupAccountData {

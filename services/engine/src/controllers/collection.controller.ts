@@ -10,7 +10,9 @@ import type {
   UpdateCollectionStatusInput,
   UpdateCollectionInput,
   CollectionPayCheckoutInput,
+  WithdrawCollectionInput,
 } from "../schemas/collection.schema.js";
+import type { AuthUser } from "../services/auth.service.js";
 
 class CollectionController {
   async create(ctx: Context) {
@@ -147,6 +149,39 @@ class CollectionController {
       status: result.status,
       amount: result.amount,
     });
+  }
+
+  /** How much of this collection is still available to withdraw. Owner-only. */
+  async withdrawable(ctx: Context) {
+    const userId = ctx.get("userId") as string;
+    const id = ctx.req.param("id");
+    if (!id) throw new BadRequestException("Collection id is required");
+    const available = await collectionService.availableToWithdraw(userId, id);
+    return sendResponse.success(ctx, "Available balance fetched", 200, { available });
+  }
+
+  /** Withdraw collected funds to a bank account. Owner-only. */
+  async withdraw(ctx: Context) {
+    const user = ctx.get("user") as AuthUser;
+    const id = ctx.req.param("id");
+    if (!id) throw new BadRequestException("Collection id is required");
+    const { amount, accountNumber, bankName, narration } = ctx.get("validatedData") as WithdrawCollectionInput;
+
+    const result = await collectionService.withdraw(user.id, id, {
+      amount,
+      accountNumber,
+      bankName,
+      narration,
+      senderName: user.name ?? user.email,
+    });
+
+    const message =
+      result.status === "sent"
+        ? "Withdrawal sent"
+        : result.status === "pending"
+          ? "Withdrawal is processing"
+          : "Withdrawal failed, funds restored";
+    return sendResponse.success(ctx, message, 200, result);
   }
 }
 

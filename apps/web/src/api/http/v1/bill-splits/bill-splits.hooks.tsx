@@ -74,3 +74,15 @@ export const useBillSplitCheckout = (
     mutationFn: (payload) => BILL_SPLITS_API.CHECKOUT(token, payload),
   });
 };
+
+export const useDeleteBillSplit = (): UseMutationResult<void, AxiosError, string> => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, AxiosError, string>({
+    mutationFn: (billSplitId) => BILL_SPLITS_API.DELETE(billSplitId),
+    onSuccess: (_data, billSplitId) => {
+      queryClient.invalidateQueries({ queryKey: billSplitsQueryKeys.list() });
+      queryClient.removeQueries({ queryKey: billSplitsQueryKeys.detail(billSplitId) });
+    },
+  });
+};

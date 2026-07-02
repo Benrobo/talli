@@ -411,6 +411,38 @@ class PaymentService {
     };
   }
 
+  /**
+   * Drives + reads a wallet top-up's status on demand, keyed on its orderRefId and
+   * scoped to the owner. Lets the top-up sheet poll for completion instead of waiting
+   * on the background cron, so the UI flips to "done" the moment the transfer lands.
+   */
+  async reconcileTopUpOnce(
+    orderRefId: string,
+    userId: string
+  ): Promise<{ status: PendingPayment["status"]; amount: number }> {
+    const pending = await prisma.pendingPayment.findUnique({ where: { orderRefId } });
+    if (!pending) throw new NotFoundException("Pending payment not found");
+    if (pending.purpose !== "wallet_topup" || pending.userId !== userId) {
+      throw new BadRequestException("Pending payment does not belong to this wallet");
+    }
+
+    try {
+      await this.reconcile(pending.id);
+    } catch (err) {
+      logger.warn(`[payment] reconcileTopUpOnce ${orderRefId} failed: ${(err as Error).message}`);
+    }
+
+    const fresh = await prisma.pendingPayment.findUnique({
+      where: { orderRefId },
+      select: { status: true, amount: true },
+    });
+
+    return {
+      status: fresh?.status ?? pending.status,
+      amount: fresh?.amount ?? pending.amount,
+    };
+  }
+
   async cancelSavingsFunding(pendingPaymentId: string, jarId: string): Promise<void> {
     await prisma.pendingPayment.deleteMany({
       where: {

@@ -38,8 +38,16 @@ export const collectionPayCheckoutSchema = z
     message: "Select or enter your name",
   });
 
+export const withdrawCollectionSchema = z.object({
+  amount: z.number().int().positive("Amount must be greater than zero"),
+  accountNumber: z.string().trim().min(6).max(20),
+  bankName: z.string().trim().min(2).max(80),
+  narration: z.string().trim().max(120).optional(),
+});
+
 export type CreateCollectionInput = z.infer<typeof createCollectionSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 export type UpdateCollectionStatusInput = z.infer<typeof updateCollectionStatusSchema>;
 export type UpdateCollectionInput = z.infer<typeof updateCollectionSchema>;
 export type CollectionPayCheckoutInput = z.infer<typeof collectionPayCheckoutSchema>;
+export type WithdrawCollectionInput = z.infer<typeof withdrawCollectionSchema>;

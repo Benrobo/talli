@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import { randomToken } from "../lib/utils.js";
 import { nomba } from "../integrations/nomba/index.js";
+import { NombaError } from "../integrations/nomba/errors.js";
 import type { Bank } from "../integrations/nomba/resources/transfers.js";
 import type { TransferStatus as NombaTransferStatus } from "../integrations/nomba/types.js";
 import { beneficiaryService } from "./beneficiary.service.js";
@@ -20,6 +21,14 @@ export interface ResolveRecipientResult {
   bankName?: string;
 }
 
+/**
+ * Where the money comes from. `wallet` (default) debits the user's wallet ledger and
+ * refunds it on failure. `collection` funds a payout from a collection's collected
+ * balance — the caller has already checked availability and records the outflow, so
+ * the wallet is never touched.
+ */
+export type PayoutSource = { kind: "wallet" } | { kind: "collection"; collectionId: string };
+
 export interface PayoutInput {
   userId: string;
   amount: number;
@@ -29,6 +38,7 @@ export interface PayoutInput {
   alias?: string;
   narration?: string;
   createdByPlatformUserId?: string;
+  source?: PayoutSource;
 }
 
 export interface PayoutResult {
@@ -153,11 +163,16 @@ class TransferService {
       );
     }
 
-    const balance = await ledgerService.getBalance(input.userId);
-    if (balance < input.amount) {
-      throw new BadRequestException(
-        `Insufficient balance: have ₦${balance}, need ₦${input.amount}.`
-      );
+    const source = input.source ?? { kind: "wallet" };
+    const fromWallet = source.kind === "wallet";
+
+    if (fromWallet) {
+      const balance = await ledgerService.getBalance(input.userId);
+      if (balance < input.amount) {
+        throw new BadRequestException(
+          `Insufficient balance: have ₦${balance}, need ₦${input.amount}.`
+        );
+      }
     }
 
     const merchantTxRef = `talli_send_${randomToken(10)}`;
@@ -166,15 +181,35 @@ class TransferService {
       to: `${verified.accountName} · ${verified.accountNumber} · ${verified.bankName}`,
       bankCode: verified.bankCode,
       user: input.userId,
+      source: source.kind,
     });
 
-    await ledgerService.debit(input.userId, "transfer_out", input.amount, {
-      referenceId: merchantTxRef,
-    });
-    console.log(`📉 [payout] wallet debited ref=${merchantTxRef}`, {
-      amount: input.amount,
-      balanceAfter: balance - input.amount,
-    });
+    // The money leaves the balance now (so it can't be double-spent while the payout is
+    // in flight), but the ledger entry is PENDING until Nomba confirms — it only shows as
+    // successful once settled here or by the reconcile cron. Never "successful" up front.
+    if (fromWallet) {
+      await ledgerService.debit(input.userId, "transfer_out", input.amount, {
+        referenceId: merchantTxRef,
+        status: "pending",
+      });
+      console.log(`📉 [payout] wallet debited ref=${merchantTxRef}`, { amount: input.amount });
+    } else {
+      await prisma.payment.create({
+        data: {
+          userId: input.userId,
+          direction: "debit",
+          kind: "transfer_out",
+          amount: input.amount,
+          status: "pending",
+          collectionId: source.collectionId,
+          referenceId: merchantTxRef,
+          providerReference: merchantTxRef,
+        },
+      });
+      console.log(`📉 [payout] collection ${source.collectionId} debited ref=${merchantTxRef}`, {
+        amount: input.amount,
+      });
+    }
 
     const base = {
       accountName: verified.accountName,
@@ -187,6 +222,7 @@ class TransferService {
     let nombaStatus: NombaTransferStatus | undefined;
     let nombaTxId: string | undefined;
     let failureReason: string | undefined;
+    let rejected = false;
 
     try {
       const result = await nomba.transfers.toBank({
@@ -207,21 +243,59 @@ class TransferService {
       });
     } catch (err) {
       failureReason = (err as Error).message;
-      console.log(`🚨 full error: ${JSON.stringify(err, null, 2)}`)
-      console.error(`❌ [payout] nomba send threw ref=${merchantTxRef}`, { reason: failureReason });
+      console.log(`🚨 full error: ${JSON.stringify(err, null, 2)}`);
       logger.error(`[transfer] send threw for ${merchantTxRef}: ${failureReason}`);
+
+      if (err instanceof NombaError && this.isRejection(err)) {
+        rejected = true;
+        console.error(`❌ [payout] nomba rejected ref=${merchantTxRef}`, { reason: failureReason });
+      } else {
+        const inflight = err instanceof NombaError ? err.description : failureReason;
+        nombaStatus = this.parseTransferStatus(inflight);
+        console.error(
+          `⏳ [payout] nomba accepted / uncertain ref=${merchantTxRef} (${inflight}) — holding as pending`
+        );
+      }
     }
 
-    const status = this.mapStatus(nombaStatus, !!failureReason);
+    const status = this.mapStatus(nombaStatus, rejected);
 
     if (status === "failed") {
-      await ledgerService.credit(input.userId, "refund", input.amount, {
-        referenceId: `${merchantTxRef}_refund`,
-      });
-      console.log(`↩️ [payout] refunded wallet (send failed) ref=${merchantTxRef}`, {
-        amount: input.amount,
-      });
-    } else if (input.alias) {
+      if (fromWallet) {
+        await ledgerService.credit(input.userId, "refund", input.amount, {
+          referenceId: `${merchantTxRef}_refund`,
+        });
+        console.log(`↩️ [payout] refunded wallet (send failed) ref=${merchantTxRef}`, {
+          amount: input.amount,
+        });
+      } else {
+        await prisma.payment.create({
+          data: {
+            userId: input.userId,
+            direction: "credit",
+            kind: "refund",
+            amount: input.amount,
+            status: "successful",
+            collectionId: source.collectionId,
+            referenceId: `${merchantTxRef}_refund`,
+            providerReference: `${merchantTxRef}_refund`,
+          },
+        });
+        console.log(`↩️ [payout] refunded collection (send failed) ref=${merchantTxRef}`, {
+          amount: input.amount,
+        });
+      }
+    }
+
+    // Sync the pending debit's ledger status to the outcome. Pending stays pending for the
+    // reconcile cron to finalise; a synchronous SUCCESS/failure is settled here.
+    if (status === "sent") {
+      await this.markPaymentStatus(merchantTxRef, "successful");
+    } else if (status === "failed") {
+      await this.markPaymentStatus(merchantTxRef, "failed");
+    }
+
+    if (status !== "failed" && input.alias) {
       await beneficiaryService.save({
         userId: input.userId,
         alias: input.alias,
@@ -239,6 +313,7 @@ class TransferService {
         merchantTxRef,
         nombaTxId,
         walletRef: merchantTxRef,
+        sourceCollectionId: fromWallet ? null : source.collectionId,
         amount: input.amount,
         accountNumber: verified.accountNumber,
         accountName: verified.accountName,
@@ -269,11 +344,52 @@ class TransferService {
    * other value (NEW, PENDING_BILLING, or an unknown one — "when in doubt, treat
    * as pending") stays pending for the reconcile cron to finalise.
    */
-  private mapStatus(status: NombaTransferStatus | undefined, threw: boolean): TransferRowStatus {
-    if (threw) return "failed";
+  /** Flips the pending transfer_out ledger entry (keyed on its merchantTxRef) to a terminal state. */
+  private async markPaymentStatus(merchantTxRef: string, status: "successful" | "failed"): Promise<void> {
+    await prisma.payment.updateMany({
+      where: { referenceId: merchantTxRef, kind: "transfer_out" },
+      data: { status },
+    });
+  }
+
+  private mapStatus(status: NombaTransferStatus | undefined, rejected: boolean): TransferRowStatus {
+    if (rejected) return "failed";
     if (status === "SUCCESS" || status === "PAYMENT_SUCCESSFUL") return "sent";
     if (status === "REFUND" || status === "PAYMENT_FAILED") return "failed";
     return "pending";
+  }
+
+  /**
+   * Whether a thrown NombaError means the transfer was REJECTED outright (nothing
+   * left the wallet on Nomba's side), so refunding is safe. Transport failures
+   * (null code) and validation codes reject; anything carrying an in-flight or
+   * success transfer status is NOT a rejection and must be held as pending.
+   */
+  private isRejection(err: NombaError): boolean {
+    const inflight = this.parseTransferStatus(err.description);
+    if (inflight) return false;
+    if (err.nombaCode === null) return false; // transport/unparseable → uncertain, hold pending
+    return true; // a concrete non-"00" business code with no accepted status → rejected
+  }
+
+  /** Extracts a known Nomba transfer status from a free-text description, if present. */
+  private parseTransferStatus(text: string | undefined): NombaTransferStatus | undefined {
+    if (!text) return undefined;
+    const upper = text.toUpperCase();
+    const known: NombaTransferStatus[] = [
+      "SUCCESS",
+      "PAYMENT_SUCCESSFUL",
+      "PAYMENT_FAILED",
+      "REFUND",
+      "PENDING_BILLING",
+      "PENDING_PAYMENT",
+      "NEW",
+    ];
+    for (const status of known) {
+      if (upper.includes(status)) return status;
+    }
+    if (upper.includes("PROCESSING")) return "PENDING_BILLING";
+    return undefined;
   }
 
   /** Pending transfers due for a requery, oldest first, under the attempt cap. */
@@ -297,14 +413,25 @@ class TransferService {
     if (transfer.status !== "pending") return transfer;
 
     let status: NombaTransferStatus | undefined;
+    // Requery by Nomba's own transaction id (data.id, "API-TRANSFER-..."), which is what
+    // /transactions/accounts/single matches — the merchantTxRef 404s there. Fall back to
+    // the merchantTxRef only when we never captured an id.
+    const lookupRef = transfer.nombaTxId ?? transfer.merchantTxRef;
+
+    console.log(`🔍 [transfer] requery lookupRef=${lookupRef}`, {
+      transfer,
+    })
+
     try {
-      const fresh = await nomba.transfers.requery(transfer.merchantTxRef);
+      const fresh = await nomba.transfers.requery(lookupRef);
       status = fresh.status as NombaTransferStatus;
     } catch (err) {
-      logger.warn(`[transfer] requery ${transfer.merchantTxRef} failed: ${(err as Error).message}`);
+      console.log(`🚨 full error: ${JSON.stringify(err, null, 2)}`);
+      console.log(`🚨 [transfer] requery ${lookupRef} failed: ${(err as Error).message}`);
     }
 
     if (status === "SUCCESS" || status === "PAYMENT_SUCCESSFUL") {
+      await this.markPaymentStatus(transfer.merchantTxRef, "successful");
       console.log(`✅ [transfer] settled SENT ref=${transfer.merchantTxRef}`, {
         amount: transfer.amount,
         to: transfer.accountName,
@@ -317,14 +444,33 @@ class TransferService {
     }
 
     if (status === "REFUND" || status === "PAYMENT_FAILED") {
-      await ledgerService.credit(transfer.userId, "refund", transfer.amount, {
-        referenceId: `${transfer.walletRef}_refund`,
-      });
-      console.log(`↩️ [transfer] settled REFUND, wallet credited back ref=${transfer.merchantTxRef}`, {
-        amount: transfer.amount,
-        to: transfer.accountName,
-        attempts: transfer.pollAttempts,
-      });
+      if (transfer.sourceCollectionId) {
+        await prisma.payment.create({
+          data: {
+            userId: transfer.userId,
+            direction: "credit",
+            kind: "refund",
+            amount: transfer.amount,
+            status: "successful",
+            collectionId: transfer.sourceCollectionId,
+            referenceId: `${transfer.walletRef}_refund`,
+            providerReference: `${transfer.walletRef}_refund`,
+          },
+        });
+        console.log(`↩️ [transfer] settled REFUND, collection restored ref=${transfer.merchantTxRef}`, {
+          amount: transfer.amount,
+        });
+      } else {
+        await ledgerService.credit(transfer.userId, "refund", transfer.amount, {
+          referenceId: `${transfer.walletRef}_refund`,
+        });
+        console.log(`↩️ [transfer] settled REFUND, wallet credited back ref=${transfer.merchantTxRef}`, {
+          amount: transfer.amount,
+          to: transfer.accountName,
+          attempts: transfer.pollAttempts,
+        });
+      }
+      await this.markPaymentStatus(transfer.merchantTxRef, "failed");
       return prisma.transfer.update({
         where: { id: transfer.id },
         data: { status: "failed", failureReason: "refunded by Nomba", completedAt: new Date() },

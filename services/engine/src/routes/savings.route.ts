@@ -3,6 +3,7 @@ import { savingsController } from "../controllers/savings.controller.js";
 import {
   createSavingsJarSchema,
   depositToSavingsJarSchema,
+  withdrawFromSavingsJarSchema,
   updateSavingsJarSchema,
 } from "../schemas/savings.schema.js";
 import useCatchErrors from "../lib/use-catch-errors.js";
@@ -55,6 +56,14 @@ router.post(
   rateLimiter.rateLimit({ windowMs: 60_000, max: 30, keyPrefix: "savings:deposit" }),
   validateSchema(depositToSavingsJarSchema),
   useCatchErrors(isAuthenticated(c.deposit.bind(c)))
+);
+
+router.post(
+  "/savings/:id/withdraw",
+  requireFeature("savings"),
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 20, keyPrefix: "savings:withdraw" }),
+  validateSchema(withdrawFromSavingsJarSchema),
+  useCatchErrors(isAuthenticated(c.withdraw.bind(c)))
 );
 
 router.post(

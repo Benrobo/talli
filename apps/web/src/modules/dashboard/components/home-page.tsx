@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useMe } from "@/api/http/v1/auth/auth.hooks";
-import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
+import { useWalletMetrics, useWithdrawWallet } from "@/api/http/v1/wallet/wallet.hooks";
 import { HomeSkeleton } from "@/components/skeleton-loaders";
 import { cn } from "@/lib/utils";
 import { Button, ProgressBar, StatusPill, FadeIn, UserAvatar } from "@/components/ui";
@@ -25,6 +25,7 @@ import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
 import type { ActivityItem } from "@/modules/dashboard/types";
 import { BalanceHero } from "@/modules/dashboard/components/balance-hero";
 import { TopUpSheet } from "@/modules/dashboard/components/top-up-sheet";
+import { WithdrawToBankSheet } from "@/modules/payments/components/withdraw-to-bank-sheet";
 
 dayjs.extend(relativeTime);
 
@@ -122,6 +123,8 @@ export function HomePage() {
   const { data: metricsResponse, isLoading: metricsLoading } = useWalletMetrics();
   const metrics = metricsResponse?.data;
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const withdrawWallet = useWithdrawWallet();
 
   if (metricsLoading && !metrics) {
     return <HomeSkeleton />;
@@ -177,6 +180,7 @@ export function HomePage() {
             amount={totalBalance}
             delta={metrics?.totalBalance.delta ?? undefined}
             onTopUp={() => setTopUpOpen(true)}
+            onWithdraw={() => setWithdrawOpen(true)}
           />
         </div>
         <div className="mb-3.5 break-inside-avoid">
@@ -207,6 +211,22 @@ export function HomePage() {
       </FadeIn>
 
       <TopUpSheet open={topUpOpen} onOpenChange={setTopUpOpen} />
+      <WithdrawToBankSheet
+        open={withdrawOpen}
+        onOpenChange={setWithdrawOpen}
+        title="Withdraw to bank"
+        available={totalBalance}
+        submitting={withdrawWallet.isPending}
+        onSubmit={async ({ amount, accountNumber, bankName }) => {
+          const res = await withdrawWallet.mutateAsync({ amount, accountNumber, bankName });
+          return {
+            status: res.data.status,
+            amount: res.data.amount,
+            accountName: res.data.accountName,
+            bankName: res.data.bankName,
+          };
+        }}
+      />
     </div>
   );
 }

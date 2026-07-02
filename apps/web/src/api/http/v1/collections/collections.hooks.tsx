@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { COLLECTIONS_API } from "./collections.api";
+import { walletQueryKeys } from "../wallet/wallet.hooks";
+import { transactionsQueryKeys } from "../transactions/transactions.hooks";
 import type {
   AddCollectionMemberPayload,
   AddCollectionMemberResponse,
@@ -21,6 +23,9 @@ import type {
   CollectionPayCheckoutResponse,
   CollectionPayCheckoutPayload,
   CollectionPayVerifyResponse,
+  CollectionWithdrawableResponse,
+  WithdrawCollectionPayload,
+  WithdrawCollectionResponse,
 } from "./collections.types";
 
 export const collectionsQueryKeys = {
@@ -32,6 +37,8 @@ export const collectionsQueryKeys = {
     [...collectionsQueryKeys.detail(collectionId), "members", params] as const,
   payments: (collectionId: string, params?: ListPaymentsParams) =>
     [...collectionsQueryKeys.detail(collectionId), "payments", params] as const,
+  withdrawable: (collectionId: string) =>
+    [...collectionsQueryKeys.detail(collectionId), "withdrawable"] as const,
   payView: (reference: string) => ["collection-pay", reference] as const,
 };
 
@@ -162,6 +169,29 @@ export const useVerifyCollectionPay = (reference: string) => {
       if (response.data.status !== "pending") {
         queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.payView(reference) });
       }
+    },
+  });
+};
+
+export const useCollectionWithdrawable = (collectionId: string) => {
+  return useQuery<CollectionWithdrawableResponse, AxiosError>({
+    queryKey: collectionsQueryKeys.withdrawable(collectionId),
+    queryFn: () => COLLECTIONS_API.GET_WITHDRAWABLE(collectionId),
+    enabled: !!collectionId,
+  });
+};
+
+export const useWithdrawCollection = (collectionId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WithdrawCollectionResponse, AxiosError, WithdrawCollectionPayload>({
+    mutationFn: (payload) => COLLECTIONS_API.WITHDRAW(collectionId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.detail(collectionId) });
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.withdrawable(collectionId) });
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.list() });
+      queryClient.invalidateQueries({ queryKey: walletQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKeys.all() });
     },
   });
 };

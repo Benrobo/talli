@@ -18,6 +18,12 @@ export interface NombaRequestOptions {
   body?: unknown;
   query?: Record<string, string | number | undefined | null>;
   accountId?: string;
+  /**
+   * Business codes to treat as success and return `data` for, instead of throwing.
+   * Used for transfers, where an accepted-but-in-flight response ("PROCESSING",
+   * code not "00") still carries the `data.id`/`data.status` we need to reconcile.
+   */
+  acceptCodes?: string[];
 }
 
 /**
@@ -118,6 +124,10 @@ export class NombaHttpClient {
     }
 
     if (body.code !== "00") {
+      if (options.acceptCodes?.includes(body.code)) {
+        logger.info(`[nomba] ${options.method ?? "GET"} ${options.path} → code ${body.code}: ${body.description} (accepted)`);
+        return body.data;
+      }
       logger.error(`[nomba] ${options.method ?? "GET"} ${options.path} → code ${body.code}: ${body.description}`);
       throw new NombaError({
         message: body.description || "Nomba request was not successful",

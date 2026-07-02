@@ -91,6 +91,10 @@ export class TransferResource {
         senderName: params.senderName,
         narration: params.narration,
       },
+      // An accepted transfer can come back "PROCESSING" (code 200/201, not "00"). That is
+      // NOT an error — the money is in flight and the body carries data.id/data.status we
+      // need to reconcile. Treat those codes as success so we don't lose the id.
+      acceptCodes: ["200", "201"],
     });
   }
 
