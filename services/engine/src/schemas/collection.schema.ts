@@ -17,9 +17,29 @@ export const addMemberSchema = z.object({
 });
 
 export const updateCollectionStatusSchema = z.object({
-  status: z.enum(["active", "closed", "cancelled"]),
+  status: z.enum(["draft", "active", "closed", "cancelled"]),
 });
+
+export const updateCollectionSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(120),
+  purpose: z.string().trim().max(280).default(""),
+  amountPerMember: z.number().int().positive().optional(),
+  targetAmount: z.number().int().positive().optional(),
+  deadline: z.union([z.coerce.date(), z.null()]).optional(),
+});
+
+export const collectionPayCheckoutSchema = z
+  .object({
+    memberId: z.string().trim().min(1).optional(),
+    payerName: z.string().trim().min(1).max(80).optional(),
+    amount: z.number().int().positive().optional(),
+  })
+  .refine((data) => data.memberId || data.payerName, {
+    message: "Select or enter your name",
+  });
 
 export type CreateCollectionInput = z.infer<typeof createCollectionSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 export type UpdateCollectionStatusInput = z.infer<typeof updateCollectionStatusSchema>;
+export type UpdateCollectionInput = z.infer<typeof updateCollectionSchema>;
+export type CollectionPayCheckoutInput = z.infer<typeof collectionPayCheckoutSchema>;

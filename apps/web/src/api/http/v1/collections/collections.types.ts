@@ -18,12 +18,21 @@ export const addCollectionMemberSchema = z.object({
 });
 
 export const updateCollectionStatusSchema = z.object({
-  status: z.enum(["active", "closed", "cancelled"]),
+  status: z.enum(["draft", "active", "closed", "cancelled"]),
+});
+
+export const updateCollectionSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(120),
+  purpose: z.string().trim().max(280).default(""),
+  amountPerMember: z.number().int().positive().optional(),
+  targetAmount: z.number().int().positive().optional(),
+  deadline: z.union([z.coerce.date(), z.null()]).optional(),
 });
 
 export type CreateCollectionPayload = z.infer<typeof createCollectionSchema>;
 export type AddCollectionMemberPayload = z.infer<typeof addCollectionMemberSchema>;
 export type UpdateCollectionStatusPayload = z.infer<typeof updateCollectionStatusSchema>;
+export type UpdateCollectionPayload = z.infer<typeof updateCollectionSchema>;
 
 export interface PaginationMeta {
   page: number;
@@ -88,3 +97,45 @@ export type ListCollectionPaymentsResponse = ApiSuccess<{
 }>;
 export type AddCollectionMemberResponse = ApiSuccess<CollectionMember>;
 export type UpdateCollectionStatusResponse = ApiSuccess<CollectionRecord>;
+export type UpdateCollectionResponse = ApiSuccess<CollectionRecord>;
+export type DeleteCollectionResponse = ApiSuccess<null>;
+
+export type CollectionPayMemberStatus = "available" | "claimed";
+
+export interface CollectionPayMember {
+  id: string;
+  displayName: string;
+  expectedAmount: number;
+  paidAmount: number;
+  status: CollectionPayMemberStatus;
+}
+
+export interface CollectionPayView {
+  title: string;
+  purpose: string;
+  currency: string;
+  collectionType: "fixed_per_person" | "open_contribution" | "named_members";
+  amountPerMember: number | null;
+  targetAmount: number | null;
+  payTo: string;
+  due: string | null;
+  members: CollectionPayMember[];
+}
+
+export interface CollectionPayCheckoutResult {
+  amount: number;
+  payerName: string;
+  flashAccountNumber: string;
+  flashBankName: string;
+  flashAccountName?: string;
+  checkoutUrl: string;
+}
+
+export interface CollectionPayCheckoutPayload {
+  memberId?: string;
+  payerName?: string;
+  amount?: number;
+}
+
+export type GetCollectionPayViewResponse = ApiSuccess<CollectionPayView>;
+export type CollectionPayCheckoutResponse = ApiSuccess<CollectionPayCheckoutResult>;

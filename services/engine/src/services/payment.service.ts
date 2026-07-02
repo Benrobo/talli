@@ -43,6 +43,15 @@ export interface CreatedPending {
   checkoutLink: string;
 }
 
+export interface CollectionPayCheckoutResult {
+  amount: number;
+  payerName: string;
+  flashAccountNumber: string;
+  flashBankName: string;
+  flashAccountName?: string;
+  checkoutUrl: string;
+}
+
 const FALLBACK_EMAIL = "noreply@talli.app";
 const EXPIRY_MINUTES = 60;
 const MAX_POLL_ATTEMPTS = 90;
@@ -79,10 +88,39 @@ class PaymentService {
     });
   }
 
+  async checkoutCollectionPay(
+    collectionId: string,
+    input: { memberId?: string; payerName?: string; amount?: number }
+  ): Promise<CollectionPayCheckoutResult> {
+    const member = await collectionService.resolvePayMember(collectionId, input);
+    const amount = Math.max(0, member.expectedAmount - member.paidAmount);
+    if (amount <= 0) throw new BadRequestException("Nothing left to pay for this member");
+
+    const pending = await this.create({
+      purpose: "collection",
+      amount,
+      collectionId,
+      collectionMemberId: member.id,
+    });
+
+    if (!pending.checkoutLink) {
+      throw new BadRequestException("Couldn't generate a pay link for this collection");
+    }
+
+    return {
+      amount,
+      payerName: member.displayName,
+      flashAccountNumber: pending.flashAccountNumber,
+      flashBankName: pending.flashBankName,
+      flashAccountName: pending.flashAccountName,
+      checkoutUrl: pending.checkoutLink,
+    };
+  }
+
   async create(input: CreatePendingInput): Promise<CreatedPending> {
     const order = await nomba.checkout.createOrder({
       orderReference: `talli_${input.purpose}_${randomToken(10)}`,
-      amount: input.amount,
+      amount: this.toNombaAmount(input.amount),
       currency: "NGN",
       customerEmail: input.customerEmail ?? FALLBACK_EMAIL,
       callbackUrl: `${env.PUBLIC_API_URL ?? ""}/api/webhook/nomba`,
@@ -150,7 +188,7 @@ class PaymentService {
     try {
       const receipt = await nomba.checkout.confirmReceipt(pending.orderRefId);
       paid = receipt.status === true;
-      const received = this.toNaira(receipt.order?.amount);
+      const received = this.fromNombaAmount(receipt.order?.amount);
       if (received !== null) receivedAmount = received;
     } catch (err) {
       logger.warn(`[payment] reconcile ${pending.orderRefId} poll failed: ${(err as Error).message}`);
@@ -406,6 +444,17 @@ class PaymentService {
     if (value === undefined || value === null || value === "") return null;
     const n = typeof value === "string" ? Number(value) : (value as number);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+  }
+
+  /** Talli stores money in kobo; Nomba checkout amounts are naira. */
+  private toNombaAmount(minorUnits: number): number {
+    return minorUnits / 100;
+  }
+
+  private fromNombaAmount(value: unknown): number | null {
+    const naira = this.toNaira(value);
+    if (naira === null) return null;
+    return Math.round(naira * 100);
   }
 
   private async mark(id: string, status: "expired" | "failed"): Promise<void> {
