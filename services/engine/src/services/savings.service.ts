@@ -1,10 +1,16 @@
-import type { SavingsJar } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import { NotFoundException } from "../lib/exception.js";
+
+type TxClient = Parameters<typeof prisma.$transaction>[0] extends (
+  tx: infer T
+) => Promise<unknown>
+  ? T
+  : never;
 
 export interface CreateJarInput {
   name: string;
   targetAmount?: number;
+  lockUntil?: Date;
 }
 
 /**
@@ -13,34 +19,45 @@ export interface CreateJarInput {
  * credit (the dispatcher does both); `creditJar` records the deposit.
  */
 class SavingsService {
-  async createJar(workspaceId: string, userId: string, input: CreateJarInput): Promise<SavingsJar> {
+  async createJar(workspaceId: string, userId: string, input: CreateJarInput) {
+    const lockUntil = input.lockUntil;
+    const status = lockUntil && lockUntil.getTime() > Date.now() ? "locked" : "active";
     return prisma.savingsJar.create({
       data: {
         workspaceId,
         ownerUserId: userId,
         name: input.name,
         targetAmount: input.targetAmount,
-        status: "active",
+        lockUntil,
+        status,
       },
     });
   }
 
-  async findByName(workspaceId: string, name: string): Promise<SavingsJar | null> {
+  async findByName(workspaceId: string, name: string) {
     return prisma.savingsJar.findFirst({
       where: { workspaceId, name: { equals: name.trim(), mode: "insensitive" }, status: "active" },
     });
   }
 
-  async list(workspaceId: string): Promise<SavingsJar[]> {
+  async list(workspaceId: string, userId?: string) {
     return prisma.savingsJar.findMany({
-      where: { workspaceId, status: "active" },
+      where: { workspaceId, ...(userId ? { ownerUserId: userId } : {}), status: { in: ["active", "locked"] } },
       orderBy: { createdAt: "desc" },
     });
   }
 
+  async get(workspaceId: string, jarId: string, userId?: string) {
+    const jar = await prisma.savingsJar.findFirst({
+      where: { id: jarId, workspaceId, ...(userId ? { ownerUserId: userId } : {}) },
+    });
+    if (!jar) throw new NotFoundException("Savings jar not found");
+    return jar;
+  }
+
   /** Credits a jar from a settled funding payment. Atomic; records the deposit. */
-  async creditJar(jarId: string, amount: number, paymentId?: string): Promise<SavingsJar> {
-    return prisma.$transaction(async (tx) => {
+  async creditJar(jarId: string, amount: number, paymentId?: string) {
+    return prisma.$transaction(async (tx: TxClient) => {
       const jar = await tx.savingsJar.findUnique({ where: { id: jarId } });
       if (!jar) throw new NotFoundException("Savings jar not found");
 
