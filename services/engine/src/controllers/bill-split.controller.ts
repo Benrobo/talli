@@ -63,10 +63,12 @@ class BillSplitController {
     return sendResponse.success(ctx, "Bill splits fetched", 200, { billSplits });
   }
 
-  async progress(ctx: Context) {
+  async detail(ctx: Context) {
     const workspaceId = await this.workspaceId(ctx);
-    const progress = await billSplitService.getProgress(workspaceId, ctx.req.param("id"));
-    return sendResponse.success(ctx, "Bill split progress fetched", 200, progress);
+    const billSplitId = ctx.req.param("id");
+    if (!billSplitId) throw new BadRequestException("Bill split id is required");
+    const billSplit = await billSplitService.getDetail(workspaceId, billSplitId);
+    return sendResponse.success(ctx, "Bill split fetched", 200, billSplit);
   }
 }
 

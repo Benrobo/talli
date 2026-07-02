@@ -8,6 +8,7 @@ export { RingProgress } from "./ring-progress";
 export { Avatar } from "./avatar";
 export { StatCard } from "./stat-card";
 export { Spotlight, IconChip, DeltaPill, TallyWatermark } from "./surface";
+export { BottomSheet } from "./bottom-sheet";
 export { Field, Input } from "./input";
 export { Label } from "./label";
 export { Switch } from "./switch";

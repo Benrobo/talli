@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { cn } from "@app/ui";
 import { Button, Card, Input, Spotlight } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
@@ -117,11 +117,11 @@ export function BillSplitPage() {
   if (query.isError || !query.data) {
     return (
       <MobileScreen>
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <span className="mb-4 flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+        <div className="flex flex-col items-center rounded-[22px] border border-hairline bg-card px-6 py-12 text-center shadow-card">
+          <span className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-rose-soft text-rose-deep">
             <Icon icon={AlertCircleIcon} size={26} />
           </span>
-          <div className="text-[22px] font-extrabold tracking-[-0.02em]">This bill isn't available</div>
+          <div className="font-display text-[21px] font-bold tracking-[-0.02em]">This bill isn't available</div>
           <p className="mt-2 text-[13.5px] text-content-muted">
             The link may have expired or already been closed.
           </p>
@@ -162,74 +162,83 @@ export function BillSplitPage() {
     );
   }
 
+  if (stage === "pay-name") {
+    return (
+      <MobileScreen>
+        <div className="overflow-hidden rounded-[22px] border border-hairline bg-card p-6 shadow-card">
+          <NameStep
+            knownNames={knownNames}
+            value={nameInput}
+            onChange={setNameInput}
+            onBack={() => setStage("pick")}
+            onConfirm={(name) => submit(name)}
+            submitting={submitting}
+            error={error}
+            total={total}
+          />
+        </div>
+      </MobileScreen>
+    );
+  }
+
   return (
     <MobileScreen
       footer={
-        selectedIds.size > 0 ? (
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-            <Button block size="lg" onClick={() => setStage("pay-name")} disabled={submitting}>
-              Pay {naira(total)} · {selectedIds.size} item{selectedIds.size > 1 ? "s" : ""}
-            </Button>
-            <div className="mt-3 flex items-center justify-center gap-1.5 text-[11.5px] text-content-faint">
-              <Icon icon={LockIcon} size={12} />
-              Secured by Nomba · pay only for what you had
-            </div>
-          </motion.div>
-        ) : null
+        <motion.div
+          initial={false}
+          animate={{ opacity: selectedIds.size > 0 ? 1 : 0.55 }}
+        >
+          <Button block size="lg" onClick={() => setStage("pay-name")} disabled={submitting || selectedIds.size === 0}>
+            {selectedIds.size > 0
+              ? `Pay ${naira(total)} · ${selectedIds.size} item${selectedIds.size > 1 ? "s" : ""}`
+              : "Select your items"}
+          </Button>
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-[11.5px] text-content-faint">
+            <Icon icon={LockIcon} size={12} />
+            Secured by Nomba · pay only for what you had
+          </div>
+        </motion.div>
       }
     >
-      {stage === "pay-name" ? (
-        <NameStep
-          knownNames={knownNames}
-          value={nameInput}
-          onChange={setNameInput}
-          onBack={() => setStage("pick")}
-          onConfirm={(name) => submit(name)}
-          submitting={submitting}
-          error={error}
-          total={total}
-        />
-      ) : (
-        <>
-          <Header title={view.title} remaining={remaining} total={items.length} />
-          <div className="flex flex-col gap-2.5">
-            {items.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                selected={selectedIds.has(item.id)}
-                onToggle={() => toggle(item)}
-              />
-            ))}
-          </div>
-        </>
-      )}
+      <div className="overflow-hidden rounded-[22px] border border-hairline bg-card shadow-card">
+        <SheetHeader title={view.title} remaining={remaining} total={items.length} />
+        <div className="flex flex-col gap-2.5 p-4">
+          {items.map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              selected={selectedIds.has(item.id)}
+              onToggle={() => toggle(item)}
+            />
+          ))}
+        </div>
+      </div>
     </MobileScreen>
   );
 }
 
-function Header({ title, remaining, total }: { title: string; remaining: number; total: number }) {
+function SheetHeader({ title, remaining, total }: { title: string; remaining: number; total: number }) {
   return (
-    <>
-      <div className="mb-6 flex justify-center">
-        <span className="inline-flex items-center gap-1.5 rounded-[11px] border border-hairline bg-card px-3 py-2 font-mono text-[11.5px] text-content-muted">
-          <Icon icon={Invoice01Icon} size={13} />
-          talli.money/bill
+    <div className="border-b border-hairline-soft p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[12px] font-medium text-content-muted">Split the bill</div>
+          <div className="mt-0.5 truncate font-display text-[23px] font-bold leading-tight tracking-[-0.02em] text-foreground">
+            {title}
+          </div>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-iris-soft px-2.5 py-1 text-[11px] font-medium text-iris-deep">
+          <Icon icon={TickDouble02Icon} size={12} />
+          Tap what you had
         </span>
       </div>
-      <div className="mb-6 text-center">
-        <div className="mb-1.5 text-[13px] text-content-muted">Split the bill</div>
-        <div className="mb-3 text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{title}</div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-iris-soft px-3 py-1 text-[12px] font-medium text-iris-deep">
-          <Icon icon={TickDouble02Icon} size={13} />
-          Tap the items you had
-        </span>
-      </div>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mt-4 flex items-center justify-between">
         <span className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-content-faint">Items</span>
-        <span className="text-[11.5px] text-content-faint">{remaining} of {total} left</span>
+        <span className="text-[11.5px] text-content-faint">
+          {remaining} of {total} left
+        </span>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -244,52 +253,51 @@ function ItemRow({
 }) {
   const claimed = item.status === "claimed";
   return (
-    <motion.div layout initial={false} animate={{ opacity: claimed ? 0.72 : 1 }}>
-      <Card
-        onClick={onToggle}
-        className={cn(
-          "flex items-center gap-3 p-3.5 transition-all",
-          claimed ? "cursor-default bg-emerald-soft/50" : "t-press cursor-pointer",
-          selected && !claimed && "border-iris ring-[3px] ring-iris-soft"
-        )}
-      >
-        <div className="flex-1">
-          <div className={cn("text-[14.5px] font-medium", claimed && "text-content-muted line-through")}>
-            {item.label}
+    <motion.button
+      type="button"
+      layout
+      initial={false}
+      animate={{ opacity: claimed ? 0.75 : 1 }}
+      onClick={claimed ? undefined : onToggle}
+      disabled={claimed}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-[14px] border bg-card px-4 py-3 text-left shadow-card transition-colors",
+        claimed
+          ? "cursor-default border-hairline bg-emerald-soft/40"
+          : "t-press cursor-pointer",
+        selected && !claimed ? "border-iris ring-[3px] ring-iris-soft" : "border-hairline"
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <div className={cn("truncate text-[14px] font-semibold text-foreground", claimed && "text-content-muted line-through")}>
+          {item.label}
+        </div>
+        {claimed && item.paidByName ? (
+          <div className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-emerald-deep">
+            <Icon icon={TickDouble02Icon} size={12} />
+            Paid by {item.paidByName}
           </div>
-          <AnimatePresence>
-            {claimed && item.paidByName ? (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-deep"
-              >
-                <Icon icon={TickDouble02Icon} size={13} />
-                Paid by {item.paidByName}
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </div>
-        <div className={cn("tabular text-[14px] font-semibold", claimed && "text-content-faint")}>
-          {naira(item.unitPrice)}
-        </div>
-        {claimed ? (
-          <span className="flex size-6 items-center justify-center rounded-full bg-emerald text-white">
-            <Icon icon={CheckmarkCircle02Icon} size={16} />
-          </span>
-        ) : selected ? (
-          <motion.span
-            initial={{ scale: 0.5 }}
-            animate={{ scale: 1 }}
-            className="flex size-6 items-center justify-center rounded-full bg-iris text-white"
-          >
-            <Icon icon={Tick02Icon} size={13} />
-          </motion.span>
-        ) : (
-          <span className="size-[21px] rounded-full border-[1.5px] border-[#cfccdd]" />
-        )}
-      </Card>
-    </motion.div>
+        ) : null}
+      </div>
+      <span className={cn("font-display tabular text-[15px] font-bold tracking-[-0.01em]", claimed ? "text-content-faint" : "text-foreground")}>
+        {naira(item.unitPrice)}
+      </span>
+      {claimed ? (
+        <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-emerald text-white">
+          <Icon icon={CheckmarkCircle02Icon} size={15} />
+        </span>
+      ) : selected ? (
+        <motion.span
+          initial={{ scale: 0.5 }}
+          animate={{ scale: 1 }}
+          className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-iris text-white"
+        >
+          <Icon icon={Tick02Icon} size={14} strokeWidth={3} />
+        </motion.span>
+      ) : (
+        <span className="size-[22px] shrink-0 rounded-full border-[1.5px] border-hairline" />
+      )}
+    </motion.button>
   );
 }
 
