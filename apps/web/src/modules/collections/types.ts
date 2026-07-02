@@ -24,6 +24,8 @@ export interface Collection {
   perPersonMinor: number;
   targetMinor: number;
   collectedMinor: number;
+  withdrawnMinor: number;
+  availableMinor: number;
   paidCount: number;
   memberCount: number;
   due: string;

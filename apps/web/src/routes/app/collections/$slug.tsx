@@ -52,6 +52,8 @@ function CollectionDetailRoute() {
     perPersonMinor: source.amountPerMember ?? 0,
     targetMinor: source.targetAmount ?? totalCollected,
     collectedMinor: totalCollected,
+    withdrawnMinor: source.withdrawn ?? 0,
+    availableMinor: source.available ?? totalCollected,
     paidCount: members.filter((member) => member.status === "paid").length,
     memberCount: members.length,
     due: deadline ? dayjs(deadline).format("DD/MM/YYYY") : "",

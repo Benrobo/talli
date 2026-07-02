@@ -347,9 +347,16 @@ class CollectionService {
     if (!collection) throw new NotFoundException("Collection not found");
 
     const paidCount = collection.members.filter((m) => m.status === "paid").length;
-    const collected = collection.members.reduce((sum, m) => sum + m.paidAmount, 0);
+    const { collected, withdrawn, available } = await this.balanceOf(collectionId);
 
-    return { ...collection, paidCount, totalMembers: collection.members.length, collected };
+    return {
+      ...collection,
+      paidCount,
+      totalMembers: collection.members.length,
+      collected,
+      withdrawn,
+      available,
+    };
   }
 
   /**
@@ -545,21 +552,15 @@ class CollectionService {
   async remove(ownerUserId: string, collectionId: string): Promise<void> {
     const collection = await prisma.collection.findFirst({
       where: { id: collectionId, ownerUserId },
-      include: {
-        members: { select: { paidAmount: true } },
-        payments: {
-          where: { kind: "collection_payment", status: "successful" },
-          take: 1,
-          select: { id: true },
-        },
-      },
+      select: { id: true },
     });
     if (!collection) throw new NotFoundException("Collection not found");
 
-    const hasPayments =
-      collection.payments.length > 0 || collection.members.some((member) => member.paidAmount > 0);
-    if (hasPayments) {
-      throw new BadRequestException("Can't delete a collection that already has payments");
+    const { available } = await this.balanceOf(collectionId);
+    if (available > 0) {
+      throw new BadRequestException(
+        `This collection still holds ₦${available}. Withdraw it first, then delete.`
+      );
     }
 
     await prisma.pendingPayment.deleteMany({ where: { collectionId } });
@@ -820,30 +821,41 @@ class CollectionService {
   }
 
   /**
-   * How much of a collection is still available to withdraw: everything collected
-   * from members minus what has already been paid out (successful/pending payouts,
-   * net of any refunds). Owner-scoped.
+   * The money position of a collection: `collected` (gross from members, never
+   * decreases), `withdrawn` (successful payouts net of refunds), and `available`
+   * (what's still in the pot to withdraw). Single source of truth reused by the
+   * withdraw check, the detail view, and the delete guard so they never disagree.
+   */
+  async balanceOf(collectionId: string): Promise<{ collected: number; withdrawn: number; available: number }> {
+    const [members, payouts, refunds] = await Promise.all([
+      prisma.collectionMember.aggregate({ where: { collectionId }, _sum: { paidAmount: true } }),
+      prisma.payment.aggregate({
+        where: { collectionId, kind: "transfer_out", direction: "debit", status: "successful" },
+        _sum: { amount: true },
+      }),
+      prisma.payment.aggregate({
+        where: { collectionId, kind: "refund", direction: "credit", status: "successful" },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const collected = members._sum.paidAmount ?? 0;
+    const withdrawn = (payouts._sum.amount ?? 0) - (refunds._sum.amount ?? 0);
+    return { collected, withdrawn, available: Math.max(0, collected - withdrawn) };
+  }
+
+  /**
+   * How much of a collection is still available to withdraw. Owner-scoped guard,
+   * then the shared {@link balanceOf} calculation.
    */
   async availableToWithdraw(userId: string, collectionId: string): Promise<number> {
     const collection = await prisma.collection.findFirst({
       where: { id: collectionId, ownerUserId: userId },
-      include: { members: { select: { paidAmount: true } } },
+      select: { id: true },
     });
     if (!collection) throw new NotFoundException("Collection not found");
-
-    const collected = collection.members.reduce((sum, m) => sum + m.paidAmount, 0);
-
-    const payouts = await prisma.payment.aggregate({
-      where: { collectionId, kind: "transfer_out", direction: "debit", status: "successful" },
-      _sum: { amount: true },
-    });
-    const refunds = await prisma.payment.aggregate({
-      where: { collectionId, kind: "refund", direction: "credit", status: "successful" },
-      _sum: { amount: true },
-    });
-
-    const withdrawn = (payouts._sum.amount ?? 0) - (refunds._sum.amount ?? 0);
-    return Math.max(0, collected - withdrawn);
+    const { available } = await this.balanceOf(collectionId);
+    return available;
   }
 
   /**

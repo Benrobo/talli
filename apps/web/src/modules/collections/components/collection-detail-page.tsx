@@ -157,7 +157,7 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
                   </Button>
                 </>
               ) : null}
-              {collection.collectedMinor > 0 ? (
+              {collection.availableMinor > 0 ? (
                 <Button
                   variant="secondary"
                   leadingIcon={<Icon icon={MoneyReceive01Icon} size={16} className="text-iris-deep" />}
@@ -217,6 +217,12 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
             ) : (
               <div className="mt-3 text-[11.5px] text-white/70">{goalCaption}</div>
             )}
+            {collection.withdrawnMinor > 0 ? (
+              <div className="tabular mt-2 text-[11.5px] font-medium text-white/85">
+                {formatNaira(collection.availableMinor)} available ·{" "}
+                {formatNaira(collection.withdrawnMinor)} withdrawn
+              </div>
+            ) : null}
           </StatCard>
         </div>
         <StatCard

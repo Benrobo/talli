@@ -51,6 +51,8 @@ export interface CollectionRecord {
   amountPerMember: number | null;
   collected?: number;
   totalCollected?: number;
+  withdrawn?: number;
+  available?: number;
   paidCount?: number;
   enrolledCount?: number;
   deadline?: string | null;
