@@ -268,7 +268,13 @@ function TelegramPanel({
                   key={option.purpose}
                   type="button"
                   aria-pressed={selected}
-                  onClick={() => setPurpose(option.purpose)}
+                  onClick={() => {
+                    if (option.purpose === purpose) return;
+                    setPurpose(option.purpose);
+                    setLinkData(null);
+                    setActivePurpose(null);
+                    setCopied(false);
+                  }}
                   className={cn(
                     "t-press flex items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors",
                     selected
