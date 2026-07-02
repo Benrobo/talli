@@ -1,11 +1,10 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { cn } from "@app/ui";
-import { authApi } from "@/lib/auth";
+import { useRequestOtp, useVerifyOtp } from "@/api/http/v1/auth/auth.hooks";
 import { TalliLogo } from "@/components/brand/talli-logo";
 import { Button, Field, Input, TallyWatermark } from "@/components/ui";
 import { Icon } from "@benrobo/iconary/react";
@@ -50,7 +49,6 @@ const HIGHLIGHTS = [
 function AuthPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { redirect } = Route.useSearch();
 
   const [mode, setMode] = useState<Mode>("login");
@@ -59,28 +57,32 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
 
-  const requestOtp = useMutation({
-    mutationFn: authApi.requestOtp,
-    onSuccess: () => {
-      setStage("code");
-      toast.success("Check your inbox for a 6-digit code.");
-    },
-    onError: () => toast.error("Couldn't send the code. Try again."),
-  });
+  const requestOtp = useRequestOtp();
+  const verifyOtp = useVerifyOtp();
 
-  const verifyOtp = useMutation({
-    mutationFn: authApi.verifyOtp,
-    onSuccess: (result) => {
-      queryClient.setQueryData(["me"], result.user);
-      toast.success(mode === "signup" ? "Welcome to Talli 🎉" : "Signed in.");
-      if (redirect) {
-        router.history.push(redirect);
-        return;
-      }
-      navigate({ to: "/app/home" });
-    },
-    onError: () => toast.error("Invalid or expired code."),
-  });
+  const handleRequestOtp = (payload: { email: string; mode: Mode }) => {
+    requestOtp.mutate(payload, {
+      onSuccess: () => {
+        setStage("code");
+        toast.success("Check your inbox for a 6-digit code.");
+      },
+      onError: () => toast.error("Couldn't send the code. Try again."),
+    });
+  };
+
+  const handleVerifyOtp = (payload: { email: string; code: string; name?: string }) => {
+    verifyOtp.mutate(payload, {
+      onSuccess: () => {
+        toast.success(mode === "signup" ? "Welcome to Talli 🎉" : "Signed in.");
+        if (redirect) {
+          router.history.push(redirect);
+          return;
+        }
+        navigate({ to: "/app/home" });
+      },
+      onError: () => toast.error("Invalid or expired code."),
+    });
+  };
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,9 +91,9 @@ function AuthPage() {
         toast.error("What should we call you?");
         return;
       }
-      requestOtp.mutate({ email, mode });
+      handleRequestOtp({ email, mode });
     } else {
-      verifyOtp.mutate({ email, code, name: mode === "signup" ? name.trim() : undefined });
+      handleVerifyOtp({ email, code, name: mode === "signup" ? name.trim() : undefined });
     }
   }
 
@@ -233,7 +235,7 @@ function AuthPage() {
                           const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
                           setCode(digits);
                           if (digits.length === 6 && !verifyOtp.isPending) {
-                            verifyOtp.mutate({
+                            handleVerifyOtp({
                               email,
                               code: digits,
                               name: mode === "signup" ? name.trim() : undefined,

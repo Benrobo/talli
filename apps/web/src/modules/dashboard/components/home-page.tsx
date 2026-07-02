@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { authApi } from "@/lib/auth";
+import { useMe } from "@/api/http/v1/auth/auth.hooks";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
@@ -65,7 +64,8 @@ export function HomePage() {
     activity,
   } = homeData;
 
-  const { data: me } = useQuery({ queryKey: ["me"], queryFn: authApi.me, staleTime: 5 * 60 * 1000 });
+  const { data: meResponse } = useMe();
+  const me = meResponse?.data.user;
   const firstName = me?.name?.trim().split(/\s+/)[0] || "there";
 
   const totalMoving = savedAcrossJars + collectingNow;

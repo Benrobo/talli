@@ -9,7 +9,6 @@ import type {
   VerifyOtpPayload,
   VerifyOtpResponse,
 } from "./auth.types";
-import type { User } from "@app/shared";
 
 export const AUTH_ENDPOINTS = {
   requestOtp: "/api/auth/request-otp",
@@ -33,23 +32,4 @@ export const AUTH_API = {
 
   LOGOUT: async (): Promise<LogoutResponse> =>
     apiClient.post(AUTH_ENDPOINTS.logout).then((res) => res.data),
-};
-
-/** Backward-compatible surface used by existing routes. */
-export const authApi = {
-  async me(): Promise<User> {
-    const { data } = await AUTH_API.ME();
-    return data.user;
-  },
-  async requestOtp(payload: RequestOtpPayload) {
-    const { data } = await AUTH_API.REQUEST_OTP(payload);
-    return data;
-  },
-  async verifyOtp(payload: VerifyOtpPayload) {
-    const { data } = await AUTH_API.VERIFY_OTP(payload);
-    return data;
-  },
-  async logout() {
-    await AUTH_API.LOGOUT();
-  },
 };

@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useRouter } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { authApi } from "@/lib/auth";
+import { useLogout, useMe } from "@/api/http/v1/auth/auth.hooks";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,11 +48,9 @@ function displayName(user: { name: string | null; email: string }) {
 
 export function WorkspaceSwitcher() {
   const router = useRouter();
-  const { data: user } = useQuery({
-    queryKey: ["me"],
-    queryFn: authApi.me,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: meResponse } = useMe();
+  const user = meResponse?.data.user;
+  const logout = useLogout();
   const {
     workspaces,
     activeWorkspace,
@@ -100,13 +97,13 @@ export function WorkspaceSwitcher() {
     });
   };
 
-  const handleSignOut = async () => {
-    try {
-      await authApi.logout();
-    } catch {
-      toast.error("Couldn't sign out cleanly.");
-    }
-    router.navigate({ to: "/auth" });
+  const handleSignOut = () => {
+    logout.mutate(undefined, {
+      onSettled: () => {
+        router.navigate({ to: "/auth" });
+      },
+      onError: () => toast.error("Couldn't sign out cleanly."),
+    });
   };
 
   const handleOpenChange = (next: boolean) => {
