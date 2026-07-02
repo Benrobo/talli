@@ -8,6 +8,9 @@ export interface MetricDelta {
 
 export interface WalletMetrics {
   currency: string;
+  totalBalanceAcrossWorkspaces: {
+    amount: number;
+  };
   totalBalance: {
     amount: number;
     delta: MetricDelta | null;
@@ -71,6 +74,10 @@ interface TransferAmountRow {
   amount: number;
 }
 
+interface WorkspaceMembershipRow {
+  workspaceId: string;
+}
+
 function formatPercentChange(current: number, previous: number): MetricDelta | null {
   if (previous === 0) {
     if (current === 0) return null;
@@ -115,7 +122,7 @@ class WalletMetricsService {
     const startOfLastMonth = dayjs().subtract(1, "month").startOf("month").toDate();
     const endOfLastMonth = dayjs().subtract(1, "month").endOf("month").toDate();
 
-    const [jarsNow, jarsLastMonth, collecting, sentThisMonth, sentLastMonth, currency] =
+    const [jarsNow, jarsLastMonth, collecting, sentThisMonth, sentLastMonth, currency, totalBalanceAcrossWorkspaces] =
       await Promise.all([
         this.jarsTotal(userId, workspaceId),
         this.jarsTotalAt(userId, workspaceId, endOfLastMonth),
@@ -123,6 +130,7 @@ class WalletMetricsService {
         this.sentTotals(workspaceId, startOfThisMonth, null),
         this.sentTotals(workspaceId, startOfLastMonth, endOfLastMonth),
         this.workspaceCurrency(workspaceId),
+        this.totalBalanceAcrossWorkspaces(userId),
       ]);
 
     const totalNow = jarsNow.amount + collecting.amount;
@@ -130,6 +138,9 @@ class WalletMetricsService {
 
     return {
       currency,
+      totalBalanceAcrossWorkspaces: {
+        amount: totalBalanceAcrossWorkspaces,
+      },
       totalBalance: {
         amount: totalNow,
         delta: formatPercentChange(totalNow, totalLastMonth),
@@ -232,6 +243,41 @@ class WalletMetricsService {
     });
 
     return { amount: sumTransferAmounts(rows), count: rows.length };
+  }
+
+  private async totalBalanceAcrossWorkspaces(userId: string): Promise<number> {
+    const memberships: WorkspaceMembershipRow[] = await prisma.workspaceMember.findMany({
+      where: { userId },
+      select: { workspaceId: true },
+    });
+    const workspaceIds = memberships.map((membership: WorkspaceMembershipRow) => membership.workspaceId);
+    if (workspaceIds.length === 0) return 0;
+
+    const jars = await prisma.savingsJar.aggregate({
+      where: {
+        ownerUserId: userId,
+        workspaceId: { in: workspaceIds },
+        status: "active",
+      },
+      _sum: { currentAmount: true },
+    });
+
+    const collections: ActiveCollectionRow[] = await prisma.collection.findMany({
+      where: {
+        workspaceId: { in: workspaceIds },
+        status: { in: ["active", "partially_paid"] },
+      },
+      select: {
+        id: true,
+        members: { select: { paidAmount: true } },
+      },
+    });
+
+    const collecting = collections.reduce((sum: number, row: ActiveCollectionRow) => {
+      return sum + sumMemberPaid(row.members);
+    }, 0);
+
+    return (jars._sum.currentAmount ?? 0) + collecting;
   }
 }
 
