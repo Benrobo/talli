@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMe } from "@/api/http/v1/auth/auth.hooks";
 import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
+import { useWorkspaces } from "@/modules/workspaces/hooks/use-workspaces";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
@@ -60,7 +61,8 @@ export function HomePage() {
   } = homeData;
 
   const { data: meResponse } = useMe();
-  const { data: metricsResponse } = useWalletMetrics();
+  const { activeWorkspace } = useWorkspaces();
+  const { data: metricsResponse } = useWalletMetrics(activeWorkspace?.id);
   const metrics = metricsResponse?.data;
 
   const me = meResponse?.data.user;
