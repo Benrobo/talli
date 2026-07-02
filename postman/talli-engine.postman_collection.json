@@ -717,6 +717,29 @@
       ]
     },
     {
+      "name": "Payments",
+      "description": "Paginated outbound send ledger for the money-sent screen.",
+      "item": [
+        {
+          "name": "List payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Returns sent transfers with summary totals. Supports page and pageSize query params.",
+            "url": {
+              "raw": "{{baseUrl}}/payments?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Bill Splits",
       "item": [
         {
