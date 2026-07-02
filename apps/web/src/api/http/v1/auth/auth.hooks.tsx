@@ -79,6 +79,7 @@ export const useLogout = (): UseMutationResult<LogoutResponse, AxiosError, void>
     mutationFn: AUTH_API.LOGOUT,
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: authQueryKeys.all });
+      window.location.href = "/auth";
     },
   });
 };
