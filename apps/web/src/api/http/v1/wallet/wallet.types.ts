@@ -60,6 +60,30 @@ export interface WalletMetricsData {
     transfersCount: number;
     delta: MetricDelta | null;
   };
+  activeCollection: {
+    id: string;
+    title: string;
+    status: string;
+    amountPerMember: number;
+    targetAmount: number;
+    collected: number;
+    paidMembers: number;
+    totalMembers: number;
+  } | null;
+  topJars: {
+    id: string;
+    name: string;
+    saved: number;
+    target: number;
+  }[];
+  recentTransactions: {
+    id: string;
+    type: "credit" | "debit";
+    reason: string;
+    amount: number;
+    createdAt: string;
+    referenceId: string | null;
+  }[];
 }
 
 export type WalletBalanceResponse = ApiSuccess<WalletBalanceData>;
