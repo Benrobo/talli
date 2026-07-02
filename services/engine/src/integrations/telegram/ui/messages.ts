@@ -495,8 +495,13 @@ export const messages = {
     ].join("\n");
   },
 
-  collectionCreated(title: string): string {
-    return `✅ Collection *${title}* is live. Members can tap the pay button to contribute.`;
+  collectionCreated(title: string, payUrl: string): string {
+    return [
+      `✅ Collection *${escapeMarkdown(title)}* is live.`,
+      "",
+      "Members can tap below to pay, or share this link:",
+      markdownCode(payUrl),
+    ].join("\n");
   },
 
   noPayableCollections: "💰 There are no active collections to pay in this group right now.",

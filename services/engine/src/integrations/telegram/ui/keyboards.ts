@@ -79,6 +79,19 @@ export function openBillLink(url: string): InlineKeyboard | undefined {
   return new InlineKeyboard().url("Open the bill", url);
 }
 
+/** Pay / Contribute inline action plus a public pay-page link when available. */
+export function collectionPayKeyboard(
+  collectionId: string,
+  amountPerMember: number | null | undefined,
+  payUrl: string
+): InlineKeyboard {
+  const kb = payButton(collectionId, amountPerMember ?? 0);
+  if (isPublicUrl(payUrl)) {
+    kb.row().url("Pay via link", payUrl);
+  }
+  return kb;
+}
+
 /**
  * Action keyboard for `/info`. Shows the dashboard link plus context-aware
  * shortcuts: connected chats get a refresh + disconnect, unconnected ones get

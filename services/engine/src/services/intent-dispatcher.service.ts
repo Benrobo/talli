@@ -1,7 +1,13 @@
 import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
-import { confirmCancel, payButton, selectCollectionKeyboard, openBillLink } from "../integrations/telegram/ui/keyboards.js";
+import {
+  confirmCancel,
+  payButton,
+  selectCollectionKeyboard,
+  openBillLink,
+  collectionPayKeyboard,
+} from "../integrations/telegram/ui/keyboards.js";
 import type { InlineKeyboard } from "grammy";
 import { commandParserService } from "./command-parser.service.js";
 import { isAdminOnlyInGroup, type ChatScope } from "../constants/chat-capabilities.js";
@@ -584,11 +590,11 @@ class IntentDispatcherService {
       deadline: deadline?.isValid() ? deadline.toDate() : undefined,
       linkedChatId: ctx.linkedChatId,
     });
-    const keyboard =
-      collection.amountPerMember != null
-        ? payButton(collection.id, collection.amountPerMember)
-        : undefined;
-    return { text: messages.collectionCreated(collection.title), keyboard };
+    const payUrl = collectionService.payLink(collection.id);
+    return {
+      text: messages.collectionCreated(collection.title, payUrl),
+      keyboard: collectionPayKeyboard(collection.id, collection.amountPerMember, payUrl),
+    };
   }
 
   private async runBillSplit(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
