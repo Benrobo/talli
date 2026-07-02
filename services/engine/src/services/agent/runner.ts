@@ -26,6 +26,8 @@ export interface AgentOutput {
   keyboard?: InlineKeyboard;
   checkoutUrl?: string;
   proposal?: Intent;
+  /** Set when the model needs one missing detail before it can act. */
+  clarify?: string;
 }
 
 /**
@@ -39,6 +41,7 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
   let proposal: Intent | undefined;
   let keyboard: InlineKeyboard | undefined;
   let checkoutUrl: string | undefined;
+  let clarify: string | undefined;
 
   const toolCtx: ToolContext = {
     userId: input.userId,
@@ -56,6 +59,9 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
       },
       checkoutUrl: (url) => {
         checkoutUrl = url;
+      },
+      clarify: (question) => {
+        clarify = question;
       },
     },
   };
@@ -90,10 +96,11 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
       [
         `tools: ${result.toolCalls.map((c) => c.toolName).join(", ") || "none"}`,
         `proposal: ${proposal?.intent ?? "none"}`,
+        `clarify: ${clarify ?? "none"}`,
         `reply: ${text}`,
       ].join("\n")
     )
   );
 
-  return { text, keyboard, checkoutUrl, proposal };
+  return { text, keyboard, checkoutUrl, proposal, clarify };
 }

@@ -130,6 +130,17 @@ class IntentDispatcherService {
         return result;
       }
 
+      if (output.clarify) {
+        const command = await botCommandService.recordClarification(
+          ctx,
+          text,
+          { intent: "unknown", status: "needs_clarification", clarification: output.clarify },
+          null,
+          output.clarify
+        );
+        return { text: output.clarify, clarify: { commandId: command.id } };
+      }
+
       const reply = output.text || messages.unrecognized;
       await botCommandService.recordConversational(ctx, text, { intent: "unknown", status: "ready" }, reply);
       return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl };
@@ -305,10 +316,14 @@ class IntentDispatcherService {
    */
   async continue(pendingId: string, answer: string, ctx: DispatchContext): Promise<DispatchResult> {
     const command = await botCommandService.get(pendingId);
-    if (!command) return this.handleMessage(answer, ctx);
+    if (!command) return this.handleMessageAgent(answer, ctx);
 
     const prior = botCommandService.getIntent(command);
     const rounds = command.clarifyRounds;
+
+    if (prior.intent === "unknown" && prior.status === "needs_clarification") {
+      return this.continueAgent(command.id, command.rawText, prior.clarification ?? "", answer, rounds, ctx);
+    }
 
     const intent = await commandParserService.parse(command.rawText, {
       ...(await this.parseContext(ctx)),
@@ -339,6 +354,69 @@ class IntentDispatcherService {
     const result = this.planConfirm(prepared.intent, pendingId);
     await botCommandService.setReplyText(pendingId, result.text);
     return result;
+  }
+
+  /**
+   * Continues an agent-originated clarification: the model asked for one missing
+   * detail (via askForDetails) and the user replied. We re-run the tool loop with
+   * the original request plus the Q&A folded in, so the model now has what it was
+   * missing and can prepare the confirm card — keeping the whole turn agentic. A
+   * further clarification is re-tracked against the same command (round-capped).
+   */
+  private async continueAgent(
+    commandId: string,
+    originalText: string,
+    question: string,
+    answer: string,
+    rounds: number,
+    ctx: DispatchContext
+  ): Promise<DispatchResult> {
+    const parseCtx = await this.parseContext(ctx);
+    const prompt = [
+      originalText,
+      question ? `(You asked: ${question})` : "",
+      `My answer: ${answer}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const output = await runAgent({
+      text: prompt,
+      context: this.contextSummary(parseCtx),
+      userId: ctx.userId,
+      linkedChatId: ctx.linkedChatId,
+      scope: ctx.scope,
+      senderName: ctx.senderName,
+      senderPlatformId: ctx.senderPlatformId,
+      isGroupAdmin: ctx.isGroupAdmin,
+    });
+
+    if (output.proposal) {
+      await botCommandService.updateIntent(commandId, output.proposal);
+      const result = this.planConfirm(output.proposal, commandId);
+      await botCommandService.setReplyText(commandId, result.text);
+      return result;
+    }
+
+    if (output.clarify) {
+      if (rounds + 1 >= MAX_CLARIFY_ROUNDS) {
+        await botCommandService.setStatus(commandId, "failed", "too many clarification rounds");
+        return { text: messages.unrecognized };
+      }
+      await botCommandService.updateIntent(
+        commandId,
+        { intent: "unknown", status: "needs_clarification", clarification: output.clarify },
+        null,
+        rounds + 1
+      );
+      await botCommandService.setReplyText(commandId, output.clarify);
+      return { text: output.clarify, clarify: { commandId } };
+    }
+
+    const reply = output.text || messages.unrecognized;
+    await botCommandService.setStatus(commandId, "confirmed");
+    await botCommandService.setReplyText(commandId, reply);
+    return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl };
   }
 
   /** Confirm tap: execute the stored intent. */

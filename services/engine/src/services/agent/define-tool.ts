@@ -12,6 +12,7 @@ export interface ToolEmit {
   proposal(intent: Intent): void;
   keyboard(keyboard: InlineKeyboard): void;
   checkoutUrl(url: string): void;
+  clarify(question: string): void;
 }
 
 export interface ToolContext {

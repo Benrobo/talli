@@ -8,6 +8,7 @@ import { createCollectionTool } from "./tools/create-collection.tool.js";
 import { createJarTool } from "./tools/create-jar.tool.js";
 import { saveToJarTool } from "./tools/save-to-jar.tool.js";
 import { sendMoneyTool } from "./tools/send-money.tool.js";
+import { askForDetailsTool } from "./tools/ask-for-details.tool.js";
 
 export const ALL_TOOLS: AgentTool<any, any>[] = [
   getBalanceTool,
@@ -19,4 +20,5 @@ export const ALL_TOOLS: AgentTool<any, any>[] = [
   createJarTool,
   saveToJarTool,
   sendMoneyTool,
+  askForDetailsTool,
 ];

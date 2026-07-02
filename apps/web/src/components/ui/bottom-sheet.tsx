@@ -65,6 +65,15 @@ export function BottomSheet({
 
   return createPortal(
     <AnimatePresence>
+      {open && <motion.div
+        aria-hidden
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onPointerDown={() => onOpenChange(false)}
+        className="pointer-events-auto fixed inset-0 bg-foreground/40 backdrop-blur-[2px] sm:hidden"
+      />}
       {open ? (
         <div
           className={cn(
@@ -72,15 +81,7 @@ export function BottomSheet({
             isContained ? "absolute" : "fixed"
           )}
         >
-          <motion.div
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onPointerDown={() => onOpenChange(false)}
-            className="pointer-events-auto fixed z-50 inset-0 bg-foreground/40 backdrop-blur-[2px] sm:hidden"
-          />
+          
           <motion.section
             ref={sheetRef}
             aria-labelledby={titleId}
