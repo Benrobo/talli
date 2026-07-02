@@ -79,7 +79,7 @@ PUBLIC_API_URL=https://p7291.benlabtest.space
 
 | Service | Docs |
 |---|---|
-| Nomba | [`docs/nomba-test-credentials.md`](docs/nomba-test-credentials.md) · [Nomba API](https://developer.nomba.com) |
+| Nomba | [Nomba API](https://developer.nomba.com) |
 | Telegram | Create bot via [@BotFather](https://t.me/BotFather) |
 
 ## Scripts
