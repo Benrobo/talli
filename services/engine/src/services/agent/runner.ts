@@ -28,6 +28,8 @@ export interface AgentOutput {
   proposal?: Intent;
   /** Set when the model needs one missing detail before it can act. */
   clarify?: string;
+  /** An image (e.g. a receipt) to send alongside the reply. */
+  photo?: { image: Buffer; caption?: string };
 }
 
 /**
@@ -42,6 +44,7 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
   let keyboard: InlineKeyboard | undefined;
   let checkoutUrl: string | undefined;
   let clarify: string | undefined;
+  let photo: { image: Buffer; caption?: string } | undefined;
 
   const toolCtx: ToolContext = {
     userId: input.userId,
@@ -62,6 +65,9 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
       },
       clarify: (question) => {
         clarify = question;
+      },
+      photo: (image, caption) => {
+        photo = { image, caption };
       },
     },
   };
@@ -104,5 +110,5 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
     saveToFile("agent-response.txt", JSON.stringify(trace, null, 2));
   });
 
-  return { text, keyboard, checkoutUrl, proposal, clarify };
+  return { text, keyboard, checkoutUrl, proposal, clarify, photo };
 }

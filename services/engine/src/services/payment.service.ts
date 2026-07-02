@@ -782,10 +782,6 @@ class PaymentService {
     amount: number,
     payerPlatformUserId?: string | null
   ): Promise<void> {
-    // Confirm in the group the collection lives in, if any. Separately, always DM
-    // the payer their receipt — so a contribution made via the bot (open pot,
-    // dashboard-created collection with no group) still gets a confirmation. Skip
-    // the DM if it's the same chat as the group announcement to avoid a duplicate.
     const targets = new Set<string>();
     if (credit.chatId) targets.add(credit.chatId);
     if (payerPlatformUserId) targets.add(payerPlatformUserId);

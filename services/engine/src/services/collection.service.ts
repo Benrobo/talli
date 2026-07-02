@@ -392,9 +392,6 @@ class CollectionService {
       prisma.collectionMember.count({ where }),
     ]);
 
-    // How many separate successful payments each member made — the "times
-    // contributed", which matters for open pots where one person can chip in
-    // repeatedly. Counted from the permanent Payment ledger, per member on the page.
     const counts = await prisma.payment.groupBy({
       by: ["collectionMemberId"],
       where: {
@@ -407,8 +404,6 @@ class CollectionService {
     });
     const countByMember = new Map(counts.map((c) => [c.collectionMemberId, c._count._all]));
 
-    // Resolve chat identity so the UI can badge where a member came from
-    // (a Telegram glyph) and show their handle. Web-only payers stay null.
     const telegramIds = members.map((m) => m.platformUserId).filter((v): v is string => !!v);
     const identities = telegramIds.length
       ? await prisma.platformUser.findMany({
@@ -704,8 +699,6 @@ class CollectionService {
     const payerName = input.payerName?.trim();
     if (!payerName) throw new BadRequestException("Select or enter your name");
 
-    // Match a returning payer by their chat identity first, then by name, so a
-    // Telegram payer keeps one member row (and its identity) across payments.
     const existing = this.findExistingMember(collection.members, input.platformUserId, payerName);
     if (existing) {
       if (this.isMemberPaid(existing)) {
@@ -773,9 +766,6 @@ class CollectionService {
     const payerName = input.payerName?.trim();
     if (!payerName) throw new BadRequestException("Select or enter your name");
 
-    // A returning contributor keeps their one member row — matched by chat identity
-    // first (so it survives name edits), then by name. Backfill the identity if the
-    // row was created before we captured it.
     const existing = this.findExistingMember(collection.members, input.platformUserId, payerName);
     if (existing) {
       if (await this.hasPendingPayment(existing.id)) {

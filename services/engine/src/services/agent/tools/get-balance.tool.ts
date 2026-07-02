@@ -11,12 +11,6 @@ export const getBalanceTool = defineTool({
   parameters: z.object({}),
   execute: async (_params, ctx) => {
     const overview = await balanceService.overview(ctx.userId);
-    if (ctx.scope === "group") {
-      return {
-        note: "In a group chat only collection info can be shared. Wallet and savings are private to a DM.",
-        collections: overview.collections,
-      };
-    }
     return {
       walletBalance: overview.walletBalance,
       currency: overview.currency,

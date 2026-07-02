@@ -42,8 +42,6 @@ export async function handleContribute(ctx: TalliContext, collectionId: string):
   const dispatchCtx = await resolveDispatchContext(ctx);
   if (!dispatchCtx) return;
 
-  // Bind the collection to this group (if unbound) so the whole group is notified
-  // when the contribution lands, not just the payer.
   if (dispatchCtx.scope === "group") {
     await collectionService.bindToChat(collectionId, dispatchCtx.linkedChatId);
   }
@@ -90,8 +88,6 @@ export async function handlePay(ctx: TalliContext, collectionId: string): Promis
       return;
     }
 
-    // Bind the collection to this group (if unbound) so the group gets the
-    // "X paid" announcement when it lands, not just the payer.
     const dispatchCtx = await resolveDispatchContext(ctx);
     if (dispatchCtx?.scope === "group") {
       await collectionService.bindToChat(collectionId, dispatchCtx.linkedChatId);

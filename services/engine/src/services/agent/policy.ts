@@ -25,7 +25,7 @@ const TOOL_INTENT: Record<string, IntentName> = {
  * balances and the DM set isn't cluttered with group-pay UI.
  */
 const GROUP_ONLY_READS = new Set(["listPayableCollections", "getCollectionProgress"]);
-const DM_ONLY_READS = new Set(["getSavings"]);
+const DM_ONLY_READS = new Set(["getSavings", "getBalance"]);
 
 export function toolsForScope(scope: ChatScope, isGroupAdmin: boolean): AgentTool<any, any>[] {
   return ALL_TOOLS.filter((tool) => {

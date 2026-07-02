@@ -5,6 +5,7 @@ import { getCollectionProgressTool } from "./tools/get-collection-progress.tool.
 import { listPayableCollectionsTool } from "./tools/list-payable-collections.tool.js";
 import { getCollectionLinkTool } from "./tools/get-collection-link.tool.js";
 import { listContributorsTool } from "./tools/list-contributors.tool.js";
+import { getReceiptTool } from "./tools/get-receipt.tool.js";
 import { helpTool } from "./tools/help.tool.js";
 import { createCollectionTool } from "./tools/create-collection.tool.js";
 import { createJarTool } from "./tools/create-jar.tool.js";
@@ -19,6 +20,7 @@ export const ALL_TOOLS: AgentTool<any, any>[] = [
   listPayableCollectionsTool,
   getCollectionLinkTool,
   listContributorsTool,
+  getReceiptTool,
   helpTool,
   createCollectionTool,
   createJarTool,

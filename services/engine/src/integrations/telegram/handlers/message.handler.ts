@@ -7,6 +7,8 @@ import { messages } from "../ui/messages.js";
 import { connectTalli } from "../ui/keyboards.js";
 import type { TalliContext } from "../types.js";
 import { safeReply, safeReplyForceReply, isGroupChat, isSenderAdmin } from "./shared.js";
+import { telegram } from "../bot.js";
+import logger from "../../../lib/logger.js";
 
 const MENTION = new RegExp(`@${env.TELEGRAM_BOT_USERNAME}`, "gi");
 
@@ -39,7 +41,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
 
   const linked = await chatLinkService.findActiveChat("telegram", chatId);
   if (!linked) {
-    // Answer an explicit mention or a reply to us in an unlinked group; ignore other chatter.
     if (isGroup && !mentioned && !replyToBot) return;
     await safeReply(
       ctx,
@@ -49,7 +50,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     return;
   }
 
-  // In a group, engage only when addressed: @mentioned or replying to Talli.
   if (isGroup && !mentioned && !replyToBot) return;
 
   const senderId = String(ctx.from!.id);
@@ -70,9 +70,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };
 
-  // A reply that answers a still-open clarification continues that action; any
-  // other message (including a plain reply to Talli) is a fresh agent turn, with
-  // the quoted Talli line handed over as context so the model has the thread.
   const pending = await botCommandService.findPendingForReply(
     linked.id,
     senderId,
@@ -109,5 +106,15 @@ async function render(ctx: TalliContext, result: DispatchResult, isGroup: boolea
     }
     return;
   }
+
+  if (result.photo) {
+    try {
+      await telegram.sendPhoto(String(ctx.chat!.id), result.photo.image, result.photo.caption ?? result.text);
+      return;
+    } catch (err) {
+      logger.error(`[telegram] photo reply failed in chat ${ctx.chat?.id}: ${(err as Error).message}`);
+    }
+  }
+
   await safeReply(ctx, result.text, result.keyboard);
 }

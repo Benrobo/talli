@@ -161,6 +161,21 @@ class ReceiptService {
     return tDate >= pDate ? transfer.merchantTxRef : payment.orderRefId;
   }
 
+  /**
+   * The reference of a chat member's OWN latest completed payment, found by the
+   * platform identity that paid (e.g. their Telegram id). This is how a group
+   * member gets a receipt for a collection they paid into, without being the
+   * collection owner. Returns null if they've made no completed payment.
+   */
+  async latestReferenceForPayer(platformUserId: string): Promise<string | null> {
+    const payment = await prisma.pendingPayment.findFirst({
+      where: { status: "completed", payerPlatformUserId: platformUserId },
+      orderBy: { completedAt: "desc" },
+      select: { orderRefId: true },
+    });
+    return payment?.orderRefId ?? null;
+  }
+
   async render(data: ReceiptData): Promise<Buffer> {
     return renderReceipt(data);
   }

@@ -13,6 +13,8 @@ export interface ToolEmit {
   keyboard(keyboard: InlineKeyboard): void;
   checkoutUrl(url: string): void;
   clarify(question: string): void;
+  /** Attach an image (e.g. a rendered receipt) to send with the reply. */
+  photo(image: Buffer, caption?: string): void;
 }
 
 export interface ToolContext {

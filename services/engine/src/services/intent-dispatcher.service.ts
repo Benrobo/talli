@@ -26,6 +26,8 @@ export interface DispatchResult {
   checkoutUrl?: string;
   /** When set, the bot should ask this as a clarification (force_reply in groups). */
   clarify?: { commandId: string };
+  /** An image (e.g. a receipt) to send with the reply. */
+  photo?: { image: Buffer; caption?: string };
 }
 
 const MAX_CLARIFY_ROUNDS = 3;
@@ -148,7 +150,7 @@ class IntentDispatcherService {
 
       const reply = output.text || messages.unrecognized;
       await botCommandService.recordConversational(ctx, text, { intent: "unknown", status: "ready" }, reply);
-      return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl };
+      return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl, photo: output.photo };
     } catch (err) {
       logger.error(`[dispatch] agent turn failed: ${(err as Error).message}`);
       return { text: messages.actionFailed };
@@ -430,7 +432,7 @@ class IntentDispatcherService {
     const reply = output.text || messages.unrecognized;
     await botCommandService.setStatus(commandId, "confirmed");
     await botCommandService.setReplyText(commandId, reply);
-    return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl };
+    return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl, photo: output.photo };
   }
 
   /**
