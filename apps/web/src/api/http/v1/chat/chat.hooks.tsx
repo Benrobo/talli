@@ -13,10 +13,12 @@ export const chatQueryKeys = {
   connected: () => [...chatQueryKeys.all(), "connected"] as const,
 };
 
-export const useConnectedChats = () => {
+export const useConnectedChats = (options?: { pollMs?: number }) => {
   return useQuery<ListConnectedChatsResponse, AxiosError>({
     queryKey: chatQueryKeys.connected(),
     queryFn: CHAT_API.LIST_CONNECTED,
+    refetchInterval: options?.pollMs ?? false,
+    refetchOnWindowFocus: true,
   });
 };
 

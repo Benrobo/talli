@@ -207,6 +207,7 @@ class TransferService {
       });
     } catch (err) {
       failureReason = (err as Error).message;
+      console.log(`🚨 full error: ${JSON.stringify(err, null, 2)}`)
       console.error(`❌ [payout] nomba send threw ref=${merchantTxRef}`, { reason: failureReason });
       logger.error(`[transfer] send threw for ${merchantTxRef}: ${failureReason}`);
     }

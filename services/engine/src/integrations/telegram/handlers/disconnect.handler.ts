@@ -4,7 +4,7 @@ import type { TalliContext } from "../types.js";
 import { safeReply, isGroupChat, isSenderAdmin } from "./shared.js";
 
 /**
- * `/disconnect` — unlinks the chat from its workspace. In a group only an admin
+ * `/disconnect` — unlinks the chat from its account. In a group only an admin
  * may do it, so a member can't sever the group's connection.
  */
 export async function handleDisconnect(ctx: TalliContext): Promise<void> {

@@ -75,11 +75,11 @@ export const messages = {
     "Tap *Connect Talli* below 👇",
   ].join("\n"),
 
-  linked(workspaceName: string, connectedBy: string): string {
+  linked(accountName: string, connectedBy: string): string {
     return [
       "✅ *Talli is connected!*",
       "",
-      `Workspace: *${workspaceName}*`,
+      `Account: *${accountName}*`,
       `Connected by: ${connectedBy}`,
       "",
       "You're all set. Here's what you can try:",
@@ -95,6 +95,20 @@ export const messages = {
     "It may have expired or already been used.",
     "Head back to your dashboard and generate a fresh one.",
   ].join("\n"),
+
+  wrongCodeType(expected: "group" | "private"): string {
+    return expected === "group"
+      ? [
+          "⚠️ *That's a group code*",
+          "",
+          "It only works inside a Telegram group. To link this DM, generate a *Direct message* code from your dashboard.",
+        ].join("\n")
+      : [
+          "⚠️ *That's a direct-message code*",
+          "",
+          "It only works in a private chat with me. To link a group, generate a *Group chat* code from your dashboard.",
+        ].join("\n");
+  },
 
   groupAdded: [
     "👋 *Thanks for adding Talli!*",
@@ -122,11 +136,11 @@ export const messages = {
 
   disconnectAdminOnly: "🔒 Only a *group admin* can disconnect this group from Talli.",
 
-  alreadyLinked(workspaceName: string): string {
+  alreadyLinked(accountName: string): string {
     return [
       "⚠️ *Already connected*",
       "",
-      `This chat is already linked to *${workspaceName}*.`,
+      `This chat is already linked to *${accountName}*.`,
       "To link it somewhere else, disconnect first with `/disconnect`.",
     ].join("\n");
   },
@@ -139,11 +153,11 @@ export const messages = {
 
   notConnected: "This chat isn't connected to Talli, so there's nothing to disconnect.",
 
-  groupLinked(workspaceName: string, connectedBy: string): string {
+  groupLinked(accountName: string, connectedBy: string): string {
     return [
       "✅ *This group is connected!*",
       "",
-      `Workspace: *${workspaceName}*`,
+      `Account: *${accountName}*`,
       `Connected by: ${connectedBy}`,
       "",
       `Mention me (${botMention}) with a command, for example:`,
@@ -164,7 +178,7 @@ export const messages = {
   info(params: {
     chatLabel: string;
     connected: boolean;
-    workspaceName?: string;
+    accountName?: string;
     connectedBy?: string;
   }): string {
     const lines = [
@@ -182,7 +196,7 @@ export const messages = {
     if (params.connected) {
       lines.push(
         `🟢 ${params.chatLabel} is *connected*`,
-        `• Workspace: *${params.workspaceName}*`,
+        `• Account: *${params.accountName}*`,
         `• Connected by: ${params.connectedBy}`
       );
     } else {

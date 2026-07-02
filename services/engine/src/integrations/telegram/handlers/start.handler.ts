@@ -33,25 +33,27 @@ export async function handleStart(ctx: TalliContext): Promise<void> {
     platform: "telegram",
     platformChatId: String(ctx.chat!.id),
     platformUserId: String(ctx.from?.id ?? ctx.chat!.id),
+    chatType: inGroup ? "group" : "private",
     title: inGroup ? ctx.chat!.title : ctx.from?.first_name,
     connector: { firstName: ctx.from?.first_name, username: ctx.from?.username },
   });
 
   if (!result.ok) {
-    await safeReply(
-      ctx,
-      result.reason === "already_linked"
-        ? messages.alreadyLinked(result.workspaceName)
-        : messages.invalidCode
-    );
+    if (result.reason === "already_linked") {
+      await safeReply(ctx, messages.alreadyLinked(result.accountName));
+    } else if (result.reason === "purpose_mismatch") {
+      await safeReply(ctx, messages.wrongCodeType(result.expected));
+    } else {
+      await safeReply(ctx, messages.invalidCode);
+    }
     return;
   }
 
-  const { workspaceName, connectedBy } = result.info;
+  const { accountName, connectedBy } = result.info;
   await safeReply(
     ctx,
     inGroup
-      ? messages.groupLinked(workspaceName, connectedBy)
-      : messages.linked(workspaceName, connectedBy)
+      ? messages.groupLinked(accountName, connectedBy)
+      : messages.linked(accountName, connectedBy)
   );
 }

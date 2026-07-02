@@ -25,20 +25,23 @@ export interface LinkChatParams {
   platform: ChatPlatform;
   platformChatId: string;
   platformUserId: string;
+  /** The actual type of the chat the code is being redeemed in. */
+  chatType: "group" | "private";
   title?: string;
   /** The connector's platform identity (whoever ran the link command). */
   connector?: { firstName?: string | null; username?: string | null };
 }
 
 export interface LinkedChatInfo {
-  workspaceName: string;
+  accountName: string;
   connectedBy: string;
 }
 
 export type LinkResult =
   | { ok: true; linkedChat: LinkedChat; info: LinkedChatInfo }
   | { ok: false; reason: "invalid_code" }
-  | { ok: false; reason: "already_linked"; workspaceName: string };
+  | { ok: false; reason: "purpose_mismatch"; expected: "group" | "private" }
+  | { ok: false; reason: "already_linked"; accountName: string };
 
 export interface ConnectedChatView {
   id: string;
@@ -53,7 +56,7 @@ export interface ConnectedChatView {
 
 /**
  * Chat authorization: issue one-time link codes from the dashboard and bind a
- * chat to a workspace when the user redeems one via the bot. Codes are hashed
+ * chat to a user account when the user redeems one via the bot. Codes are hashed
  * at rest, single-use, and short-lived. See `docs/handoff-v1.md` §13.
  */
 class ChatLinkService {
@@ -102,7 +105,7 @@ class ChatLinkService {
   /**
    * Redeems a code and binds the chat, marking the code used so it can't be
    * replayed. Rejects if the chat is already connected — it must be disconnected
-   * first, so a stray code can't silently move a chat to another workspace.
+   * first, so a stray code can't silently move a chat to another account.
    */
   async linkChat(code: string, params: LinkChatParams): Promise<LinkResult> {
     const existing = await prisma.linkedChat.findUnique({
@@ -118,7 +121,7 @@ class ChatLinkService {
       return {
         ok: false,
         reason: "already_linked",
-        workspaceName: this.ownerLabel(existing.user),
+        accountName: this.ownerLabel(existing.user),
       };
     }
 
@@ -131,6 +134,11 @@ class ChatLinkService {
       },
     });
     if (!record) return { ok: false, reason: "invalid_code" };
+
+    const expectedChatType = record.purpose === "group_link" ? "group" : "private";
+    if (params.chatType !== expectedChatType) {
+      return { ok: false, reason: "purpose_mismatch", expected: expectedChatType };
+    }
 
     const connectorIdentity = await platformUserService.upsert({
       platform: params.platform,
@@ -150,7 +158,7 @@ class ChatLinkService {
         create: {
           userId: record.createdByUserId,
           platform: params.platform,
-          chatType: record.purpose === "group_link" ? "group" : "private",
+          chatType: expectedChatType,
           platformChatId: params.platformChatId,
           platformUserId: params.platformUserId,
           title: params.title,
@@ -187,7 +195,7 @@ class ChatLinkService {
       ok: true,
       linkedChat,
       info: {
-        workspaceName: this.ownerLabel(owner),
+        accountName: this.ownerLabel(owner),
         connectedBy: platformUserService.formatName(connectorIdentity),
       },
     };
@@ -227,7 +235,7 @@ class ChatLinkService {
   async getChatStatus(
     platform: ChatPlatform,
     platformChatId: string
-  ): Promise<{ connected: boolean; workspaceName?: string; connectedBy?: string }> {
+  ): Promise<{ connected: boolean; accountName?: string; connectedBy?: string }> {
     const chat = await prisma.linkedChat.findFirst({
       where: { platform, platformChatId, status: "active" },
       include: {
@@ -239,7 +247,7 @@ class ChatLinkService {
 
     return {
       connected: true,
-      workspaceName: this.ownerLabel(chat.user),
+      accountName: this.ownerLabel(chat.user),
       connectedBy: platformUserService.formatName(chat.connectedBy),
     };
   }

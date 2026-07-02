@@ -35,7 +35,17 @@ bot.catch((err) => {
   logger.error(`[telegram] handler error on update ${err.ctx.update.update_id}: ${err.error}`);
 });
 
-/** grammY verifies the secret-token header (401 on mismatch); route needs no extra auth. */
+/**
+ * grammY verifies the secret-token header (401 on mismatch); route needs no extra auth.
+ *
+ * The agent tool loop (LLM + Nomba lookups) can outrun grammY's default 10s webhook
+ * timeout. With the default `onTimeout: "throw"` that surfaces as an error response, and
+ * Telegram RETRIES the same update — re-running the handler and producing duplicate replies
+ * (e.g. two "Send money" confirm cards). `onTimeout: "return"` acks Telegram immediately so
+ * it never retries, while the handler finishes in the background.
+ */
 export const telegramWebhook = webhookCallback(bot, "hono", {
   secretToken: env.TELEGRAM_WEBHOOK_SECRET,
+  onTimeout: "return",
+  timeoutMilliseconds: 15_000,
 });

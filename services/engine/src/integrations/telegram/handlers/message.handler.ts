@@ -66,7 +66,7 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
 
   const result = pending
     ? await intentDispatcherService.continue(pending.id, text, dispatchCtx)
-    : await intentDispatcherService.handleMessage(text, dispatchCtx);
+    : await intentDispatcherService.handleMessageAgent(text, dispatchCtx);
 
   await render(ctx, result, isGroup);
 }

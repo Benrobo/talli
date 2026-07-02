@@ -15,6 +15,7 @@ import { transferService } from "./transfer.service.js";
 import { beneficiaryService } from "./beneficiary.service.js";
 import type { Intent } from "../schemas/intent.schema.js";
 import type { ParsedBill } from "./bill-parser.service.js";
+import { runAgent } from "./agent/runner.js";
 import logger from "../lib/logger.js";
 
 
@@ -98,6 +99,65 @@ class IntentDispatcherService {
     const result = this.planConfirm(prepared.intent, command.id);
     await botCommandService.setReplyText(command.id, result.text);
     return result;
+  }
+
+  /**
+   * Agentic path: the model drives a tool loop instead of a single-shot parse +
+   * if/else. Read tools answer inline; a money/mutating tool hands back a prepared
+   * intent we route through the SAME record → confirm-card pipeline, so every
+   * guardrail (scope, admin, confirm-before-money, ownership) still holds and AI
+   * never moves money on its own. Falls back to the classic dispatcher on error.
+   */
+  async handleMessageAgent(text: string, ctx: DispatchContext): Promise<DispatchResult> {
+    try {
+      const parseCtx = await this.parseContext(ctx);
+      const output = await runAgent({
+        text,
+        context: this.contextSummary(parseCtx),
+        userId: ctx.userId,
+        linkedChatId: ctx.linkedChatId,
+        scope: ctx.scope,
+        senderName: ctx.senderName,
+        senderPlatformId: ctx.senderPlatformId,
+        isGroupAdmin: ctx.isGroupAdmin,
+      });
+
+      if (output.proposal) {
+        const command = await botCommandService.record(ctx, text, output.proposal);
+        const result = this.planConfirm(output.proposal, command.id);
+        await botCommandService.setReplyText(command.id, result.text);
+        return result;
+      }
+
+      const reply = output.text || messages.unrecognized;
+      await botCommandService.recordConversational(ctx, text, { intent: "unknown", status: "ready" }, reply);
+      return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl };
+    } catch (err) {
+      logger.error(`[dispatch] agent turn failed: ${(err as Error).message}`);
+      return { text: messages.actionFailed };
+    }
+  }
+
+  /** Flattens the parse context into a compact block for the agent system prompt. */
+  private contextSummary(parseCtx: {
+    knownJars: string[];
+    knownBeneficiaries: string[];
+    recentHistory: string[];
+  }): string {
+    const lines: string[] = [];
+    lines.push(
+      parseCtx.knownJars.length ? `Their savings jars: ${parseCtx.knownJars.join(", ")}` : "They have no savings jars yet."
+    );
+    lines.push(
+      parseCtx.knownBeneficiaries.length
+        ? `Saved recipients: ${parseCtx.knownBeneficiaries.join(", ")}`
+        : "No saved recipients yet."
+    );
+    const history = parseCtx.recentHistory.join("\n").trim();
+    if (history) {
+      lines.push(`Recent chat:\n${history}`);
+    }
+    return lines.join("\n");
   }
 
   async handleBillPhoto(bill: ParsedBill, caption: string, ctx: DispatchContext): Promise<DispatchResult> {

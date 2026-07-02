@@ -41,35 +41,48 @@ export function confirmCancel(actionId: string): InlineKeyboard {
     .text("✖️ Cancel", encodeCallback(CALLBACK_ACTION.cancel, actionId));
 }
 
-export function connectTalli(webAppUrl: string): InlineKeyboard {
-  return new InlineKeyboard().url(
-    "Connect Talli",
-    `${webAppUrl}/onboarding?connect=telegram`
-  );
+/**
+ * Telegram rejects inline URL buttons that aren't public https links (a local
+ * `http://localhost` dev URL throws "Wrong HTTP URL"). So we only render a URL
+ * button when the link is actually reachable; otherwise the message still sends,
+ * just without the button.
+ */
+function isPublicUrl(url: string): boolean {
+  return /^https:\/\//i.test(url) && !/localhost|127\.0\.0\.1/i.test(url);
 }
 
-export function openDashboard(webAppUrl: string, label = "Open dashboard"): InlineKeyboard {
+export function connectTalli(webAppUrl: string): InlineKeyboard | undefined {
+  const url = `${webAppUrl}/onboarding?connect=telegram`;
+  if (!isPublicUrl(url)) return undefined;
+  return new InlineKeyboard().url("Connect Talli", url);
+}
+
+export function openDashboard(webAppUrl: string, label = "Open dashboard"): InlineKeyboard | undefined {
+  if (!isPublicUrl(webAppUrl)) return undefined;
   return new InlineKeyboard().url(label, webAppUrl);
 }
 
-export function openBillLink(url: string): InlineKeyboard {
+export function openBillLink(url: string): InlineKeyboard | undefined {
+  if (!isPublicUrl(url)) return undefined;
   return new InlineKeyboard().url("Open the bill", url);
 }
 
 /**
  * Action keyboard for `/info`. Shows the dashboard link plus context-aware
  * shortcuts: connected chats get a refresh + disconnect, unconnected ones get
- * a connect prompt.
+ * a connect prompt. URL buttons are dropped when the web app URL isn't public.
  */
-export function infoActions(webAppUrl: string, connected: boolean): InlineKeyboard {
-  const kb = new InlineKeyboard().url("📊 Open dashboard", webAppUrl).row();
+export function infoActions(webAppUrl: string, connected: boolean): InlineKeyboard | undefined {
+  const publicUrl = isPublicUrl(webAppUrl);
+  const kb = new InlineKeyboard();
+  if (publicUrl) kb.url("📊 Open dashboard", webAppUrl).row();
   if (connected) {
     kb.text("🔄 Refresh status", encodeCallback(CALLBACK_ACTION.info, "refresh"))
       .text("🔌 Disconnect", encodeCallback(CALLBACK_ACTION.disconnect, "chat"));
-  } else {
+  } else if (publicUrl) {
     kb.url("🔗 Connect Talli", `${webAppUrl}/onboarding?connect=telegram`);
   }
-  return kb;
+  return kb.inline_keyboard.length > 0 ? kb : undefined;
 }
 
 export function formatNaira(amount: number): string {

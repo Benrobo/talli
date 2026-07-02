@@ -118,7 +118,7 @@ export function isGroupChat(ctx: TalliContext): boolean {
 
 /**
  * Whether the message sender is an admin/owner of the current chat. Used to
- * gate group linking so only a group admin can bind the group to a workspace.
+ * gate group linking so only a group admin can bind the group to an account.
  * Returns false on any lookup failure rather than throwing.
  */
 export async function isSenderAdmin(ctx: TalliContext): Promise<boolean> {
