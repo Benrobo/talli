@@ -21,7 +21,7 @@ const envSchema = z.object({
   CLIENT_URL: z.string().url().default("http://localhost:7193"),
   PUBLIC_API_URL: z.string().url().optional(),
 
-  MAIL_FROM: z.string().default("mail@talli.app"),
+  MAIL_FROM: z.string().default("noreply@elorah.app"),
 
   CLOUDFLARE_API_TOKEN: z.string().default(""),
   CLOUDFLARE_ACCOUNT_ID: z.string().default(""),
