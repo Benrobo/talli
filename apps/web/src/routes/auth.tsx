@@ -65,7 +65,7 @@ function AuthPage() {
         router.history.push(redirect);
         return;
       }
-      navigate({ to: "/app/home" });
+      window.location.href = "/app/home";
     },
   });
 
