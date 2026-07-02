@@ -10,22 +10,21 @@ export type CreateLinkCodePayload = z.infer<typeof createLinkCodeSchema>;
 
 export interface LinkCodeData {
   code: string;
-  deepLink: string;
   expiresAt: string;
+  instructions: string;
+  deepLink?: string;
+  command?: string;
 }
 
 export interface ConnectedChat {
   id: string;
   platform: string;
-  platformChatId: string;
   chatType: string;
   title: string | null;
-  connectedAt: string;
-  connectedBy: {
-    id: string;
-    name: string | null;
-    email: string;
-  } | null;
+  status: string;
+  connectedBy: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
 }
 
 export type CreateLinkCodeResponse = ApiSuccess<LinkCodeData>;
