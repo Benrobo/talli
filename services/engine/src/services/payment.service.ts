@@ -432,13 +432,16 @@ class PaymentService {
     if (pending.purpose === "wallet_topup") {
       if (!pending.userId) return;
       console.log(`🔄 Payment Service Settling Wallet Topup: ${pending.orderRefId}`);
-      await ledgerService.credit(pending.userId, "wallet_topup", amount, {
+      const entry = await ledgerService.credit(pending.userId, "wallet_topup", amount, {
         referenceId: pending.orderRefId,
         providerOrderId: pending.orderRefId,
         paidAt: new Date(),
       });
       console.log(`✅ Payment Service Settled Wallet Topup: ${pending.orderRefId}`);
       await this.completePending(pending.id);
+      if (!entry.duplicate) {
+        await this.deliverWalletTopupEmail(pending, amount, entry.balance);
+      }
       return;
     }
 
@@ -533,6 +536,63 @@ class PaymentService {
     }
   }
 
+  private async deliverWalletTopupEmail(
+    pending: PendingPayment,
+    amount: number,
+    newBalance: number
+  ): Promise<void> {
+    try {
+      if (!pending.userId) return;
+      const user = await prisma.user.findUnique({
+        where: { id: pending.userId },
+        select: { email: true, name: true },
+      });
+      if (!user?.email) {
+        logger.debug(`[payment] no email for topup ${pending.orderRefId}, skipping mail`);
+        return;
+      }
+      await mailService.sendWalletTopup(user.email, {
+        name: user.name ?? "there",
+        amount,
+        newBalance,
+        reference: pending.orderRefId,
+        dateLabel: dayjs(pending.completedAt ?? new Date()).format("DD MMM YYYY, h:mm A"),
+      });
+    } catch (err) {
+      logger.warn(`[payment] topup email failed for ${pending.orderRefId}: ${(err as Error).message}`);
+    }
+  }
+
+  private async deliverSavingsReceiptEmail(
+    pending: PendingPayment,
+    amount: number,
+    jarName: string
+  ): Promise<void> {
+    try {
+      if (!pending.userId) return;
+      const user = await prisma.user.findUnique({
+        where: { id: pending.userId },
+        select: { email: true, name: true },
+      });
+      if (!user?.email) {
+        logger.debug(`[payment] no email for savings ${pending.orderRefId}, skipping mail`);
+        return;
+      }
+      const name = user.name ?? "there";
+      await mailService.sendPaymentReceipt(user.email, {
+        payerName: name,
+        amount,
+        purpose: `Savings — ${jarName}`,
+        from: name,
+        to: jarName,
+        reference: pending.orderRefId,
+        dateLabel: dayjs(pending.completedAt ?? new Date()).format("DD MMM YYYY, h:mm A"),
+      });
+    } catch (err) {
+      logger.warn(`[payment] savings email failed for ${pending.orderRefId}: ${(err as Error).message}`);
+    }
+  }
+
   private async settleSavingsFunding(pending: PendingPayment, amount: number): Promise<void> {
     if (!pending.userId || !pending.savingsJarId) return;
 
@@ -544,7 +604,7 @@ class PaymentService {
 
     const jar = await prisma.savingsJar.findFirst({
       where: { id: pending.savingsJarId, ownerUserId: pending.userId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
     if (!jar) return;
 
@@ -577,6 +637,8 @@ class PaymentService {
         data: { currentAmount: { increment: amount } },
       });
     });
+
+    await this.deliverSavingsReceiptEmail(pending, amount, jar.name);
   }
 
   private async settleBillSplitIfAny(pending: PendingPayment, amount: number): Promise<boolean> {
