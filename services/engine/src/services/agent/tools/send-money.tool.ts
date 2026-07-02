@@ -5,16 +5,22 @@ import { ledgerService } from "../../ledger.service.js";
 
 export const sendMoneyTool = defineTool({
   name: "sendMoney",
+  label: "send money to a bank account",
   description:
     "Prepare a bank transfer out of the wallet. Use for 'send 10k to Tolu', 'transfer 5000 to GTB 0123456789'. " +
-    "Needs the amount and a destination: EITHER a saved recipient name OR an account number plus bank. " +
+    "Needs the amount and a destination: EITHER a saved recipient name (see 'Saved recipients' in context — prefer this, " +
+    "it avoids a fresh bank lookup) OR an account number plus bank. When the user pays a fresh account and gives it a name " +
+    "(e.g. 'send 5k to Mum 0123 GTB'), pass that as recipientName so it's saved for next time. " +
     "It resolves and verifies the account, then prepares a confirm card showing the real account holder. It does not send money. DM only.",
   parameters: z.object({
     amount: z.number().int().positive().describe("Whole-naira amount to send."),
     recipientName: z
       .string()
       .optional()
-      .describe("A saved recipient alias, e.g. 'Mum' or 'Tolu'. Use when the user names someone."),
+      .describe(
+        "A recipient name/alias. If it matches a saved recipient, that account is reused (no bank lookup). " +
+          "If the user names a fresh account, pass the name here so it's saved."
+      ),
     accountNumber: z.string().optional().describe("Destination account number, when given."),
     bankName: z.string().optional().describe("Destination bank name, when given with an account number."),
   }),

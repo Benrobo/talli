@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import type { PaymentStatus } from "@prisma/client";
 import sendResponse from "../lib/send-response.js";
 import { ledgerService } from "../services/ledger.service.js";
+import { transferService } from "../services/transfer.service.js";
 
 const STATUSES: PaymentStatus[] = ["pending", "successful", "failed", "cancelled"];
 
@@ -39,21 +40,37 @@ class TransactionsController {
       ledgerService.counts(userId, { status, dateFrom, dateTo, search: q.search }),
     ]);
 
+    const transferRefs = items
+      .filter((row) => row.kind === "transfer_out" && row.referenceId)
+      .map((row) => row.referenceId as string);
+    const transferDetails = await transferService.detailsByRefs(transferRefs);
+
     return sendResponse.success(ctx, "Transactions fetched", 200, {
-      transactions: items.map((row) => ({
-        id: row.id,
-        direction: row.direction,
-        kind: row.kind,
-        amount: row.amount,
-        currency: row.currency,
-        status: row.status,
-        reference: row.referenceId ?? row.providerReference ?? row.providerOrderId ?? row.id,
-        savingsJarId: row.savingsJarId,
-        collectionId: row.collectionId,
-        transferId: row.transferId,
-        createdAt: row.createdAt,
-        paidAt: row.paidAt,
-      })),
+      transactions: items.map((row) => {
+        const details = row.kind === "transfer_out" && row.referenceId ? transferDetails[row.referenceId] : undefined;
+        return {
+          id: row.id,
+          direction: row.direction,
+          kind: row.kind,
+          amount: row.amount,
+          currency: row.currency,
+          status: row.status,
+          reference: row.referenceId ?? row.providerReference ?? row.providerOrderId ?? row.id,
+          savingsJarId: row.savingsJarId,
+          collectionId: row.collectionId,
+          transferId: row.transferId,
+          recipient: details
+            ? {
+                accountName: details.accountName,
+                accountNumber: details.accountNumber,
+                bankName: details.bankName,
+              }
+            : null,
+          narration: details?.narration ?? null,
+          createdAt: row.createdAt,
+          paidAt: row.paidAt,
+        };
+      }),
       summary,
       counts,
       pagination: {

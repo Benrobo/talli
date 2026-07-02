@@ -21,6 +21,12 @@ export type TransactionFilterType =
   | "collection"
   | "refund";
 
+export interface TransactionRecipient {
+  accountName: string;
+  accountNumber: string;
+  bankName: string | null;
+}
+
 export interface TransactionRecord {
   id: string;
   direction: TransactionDirection;
@@ -32,6 +38,8 @@ export interface TransactionRecord {
   savingsJarId: string | null;
   collectionId: string | null;
   transferId: string | null;
+  recipient: TransactionRecipient | null;
+  narration: string | null;
   createdAt: string;
   paidAt: string | null;
 }

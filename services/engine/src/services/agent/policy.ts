@@ -42,3 +42,10 @@ export function toolsForScope(scope: ChatScope, isGroupAdmin: boolean): AgentToo
     return true;
   });
 }
+
+/** The scope's allowed capabilities as a bullet list for the agent prompt. */
+export function capabilitiesFor(scope: ChatScope, isGroupAdmin: boolean): string {
+  return toolsForScope(scope, isGroupAdmin)
+    .map((tool) => `- ${tool.label}`)
+    .join("\n");
+}

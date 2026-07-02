@@ -3,6 +3,7 @@ import { defineTool } from "../define-tool.js";
 
 export const createJarTool = defineTool({
   name: "createJar",
+  label: "open a personal savings jar",
   description:
     "Prepare a new personal savings jar (a goal). Use for 'open a rent jar', 'start saving for a laptop'. " +
     "Needs a natural jar name and a savings target. This prepares a confirm card; it does not create the jar. DM only.",

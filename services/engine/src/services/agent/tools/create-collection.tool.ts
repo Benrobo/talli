@@ -3,6 +3,7 @@ import { defineTool } from "../define-tool.js";
 
 export const createCollectionTool = defineTool({
   name: "createCollection",
+  label: "start a collection to gather money from the group",
   description:
     "Prepare a group collection — money gathered from everyone (a split bill, dues, contributions). " +
     "Use for 'collect 5k from everyone', 'let's each put in 2000 for the gift'. Needs a short title and the amount per person. " +

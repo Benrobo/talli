@@ -5,6 +5,7 @@ import { ledgerService } from "../../ledger.service.js";
 
 export const saveToJarTool = defineTool({
   name: "saveToJar",
+  label: "move money from your wallet into a savings jar",
   description:
     "Prepare moving money from the wallet into an existing savings jar. Use for 'save 2000 to my rent jar', 'add 5k to laptop'. " +
     "Needs which jar and how much. Prepares a confirm card; it does not move money. DM only.",

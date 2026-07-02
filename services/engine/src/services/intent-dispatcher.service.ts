@@ -46,13 +46,14 @@ class IntentDispatcherService {
   private async parseContext(ctx: DispatchContext) {
     const [jars, beneficiaries, recentHistory] = await Promise.all([
       savingsService.list(ctx.userId),
-      beneficiaryService.listAliases(ctx.userId),
+      beneficiaryService.listForContext(ctx.userId),
       botCommandService.recentHistory(ctx.linkedChatId, ctx.senderPlatformId),
     ]);
     return {
       scope: ctx.scope,
       knownJars: jars.map((j) => j.name),
-      knownBeneficiaries: beneficiaries,
+      knownBeneficiaries: beneficiaries.map((b) => b.alias),
+      beneficiaryDetails: beneficiaries,
       recentHistory,
     };
   }
@@ -141,18 +142,33 @@ class IntentDispatcherService {
   /** Flattens the parse context into a compact block for the agent system prompt. */
   private contextSummary(parseCtx: {
     knownJars: string[];
-    knownBeneficiaries: string[];
+    beneficiaryDetails: {
+      alias: string;
+      accountName: string;
+      accountNumber: string;
+      bankName: string | null;
+    }[];
     recentHistory: string[];
   }): string {
     const lines: string[] = [];
     lines.push(
       parseCtx.knownJars.length ? `Their savings jars: ${parseCtx.knownJars.join(", ")}` : "They have no savings jars yet."
     );
-    lines.push(
-      parseCtx.knownBeneficiaries.length
-        ? `Saved recipients: ${parseCtx.knownBeneficiaries.join(", ")}`
-        : "No saved recipients yet."
-    );
+
+    if (parseCtx.beneficiaryDetails.length) {
+      const recipients = parseCtx.beneficiaryDetails
+        .map((b) => {
+          const dest = [b.bankName, b.accountNumber].filter(Boolean).join(" ");
+          return `  - ${b.alias}: ${b.accountName}${dest ? ` (${dest})` : ""}`;
+        })
+        .join("\n");
+      lines.push(
+        `Saved recipients (use these directly — no lookup needed):\n${recipients}`
+      );
+    } else {
+      lines.push("No saved recipients yet.");
+    }
+
     const history = parseCtx.recentHistory.join("\n").trim();
     if (history) {
       lines.push(`Recent chat:\n${history}`);

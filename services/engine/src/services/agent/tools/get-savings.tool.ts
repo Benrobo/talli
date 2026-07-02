@@ -4,6 +4,7 @@ import { savingsService } from "../../savings.service.js";
 
 export const getSavingsTool = defineTool({
   name: "getSavings",
+  label: "show your savings jars and how much is in each",
   description:
     "Look up the user's savings jars and how much is in each. " +
     "Use for 'how much have I saved', 'how many jars do I have', 'how's my rent jar doing'. Read-only. DM only.",

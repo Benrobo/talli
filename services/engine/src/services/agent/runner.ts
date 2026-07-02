@@ -3,7 +3,7 @@ import type { InlineKeyboard } from "grammy";
 import { ai } from "../ai/index.js";
 import { buildAgentPrompt } from "../../data/prompts/agent.prompt.js";
 import { toAITools } from "./to-ai-tools.js";
-import { toolsForScope } from "./policy.js";
+import { toolsForScope, capabilitiesFor } from "./policy.js";
 import type { ToolContext } from "./define-tool.js";
 import type { Intent } from "../../schemas/intent.schema.js";
 import { debugInDev } from "../../lib/utils.js";
@@ -61,7 +61,11 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
   };
 
   const tools = toAITools(toolsForScope(input.scope, input.isGroupAdmin), toolCtx);
-  const system = buildAgentPrompt({ scope: input.scope, context: input.context });
+  const system = buildAgentPrompt({
+    scope: input.scope,
+    capabilities: capabilitiesFor(input.scope, input.isGroupAdmin),
+    context: input.context,
+  });
   const { model, temperature, maxTokens } = await ai.getModelForFeature("ai.agent", "google/gemini-2.5-flash");
 
   debugInDev((_, saveToFile) =>

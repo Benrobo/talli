@@ -27,6 +27,7 @@ export interface ToolContext {
 export interface AgentTool<TParams extends Record<string, unknown> = Record<string, unknown>, TResult = unknown> {
   name: string;
   description: string;
+  label: string;
   parameters: ZodType<TParams>;
   execute: (params: TParams, ctx: ToolContext) => Promise<TResult>;
 }

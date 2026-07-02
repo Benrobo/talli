@@ -5,6 +5,7 @@ import { payButton, selectCollectionKeyboard } from "../../../integrations/teleg
 
 export const listPayableCollectionsTool = defineTool({
   name: "listPayableCollections",
+  label: "surface a pay button so people can chip into a collection",
   description:
     "Find the collections in this chat that the user can pay into, and surface a pay button. " +
     "Use when someone wants to pay, chip in, or asks 'how do I pay'. The pay UI is attached automatically. Read-only.",

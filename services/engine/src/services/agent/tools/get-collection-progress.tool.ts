@@ -4,6 +4,7 @@ import { balanceService } from "../../balance.service.js";
 
 export const getCollectionProgressTool = defineTool({
   name: "getCollectionProgress",
+  label: "show how a collection is going (collected, how many paid)",
   description:
     "Look up how a collection is going — how much has been collected, how many people have paid, and the target. " +
     "Use for 'how much have we collected', 'how many people paid', 'how's the football money going'. Read-only.",

@@ -125,6 +125,25 @@ export function ReceiptSheet({
 
         <div className="mt-6 rounded-[16px] border border-hairline bg-inset/60 p-4">
           <DetailRow label="Type" value={kind.label} />
+          {transaction.recipient ? (
+            <>
+              <div className="my-3 h-px bg-hairline-soft" />
+              <DetailRow label="To" value={transaction.recipient.accountName} />
+              <div className="my-3 h-px bg-hairline-soft" />
+              <DetailRow
+                label="Account"
+                value={[transaction.recipient.bankName, transaction.recipient.accountNumber]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            </>
+          ) : null}
+          {transaction.narration ? (
+            <>
+              <div className="my-3 h-px bg-hairline-soft" />
+              <DetailRow label="Note" value={transaction.narration} />
+            </>
+          ) : null}
           <div className="my-3 h-px bg-hairline-soft" />
           <DetailRow label="Date" value={formatTxDate(transaction.createdAt)} />
           <div className="my-3 h-px bg-hairline-soft" />

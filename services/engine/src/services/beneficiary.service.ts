@@ -33,6 +33,18 @@ class BeneficiaryService {
     return rows.map((r) => r.alias);
   }
 
+  /** Saved recipients with full account details, for the agent's context. */
+  async listForContext(
+    userId: string
+  ): Promise<{ alias: string; accountName: string; accountNumber: string; bankName: string | null }[]> {
+    return prisma.beneficiary.findMany({
+      where: { userId },
+      select: { alias: true, accountName: true, accountNumber: true, bankName: true },
+      orderBy: { lastUsedAt: "desc" },
+      take: 20,
+    });
+  }
+
   async save(input: SaveBeneficiaryInput): Promise<Beneficiary> {
     return prisma.beneficiary.upsert({
       where: { userId_alias: { userId: input.userId, alias: input.alias } },

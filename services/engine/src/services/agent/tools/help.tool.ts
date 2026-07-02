@@ -3,6 +3,7 @@ import { defineTool } from "../define-tool.js";
 
 export const helpTool = defineTool({
   name: "help",
+  label: "explain what you can do",
   description:
     "Explain what Talli can do here, in the user's words. Use when someone asks what you can do, says hi and seems lost, or asks how something works (like splitting a bill by photo). Read-only.",
   parameters: z.object({}),

@@ -23,18 +23,36 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
   const text = ctx.message?.text?.replace(MENTION, "").trim();
   if (!text) return;
 
-  const isReplyToBot = ctx.message?.reply_to_message?.from?.id === ctx.me.id;
-  if (isGroupChat(ctx) && !ctx.message?.text?.match(MENTION) && !isReplyToBot) return;
+  const isGroup = isGroupChat(ctx);
+  const mentioned = !!ctx.message?.text?.match(MENTION);
 
   const linked = await chatLinkService.findActiveChat("telegram", chatId);
   if (!linked) {
+    // Only answer an explicit mention in an unlinked group; ignore chatter/replies.
+    if (isGroup && !mentioned) return;
     await safeReply(
       ctx,
-      isGroupChat(ctx) ? messages.groupNotLinked : messages.notLinked,
-      isGroupChat(ctx) ? undefined : connectTalli(env.WEB_APP_URL)
+      isGroup ? messages.groupNotLinked : messages.notLinked,
+      isGroup ? undefined : connectTalli(env.WEB_APP_URL)
     );
     return;
   }
+
+  const senderId = String(ctx.from!.id);
+
+  // A reply only counts as a command when it answers one of Talli's OWN pending
+  // clarifications. A bare reply that just quotes an old Talli message must NOT
+  // re-trigger the bot — otherwise Talli replies to itself in a loop.
+  const pending = await botCommandService.findPendingForReply(
+    linked.id,
+    senderId,
+    isGroup,
+    ctx.message?.reply_to_message?.message_id
+  );
+
+
+  // Talli act only when @-mentioned
+  if (isGroup && !mentioned && !pending) return;
 
   const identity = await platformUserService.upsert({
     platform: "telegram",
@@ -43,8 +61,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     username: ctx.from?.username,
   });
 
-  const isGroup = isGroupChat(ctx);
-  const senderId = String(ctx.from!.id);
   const dispatchCtx: DispatchContext = {
     scope: isGroup ? "group" : "private",
     userId: linked.userId,
@@ -54,13 +70,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     senderName: platformUserService.formatName(identity),
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };
-
-  const pending = await botCommandService.findPendingForReply(
-    linked.id,
-    senderId,
-    isGroup,
-    ctx.message?.reply_to_message?.message_id
-  );
 
   const result = pending
     ? await intentDispatcherService.continue(pending.id, text, dispatchCtx)

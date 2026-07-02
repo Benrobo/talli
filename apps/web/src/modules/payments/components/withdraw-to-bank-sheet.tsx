@@ -219,14 +219,24 @@ export function WithdrawToBankSheet({
   );
 }
 
+const BANK_PAGE_SIZE = 20;
+
 function BankPicker({ selected, onSelect }: { selected: Bank | null; onSelect: (bank: Bank) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { data, isLoading } = useBanks();
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  const { data, isLoading } = useBanks(debounced ? { q: debounced } : undefined);
   const banks = data?.data ?? [];
-  const filtered = query
-    ? banks.filter((b) => b.name.toLowerCase().includes(query.toLowerCase()))
-    : banks;
+  // Only mount a slice — the full list (200+ banks with logos) is what lags. Searching
+  // narrows it server-side, so the rendered set stays small.
+  const shown = debounced ? banks : banks.slice(0, BANK_PAGE_SIZE);
+  const hiddenCount = debounced ? 0 : Math.max(0, banks.length - shown.length);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -260,10 +270,10 @@ function BankPicker({ selected, onSelect }: { selected: Bank | null; onSelect: (
         <div className="max-h-[260px] overflow-y-auto p-1.5">
           {isLoading ? (
             <div className="px-3 py-6 text-center text-[12.5px] text-content-muted">Loading banks…</div>
-          ) : filtered.length === 0 ? (
+          ) : shown.length === 0 ? (
             <div className="px-3 py-6 text-center text-[12.5px] text-content-muted">No banks found</div>
           ) : (
-            filtered.map((bank) => (
+            shown.map((bank) => (
               <button
                 key={bank.code}
                 type="button"
@@ -285,6 +295,11 @@ function BankPicker({ selected, onSelect }: { selected: Bank | null; onSelect: (
               </button>
             ))
           )}
+          {hiddenCount > 0 ? (
+            <div className="px-3 py-2 text-center text-[11.5px] text-content-faint">
+              Search to see {hiddenCount} more
+            </div>
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>

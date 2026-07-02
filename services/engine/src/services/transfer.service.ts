@@ -176,6 +176,7 @@ class TransferService {
     }
 
     const merchantTxRef = `talli_send_${randomToken(10)}`;
+    const narration = this.buildNarration(input.narration, input.senderName);
     console.log(`💸 [payout] start ref=${merchantTxRef}`, {
       amount: input.amount,
       to: `${verified.accountName} · ${verified.accountNumber} · ${verified.bankName}`,
@@ -232,7 +233,7 @@ class TransferService {
         bankCode: verified.bankCode,
         senderName: input.senderName,
         merchantTxRef,
-        narration: input.narration,
+        narration,
       });
       nombaStatus = result.status as NombaTransferStatus;
       nombaTxId = result.id;
@@ -319,7 +320,7 @@ class TransferService {
         accountName: verified.accountName,
         bankCode: verified.bankCode,
         bankName: verified.bankName,
-        narration: input.narration,
+        narration,
         senderName: input.senderName,
         createdByPlatformUserId: input.createdByPlatformUserId,
         status,
@@ -338,12 +339,13 @@ class TransferService {
     return { ...base, status, walletBalance: await ledgerService.getBalance(input.userId) };
   }
 
-  /**
-   * Maps Nomba's transfer status to our terminal/pending state. A SUCCESS lands
-   * immediately; a REFUND / PAYMENT_FAILED (or a thrown request) is failed; every
-   * other value (NEW, PENDING_BILLING, or an unknown one — "when in doubt, treat
-   * as pending") stays pending for the reconcile cron to finalise.
-   */
+  private buildNarration(supplied: string | undefined, senderName: string): string {
+    const custom = supplied?.trim();
+    const sender = senderName?.trim();
+    const text = custom || (sender ? `${sender} via Talli` : "Sent via Talli");
+    return text.slice(0, 100);
+  }
+
   /** Flips the pending transfer_out ledger entry (keyed on its merchantTxRef) to a terminal state. */
   private async markPaymentStatus(merchantTxRef: string, status: "successful" | "failed"): Promise<void> {
     await prisma.payment.updateMany({
@@ -498,6 +500,31 @@ class TransferService {
       orderBy: { createdAt: "desc" },
       take: limit,
     });
+  }
+
+  /**
+   * Recipient details for a set of transfer_out refs (the Payment's referenceId is the
+   * transfer's merchantTxRef). Used to enrich the transactions/receipt view so a
+   * "Money sent" row shows who it went to and the narration.
+   */
+  async detailsByRefs(
+    merchantTxRefs: string[]
+  ): Promise<Record<string, { accountName: string; accountNumber: string; bankName: string | null; narration: string | null }>> {
+    if (merchantTxRefs.length === 0) return {};
+    const rows = await prisma.transfer.findMany({
+      where: { merchantTxRef: { in: merchantTxRefs } },
+      select: { merchantTxRef: true, accountName: true, accountNumber: true, bankName: true, narration: true },
+    });
+    const map: Record<string, { accountName: string; accountNumber: string; bankName: string | null; narration: string | null }> = {};
+    for (const r of rows) {
+      map[r.merchantTxRef] = {
+        accountName: r.accountName,
+        accountNumber: r.accountNumber,
+        bankName: r.bankName,
+        narration: r.narration,
+      };
+    }
+    return map;
   }
 
   /**

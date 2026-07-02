@@ -4,6 +4,7 @@ import { balanceService } from "../../balance.service.js";
 
 export const getBalanceTool = defineTool({
   name: "getBalance",
+  label: "tell you your wallet balance and a money overview",
   description:
     "Look up the user's wallet balance and a summary of their money — wallet, savings jars total, and active collections. " +
     "Use for questions like 'what's my balance', 'how much do I have', 'give me an overview'. Read-only.",
