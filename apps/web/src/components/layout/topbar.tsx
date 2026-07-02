@@ -22,7 +22,7 @@ export function Topbar() {
   const avatarSeed = me?.email || me?.name;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-hairline bg-card/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+    <header className="sticky top-0 flex h-16 shrink-0 items-center gap-4 border-b border-hairline bg-card/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
       <Link to="/app/home" className="flex shrink-0 items-center gap-2.5">
         <span className="grad-chip flex size-9 items-center justify-center rounded-[11px] border border-hairline shadow-chip">
           <LogoMark size={15} />
