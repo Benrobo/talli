@@ -16,7 +16,6 @@ import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { Spotlight } from "@/components/ui";
 import { formatNaira } from "@/lib/format";
 import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
-import { useWorkspaces } from "@/modules/workspaces/hooks/use-workspaces";
 
 interface NavItem {
   to: "/app/home" | "/app/collections" | "/app/savings" | "/app/sent" | "/app/receipts" | "/app/split" | "/app/integrations";
@@ -57,8 +56,7 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
 }
 
 export function Sidebar() {
-  const { activeWorkspace } = useWorkspaces();
-  const { data: metricsResponse } = useWalletMetrics(activeWorkspace?.id);
+  const { data: metricsResponse } = useWalletMetrics();
   const totalBalance = metricsResponse?.data.totalBalanceAcrossWorkspaces.amount ?? 0;
 
   return (

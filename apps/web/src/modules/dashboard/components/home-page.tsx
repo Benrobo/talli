@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { useMe } from "@/api/http/v1/auth/auth.hooks";
 import { useWalletMetrics } from "@/api/http/v1/wallet/wallet.hooks";
-import { useWorkspaces } from "@/modules/workspaces/hooks/use-workspaces";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
@@ -88,8 +87,7 @@ function transactionToActivity(transaction: {
 
 export function HomePage() {
   const { data: meResponse } = useMe();
-  const { activeWorkspace } = useWorkspaces();
-  const { data: metricsResponse } = useWalletMetrics(activeWorkspace?.id);
+  const { data: metricsResponse } = useWalletMetrics();
   const metrics = metricsResponse?.data;
   const activity = (metrics?.recentTransactions ?? []).map(transactionToActivity);
   const jars = metrics?.topJars ?? [];
