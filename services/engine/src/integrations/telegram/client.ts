@@ -31,14 +31,22 @@ export class TelegramClient {
     photo: Buffer,
     caption?: string,
     filename = "receipt.png"
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await this.api.sendPhoto(chatId, new InputFile(photo, filename), {
         caption,
         parse_mode: "Markdown",
       });
+      return true;
     } catch (err) {
-      logger.error(`[telegram] sendPhoto to ${chatId} failed: ${(err as Error).message}`);
+      const message = (err as Error).message;
+      logger.error(`[telegram] sendPhoto to ${chatId} failed: ${message}`);
+      if (/not enough rights|can't send|CHAT_SEND_PHOTOS|restricted/i.test(message)) {
+        logger.error(
+          `[telegram] photo blocked in ${chatId} — the bot likely lacks "Send Media" here (make it admin or enable media).`
+        );
+      }
+      return false;
     }
   }
 

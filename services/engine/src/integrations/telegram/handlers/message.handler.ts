@@ -8,7 +8,6 @@ import { connectTalli } from "../ui/keyboards.js";
 import type { TalliContext } from "../types.js";
 import { safeReply, safeReplyForceReply, isGroupChat, isSenderAdmin } from "./shared.js";
 import { telegram } from "../bot.js";
-import logger from "../../../lib/logger.js";
 
 const MENTION = new RegExp(`@${env.TELEGRAM_BOT_USERNAME}`, "gi");
 
@@ -108,12 +107,14 @@ async function render(ctx: TalliContext, result: DispatchResult, isGroup: boolea
   }
 
   if (result.photo) {
-    try {
-      await telegram.sendPhoto(String(ctx.chat!.id), result.photo.image, result.photo.caption ?? result.text);
-      return;
-    } catch (err) {
-      logger.error(`[telegram] photo reply failed in chat ${ctx.chat?.id}: ${(err as Error).message}`);
-    }
+    const sent = await telegram.sendPhoto(
+      String(ctx.chat!.id),
+      result.photo.image,
+      result.photo.caption ?? result.text
+    );
+    if (sent) return;
+    await safeReply(ctx, messages.receiptPhotoBlocked);
+    return;
   }
 
   await safeReply(ctx, result.text, result.keyboard);

@@ -594,6 +594,9 @@ export const messages = {
 
   receiptCaption: "🧾 Here's your receipt.",
 
+  receiptPhotoBlocked:
+    "🧾 I made your receipt, but I can't send images in this chat — media may be turned off for me here. Message me in a *direct message* and I'll send it right over.",
+
   receiptNotFound(reference: string): string {
     return `🧾 I couldn't find a receipt for *${reference}*. Try /receipt for your latest one.`;
   },
