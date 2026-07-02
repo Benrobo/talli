@@ -280,7 +280,7 @@
 
     "@benrobo/iconary": ["@benrobo/iconary@0.2.0", "https://npm.pkg.github.com/download/@benrobo/iconary/0.2.0/b8cdcc3565a2a3f8b85142a96f9a36e344d55b52", { "peerDependencies": { "react": ">=18", "react-native-svg": ">=13" } }, "sha512-SHkDLlO0Op70cdefekTI3DM/QDO4zp9hK3+TNbBQVw1ceJ28BY8XvKxiP1L18W4yafq8R85LkLt0xXjLfPhRGQ=="],
 
-    "@benrobo/modelkit": ["@benrobo/modelkit@0.0.7", "https://npm.pkg.github.com/@benrobo/modelkit/-/modelkit-0.0.7.tgz", { "dependencies": { "ioredis": "^5.4.1", "node-cache": "^5.1.2" }, "peerDependencies": { "express": "^4.0.0 || ^5.0.0", "hono": "^4.0.0" }, "optionalPeers": ["express", "hono"], "bin": { "modelkit-generate": "dist/generate.js" } }, "sha512-9r9E++26s9ExR3m0HzgaJ+RRdafVVOSzPnwUVsBclCfbGcznRdYPjvcYdcxZQzWKYxWrR0cbqPiUTvkk/E4hhA=="],
+    "@benrobo/modelkit": ["@benrobo/modelkit@0.0.7", "https://registry.npmjs.org/@benrobo/modelkit/-/modelkit-0.0.7.tgz", { "dependencies": { "ioredis": "^5.4.1", "node-cache": "^5.1.2" }, "peerDependencies": { "express": "^4.0.0 || ^5.0.0", "hono": "^4.0.0" }, "optionalPeers": ["express", "hono"], "bin": { "modelkit-generate": "dist/generate.js" } }, "sha512-9r9E++26s9ExR3m0HzgaJ+RRdafVVOSzPnwUVsBclCfbGcznRdYPjvcYdcxZQzWKYxWrR0cbqPiUTvkk/E4hhA=="],
 
     "@bugsnag/cuid": ["@bugsnag/cuid@3.2.2", "", {}, "sha512-7onuYLTMqMmHE9BBPG0YER4nFsU1rB+me1/YIeMusqcLbVbKKuG9u9+BDVDpje5e0llkkrVNOKYwmzM9DRIo7A=="],
 
