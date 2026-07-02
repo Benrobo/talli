@@ -64,6 +64,9 @@ export interface CollectionMember {
   expectedAmount: number;
   paidAmount: number;
   status: string;
+  contributionCount: number;
+  platform: "telegram" | "whatsapp" | null;
+  username: string | null;
 }
 
 export interface CollectionPayment {
@@ -134,6 +137,8 @@ export interface CollectionPayView {
 }
 
 export interface CollectionPayCheckoutResult {
+  pendingPaymentId: string;
+  memberId: string;
   amount: number;
   payerName: string;
   flashAccountNumber: string;

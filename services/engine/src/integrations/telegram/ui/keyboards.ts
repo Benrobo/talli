@@ -7,10 +7,21 @@ import { CALLBACK_ACTION, encodeCallback } from "../types.js";
  * in a handler — so text and callback data stay consistent across flows.
  */
 
+/**
+ * The pay button for a collection. A fixed collection shows the set amount and
+ * taps straight to a flash account; an open pot (amount 0/undefined) shows
+ * "Contribute" and taps into the ask-for-amount flow instead.
+ */
 export function payButton(collectionId: string, amount: number): InlineKeyboard {
+  if (amount > 0) {
+    return new InlineKeyboard().text(
+      `Pay ${formatNaira(amount)}`,
+      encodeCallback(CALLBACK_ACTION.pay, collectionId)
+    );
+  }
   return new InlineKeyboard().text(
-    `Pay ${formatNaira(amount)}`,
-    encodeCallback(CALLBACK_ACTION.pay, collectionId)
+    "Contribute",
+    encodeCallback(CALLBACK_ACTION.contribute, collectionId)
   );
 }
 
@@ -30,7 +41,8 @@ export function selectCollectionKeyboard(
   const kb = new InlineKeyboard();
   for (const item of items) {
     const date = dayjs(item.createdAt).format("DD MMM");
-    kb.text(`💰 ${item.title} · ${formatNaira(item.amount)} · ${date}`, encodeCallback(CALLBACK_ACTION.selectCollection, item.id)).row();
+    const amountLabel = item.amount > 0 ? formatNaira(item.amount) : "Open pot";
+    kb.text(`💰 ${item.title} · ${amountLabel} · ${date}`, encodeCallback(CALLBACK_ACTION.selectCollection, item.id)).row();
   }
   return kb;
 }

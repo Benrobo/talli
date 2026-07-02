@@ -2,11 +2,13 @@ import type {
   ChatPlatform,
   Collection,
   CollectionMember,
+  CollectionStatus,
   CollectionType,
   Payment,
   Prisma,
 } from "@prisma/client";
 import prisma from "../prisma/index.js";
+import env from "../config/env.js";
 import { platformUserService } from "./platform-user.service.js";
 import { transferService } from "./transfer.service.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
@@ -19,6 +21,15 @@ export interface CreateCollectionInput {
   targetAmount?: number;
   deadline?: Date;
   linkedChatId?: string;
+}
+
+export interface ResolvePayInput {
+  memberId?: string;
+  payerName?: string;
+  amount?: number;
+  /** The paying chat identity (e.g. Telegram from.id), stored on the member so
+   *  a returning payer keeps one row and can be notified/@-tagged later. */
+  platformUserId?: string;
 }
 
 export interface UpsertMemberInput {
@@ -210,7 +221,7 @@ class CollectionService {
 
   async resolvePayMember(
     collectionId: string,
-    input: { memberId?: string; payerName?: string; amount?: number }
+    input: ResolvePayInput
   ): Promise<CollectionMember> {
     const collection = await prisma.collection.findUnique({
       where: { id: collectionId },
@@ -224,11 +235,106 @@ class CollectionService {
     return this.resolvePayMemberForCollection(collection, input);
   }
 
-  async listPayableForChat(linkedChatId: string): Promise<Collection[]> {
-    return prisma.collection.findMany({
-      where: { linkedChatId, status: { in: ["active", "partially_paid"] } },
+  /**
+   * Collections a chat can pay into. Prefers ones bound to THIS chat, but falls
+   * back to the account's other active collections when the chat has none of its
+   * own — a collection created in the dashboard or another chat is still the same
+   * account's, and a member trying to pay in a linked chat should still find it.
+   * `ownerUserId` is the account the chat is linked to (LinkedChat.userId).
+  */
+  async listPayableForChat(linkedChatId: string, ownerUserId?: string): Promise<Collection[]> {
+    const active = { in: ["active", "partially_paid"] as CollectionStatus[] };
+
+    const chatBound = await prisma.collection.findMany({
+      where: { linkedChatId, status: active },
       orderBy: { createdAt: "desc" },
       take: 10,
+    });
+    if (chatBound.length > 0 || !ownerUserId) return chatBound;
+
+    return prisma.collection.findMany({
+      where: { ownerUserId, status: active },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+  }
+
+  /**
+   * Binds a collection to the group chat a payment is happening in, but only if it
+   * isn't already bound — never steals a collection from another chat. This is how
+   * a collection created without a chat (dashboard, or an older flow) starts
+   * getting its group notified when someone pays in a group. Idempotent no-op if
+   * already set or if binding to the same chat.
+   */
+  async bindToChat(collectionId: string, linkedChatId: string): Promise<void> {
+    await prisma.collection.updateMany({
+      where: { id: collectionId, linkedChatId: null },
+      data: { linkedChatId },
+    });
+  }
+
+  /**
+   * The shareable public link for paying into a collection — the Talli web pay
+   * page (`/pay/:id`, keyed by collection id). Same base-URL rule as bill splits.
+   * This is what someone forwards so anyone can pay without the in-chat button.
+   */
+  payLink(collectionId: string): string {
+    const base = env.PAYMENT_PAGE_BASE_URL ?? env.WEB_APP_URL;
+    return `${base.replace(/\/$/, "")}/pay/${collectionId}`;
+  }
+
+  /**
+   * Everyone who has actually put money into a collection — name, total paid, and
+   * how many times — resolved against the chat identity that paid so a Telegram
+   * contributor can be @-tagged. `platformUserId`/`username` are null for web-only
+   * payers. Highest contributor first. Used by the "who contributed" chat tool.
+   */
+  async listContributors(collectionId: string): Promise<
+    {
+      name: string;
+      amount: number;
+      count: number;
+      platform: ChatPlatform | null;
+      platformUserId: string | null;
+      username: string | null;
+    }[]
+  > {
+    const members = await prisma.collectionMember.findMany({
+      where: { collectionId, paidAmount: { gt: 0 } },
+      orderBy: { paidAmount: "desc" },
+    });
+    if (members.length === 0) return [];
+
+    const counts = await prisma.payment.groupBy({
+      by: ["collectionMemberId"],
+      where: {
+        collectionId,
+        kind: "collection_payment",
+        status: "successful",
+        collectionMemberId: { in: members.map((m) => m.id) },
+      },
+      _count: { _all: true },
+    });
+    const countByMember = new Map(counts.map((c) => [c.collectionMemberId, c._count._all]));
+
+    const telegramIds = members.map((m) => m.platformUserId).filter((v): v is string => !!v);
+    const identities = telegramIds.length
+      ? await prisma.platformUser.findMany({
+          where: { platform: "telegram", platformUserId: { in: telegramIds } },
+        })
+      : [];
+    const identityByPlatformId = new Map(identities.map((i) => [i.platformUserId, i]));
+
+    return members.map((m) => {
+      const identity = m.platformUserId ? identityByPlatformId.get(m.platformUserId) : undefined;
+      return {
+        name: m.displayName,
+        amount: m.paidAmount,
+        count: countByMember.get(m.id) ?? 0,
+        platform: identity ? identity.platform : null,
+        platformUserId: m.platformUserId,
+        username: identity?.username ?? null,
+      };
     });
   }
 
@@ -256,7 +362,16 @@ class CollectionService {
     ownerUserId: string,
     collectionId: string,
     options: { page: number; pageSize: number; status?: CollectionMember["status"] }
-  ): Promise<{ members: CollectionMember[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    members: (CollectionMember & {
+      contributionCount: number;
+      platform: ChatPlatform | null;
+      username: string | null;
+    })[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const collection = await prisma.collection.findFirst({
       where: { id: collectionId, ownerUserId },
       select: { id: true },
@@ -277,7 +392,45 @@ class CollectionService {
       prisma.collectionMember.count({ where }),
     ]);
 
-    return { members, total, page, pageSize };
+    // How many separate successful payments each member made — the "times
+    // contributed", which matters for open pots where one person can chip in
+    // repeatedly. Counted from the permanent Payment ledger, per member on the page.
+    const counts = await prisma.payment.groupBy({
+      by: ["collectionMemberId"],
+      where: {
+        collectionId,
+        kind: "collection_payment",
+        status: "successful",
+        collectionMemberId: { in: members.map((m) => m.id) },
+      },
+      _count: { _all: true },
+    });
+    const countByMember = new Map(counts.map((c) => [c.collectionMemberId, c._count._all]));
+
+    // Resolve chat identity so the UI can badge where a member came from
+    // (a Telegram glyph) and show their handle. Web-only payers stay null.
+    const telegramIds = members.map((m) => m.platformUserId).filter((v): v is string => !!v);
+    const identities = telegramIds.length
+      ? await prisma.platformUser.findMany({
+          where: { platform: "telegram", platformUserId: { in: telegramIds } },
+        })
+      : [];
+    const identityByPlatformId = new Map(identities.map((i) => [i.platformUserId, i]));
+
+    return {
+      members: members.map((m) => {
+        const identity = m.platformUserId ? identityByPlatformId.get(m.platformUserId) : undefined;
+        return {
+          ...m,
+          contributionCount: countByMember.get(m.id) ?? 0,
+          platform: identity ? identity.platform : null,
+          username: identity?.username ?? null,
+        };
+      }),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   /**
@@ -533,7 +686,7 @@ class CollectionService {
 
   private async resolvePayMemberForCollection(
     collection: Collection & { members: CollectionMember[] },
-    input: { memberId?: string; payerName?: string; amount?: number }
+    input: ResolvePayInput
   ): Promise<CollectionMember> {
     if (collection.collectionType === "open_contribution") {
       return this.resolveOpenContributionMember(collection, input);
@@ -551,9 +704,9 @@ class CollectionService {
     const payerName = input.payerName?.trim();
     if (!payerName) throw new BadRequestException("Select or enter your name");
 
-    const existing = collection.members.find(
-      (row) => row.displayName.toLowerCase() === payerName.toLowerCase()
-    );
+    // Match a returning payer by their chat identity first, then by name, so a
+    // Telegram payer keeps one member row (and its identity) across payments.
+    const existing = this.findExistingMember(collection.members, input.platformUserId, payerName);
     if (existing) {
       if (this.isMemberPaid(existing)) {
         throw new BadRequestException("This member has already paid");
@@ -561,21 +714,10 @@ class CollectionService {
       return existing;
     }
 
-    if (collection.collectionType === "fixed_per_person") {
-      const expectedAmount = collection.amountPerMember ?? 0;
-      if (expectedAmount <= 0) {
-        throw new BadRequestException("No amount set for this collection yet");
-      }
-      return prisma.collectionMember.create({
-        data: {
-          collectionId: collection.id,
-          displayName: payerName,
-          expectedAmount,
-        },
-      });
-    }
-
-    const expectedAmount = collection.amountPerMember ?? collection.targetAmount ?? 0;
+    const expectedAmount =
+      collection.collectionType === "fixed_per_person"
+        ? collection.amountPerMember ?? 0
+        : collection.amountPerMember ?? collection.targetAmount ?? 0;
     if (expectedAmount <= 0) {
       throw new BadRequestException("No amount set for this collection yet");
     }
@@ -585,13 +727,27 @@ class CollectionService {
         collectionId: collection.id,
         displayName: payerName,
         expectedAmount,
+        platformUserId: input.platformUserId,
       },
     });
   }
 
+  /** Finds a returning payer by chat identity (preferred) or by case-insensitive name. */
+  private findExistingMember(
+    members: CollectionMember[],
+    platformUserId: string | undefined,
+    payerName: string
+  ): CollectionMember | undefined {
+    if (platformUserId) {
+      const byId = members.find((row) => row.platformUserId === platformUserId);
+      if (byId) return byId;
+    }
+    return members.find((row) => row.displayName.toLowerCase() === payerName.toLowerCase());
+  }
+
   private async resolveOpenContributionMember(
     collection: Collection & { members: CollectionMember[] },
-    input: { memberId?: string; payerName?: string; amount?: number }
+    input: ResolvePayInput
   ): Promise<CollectionMember> {
     const checkoutAmount = input.amount;
     if (!checkoutAmount || checkoutAmount <= 0) {
@@ -617,9 +773,10 @@ class CollectionService {
     const payerName = input.payerName?.trim();
     if (!payerName) throw new BadRequestException("Select or enter your name");
 
-    const existing = collection.members.find(
-      (row) => row.displayName.toLowerCase() === payerName.toLowerCase()
-    );
+    // A returning contributor keeps their one member row — matched by chat identity
+    // first (so it survives name edits), then by name. Backfill the identity if the
+    // row was created before we captured it.
+    const existing = this.findExistingMember(collection.members, input.platformUserId, payerName);
     if (existing) {
       if (await this.hasPendingPayment(existing.id)) {
         throw new BadRequestException("This member already has a payment in progress");
@@ -630,6 +787,7 @@ class CollectionService {
         data: {
           expectedAmount: existing.paidAmount + checkoutAmount,
           status: existing.paidAmount > 0 ? "underpaid" : "not_paid",
+          platformUserId: existing.platformUserId ?? input.platformUserId,
         },
       });
     }
@@ -639,6 +797,7 @@ class CollectionService {
         collectionId: collection.id,
         displayName: payerName,
         expectedAmount: checkoutAmount,
+        platformUserId: input.platformUserId,
       },
     });
   }

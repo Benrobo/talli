@@ -48,6 +48,8 @@ export interface CreatedVirtualAccountFunding {
 }
 
 export interface CollectionPayCheckoutResult {
+  pendingPaymentId: string;
+  memberId: string;
   amount: number;
   payerName: string;
   flashAccountNumber: string;
@@ -138,6 +140,8 @@ class PaymentService {
     }
 
     return {
+      pendingPaymentId: pending.pendingPayment.id,
+      memberId: member.id,
       amount,
       payerName: member.displayName,
       flashAccountNumber: pending.flashAccountNumber,
@@ -504,7 +508,7 @@ class PaymentService {
         logger.error(`[payment] bill split settle failed for ${pending.orderRefId}: ${(err as Error).message}`);
       }
       if (!handledByBillSplit) {
-        await this.announcePayment(claim, amount);
+        await this.announcePayment(claim, amount, pending.payerPlatformUserId);
       }
 
       await this.deliverCollectionPayerEmail(pending, amount, previousStatus);
@@ -775,9 +779,18 @@ class PaymentService {
 
   private async announcePayment(
     credit: Awaited<ReturnType<typeof collectionService.creditMember>>,
-    amount: number
+    amount: number,
+    payerPlatformUserId?: string | null
   ): Promise<void> {
-    if (!credit.chatId) return;
+    // Confirm in the group the collection lives in, if any. Separately, always DM
+    // the payer their receipt — so a contribution made via the bot (open pot,
+    // dashboard-created collection with no group) still gets a confirmation. Skip
+    // the DM if it's the same chat as the group announcement to avoid a duplicate.
+    const targets = new Set<string>();
+    if (credit.chatId) targets.add(credit.chatId);
+    if (payerPlatformUserId) targets.add(payerPlatformUserId);
+    if (targets.size === 0) return;
+
     const caption = messages.collectionPaid({
       payerName: credit.memberName,
       payerId: credit.member.platformUserId,
@@ -788,8 +801,10 @@ class PaymentService {
       paidCount: credit.paidCount,
       targetReached: credit.targetReached,
     });
+
+    let receipt: Buffer | null = null;
     try {
-      const receipt = await receiptService.render({
+      receipt = await receiptService.render({
         amount: amount.toLocaleString("en-NG"),
         purpose: "Collection payment",
         highlight: credit.collection.title,
@@ -800,10 +815,20 @@ class PaymentService {
           { icon: "ref", label: "Reference", value: credit.member.id, mono: true },
         ],
       });
-      await telegram.sendPhoto(credit.chatId, receipt, caption);
     } catch (err) {
       logger.warn(`[payment] receipt render failed, sending text: ${(err as Error).message}`);
-      await telegram.sendMessage(credit.chatId, caption);
+    }
+
+    for (const chatId of targets) {
+      try {
+        if (receipt) {
+          await telegram.sendPhoto(chatId, receipt, caption);
+        } else {
+          await telegram.sendMessage(chatId, caption);
+        }
+      } catch (err) {
+        logger.error(`[payment] collection confirm to ${chatId} failed: ${(err as Error).message}`);
+      }
     }
   }
 

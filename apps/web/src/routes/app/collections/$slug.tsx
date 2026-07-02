@@ -61,6 +61,10 @@ function CollectionDetailRoute() {
       name: member.displayName,
       status: member.status === "paid" ? "paid" : member.status === "pending" ? "paying" : "unpaid" as MemberStatus,
       note: member.status,
+      paidAmount: member.paidAmount,
+      contributionCount: member.contributionCount,
+      platform: member.platform,
+      username: member.username,
     })),
   };
 

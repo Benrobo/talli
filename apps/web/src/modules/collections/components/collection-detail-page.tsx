@@ -62,6 +62,7 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
   const hiddenUnpaid = Math.max(0, collection.memberCount - collection.members.length);
   const hiddenAmount = hiddenUnpaid * collection.perPersonMinor;
   const stillToGo = Math.max(0, collection.memberCount - collection.paidCount - paying);
+  const contributorCount = collection.members.filter((m) => m.paidAmount > 0).length;
 
   const isOpen = collection.collectionType === "open_contribution";
   const isPerPerson = collection.collectionType === "fixed_per_person";
@@ -242,11 +243,13 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
 
       <FadeIn delay={0.14}>
         <SectionCard
-          title="Members"
+          title={isOpen ? "Contributors" : "Members"}
           action={
             collection.members.length > 0 ? (
               <span className="text-[12px] text-content-faint">
-                {collection.paidCount} paid · {paying} paying · {stillToGo} to go
+                {isOpen
+                  ? `${contributorCount} ${contributorCount === 1 ? "person" : "people"} · ${formatNaira(collection.collectedMinor)}`
+                  : `${collection.paidCount} paid · ${paying} paying · ${stillToGo} to go`}
               </span>
             ) : null
           }
@@ -269,13 +272,14 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
                 <MemberRow
                   key={member.name}
                   member={member}
+                  isOpenContribution={isOpen}
                   className={cn(
                     "border-b border-hairline-soft",
                     index % 2 === 0 && "sm:border-r sm:border-hairline-soft"
                   )}
                 />
               ))}
-              {hiddenUnpaid > 0 ? (
+              {!isOpen && hiddenUnpaid > 0 ? (
                 <div className="col-span-full flex items-center gap-3 px-[19px] py-[13px]">
                   <span className="flex-1 text-[13px] font-medium text-iris-deep">
                     + {hiddenUnpaid} more unpaid

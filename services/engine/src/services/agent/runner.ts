@@ -90,17 +90,19 @@ export async function runAgent(input: AgentInput): Promise<AgentOutput> {
   const result = await agent.generate({ prompt: input.text });
   const text = result.text.trim();
 
-  debugInDev((_, saveToFile) =>
-    saveToFile(
-      "agent-response.txt",
-      [
-        `tools: ${result.toolCalls.map((c) => c.toolName).join(", ") || "none"}`,
-        `proposal: ${proposal?.intent ?? "none"}`,
-        `clarify: ${clarify ?? "none"}`,
-        `reply: ${text}`,
-      ].join("\n")
-    )
-  );
+  const trace = {
+    scope: input.scope,
+    input: input.text,
+    toolCalls: result.toolCalls.map((c) => ({ tool: c.toolName, args: c.input })),
+    proposal: proposal ?? null,
+    clarify: clarify ?? null,
+    reply: text,
+  };
+
+  debugInDev((_, saveToFile) => {
+    console.log(`\n[agent] response:\n${JSON.stringify(trace, null, 2)}\n`);
+    saveToFile("agent-response.txt", JSON.stringify(trace, null, 2));
+  });
 
   return { text, keyboard, checkoutUrl, proposal, clarify };
 }

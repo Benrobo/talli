@@ -129,11 +129,15 @@ export function PayPage() {
     );
   }
 
+  const collected = flow.members.reduce((sum, member) => sum + member.paidAmount, 0);
+
   return (
     <MemberPicker
+      seed={reference}
       title={view.title}
       payTo={view.payTo}
       targetAmount={view.targetAmount}
+      collected={collected}
       members={flow.members}
       remaining={flow.remaining}
       isOpenContribution={flow.isOpenContribution}

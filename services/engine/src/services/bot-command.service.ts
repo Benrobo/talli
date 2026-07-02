@@ -99,7 +99,7 @@ class BotCommandService {
    * internal intent/status, so the model sees a conversation, not our schema.
    * Read-only context: it must never re-trigger a past action on its own.
    */
-  async recentHistory(linkedChatId: string, senderPlatformId: string, limit = 6): Promise<string[]> {
+  async recentHistory(linkedChatId: string, senderPlatformId: string, limit = 3): Promise<string[]> {
     const rows = await prisma.botCommand.findMany({
       where: { linkedChatId, senderPlatformId },
       orderBy: { createdAt: "desc" },

@@ -3,7 +3,7 @@ import { CALLBACK_ACTION, decodeCallback } from "../types.js";
 import type { TalliContext } from "../types.js";
 import { handleInfo } from "./info.handler.js";
 import { handleDisconnect } from "./disconnect.handler.js";
-import { handlePay } from "./pay.handler.js";
+import { handlePay, handleContribute } from "./pay.handler.js";
 import { handleConfirm } from "./confirm.handler.js";
 import { handleReceiptCallback } from "./receipt.handler.js";
 import { handleSelectCollection } from "./pay.handler.js";
@@ -19,6 +19,11 @@ export async function handleCallback(ctx: TalliContext): Promise<void> {
 
   if (action === CALLBACK_ACTION.pay) {
     await handlePay(ctx, arg);
+    return;
+  }
+
+  if (action === CALLBACK_ACTION.contribute) {
+    await handleContribute(ctx, arg);
     return;
   }
 

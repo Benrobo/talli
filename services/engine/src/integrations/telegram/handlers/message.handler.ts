@@ -7,16 +7,26 @@ import { messages } from "../ui/messages.js";
 import { connectTalli } from "../ui/keyboards.js";
 import type { TalliContext } from "../types.js";
 import { safeReply, safeReplyForceReply, isGroupChat, isSenderAdmin } from "./shared.js";
-import logger from "../../../lib/logger.js";
 
 const MENTION = new RegExp(`@${env.TELEGRAM_BOT_USERNAME}`, "gi");
 
 /**
- * Non-command messages. In a group the bot acts when it is mentioned OR when the
- * message is a reply to one of the bot's own messages (e.g. answering a
- * force_reply clarification, which carries no @mention); in a DM it acts on every
- * message. A linked chat's text is parsed into an intent and run through the
- * dispatcher; an unlinked chat is told to connect first.
+ * True when this message is a reply that quotes one of Talli's OWN messages.
+ * This is the natural "I'm talking to you" signal in a group — replying to the
+ * bot addresses the bot, no @mention or stored message id needed. `ctx.me` is
+ * the bot's own User (populated by grammY), so we compare the quoted author's id.
+ */
+function isReplyToBot(ctx: TalliContext): boolean {
+  const repliedTo = ctx.message?.reply_to_message;
+  return !!repliedTo?.from?.is_bot && repliedTo.from.id === ctx.me?.id;
+}
+
+/**
+ * Non-command messages. In a group the bot engages when it's @mentioned OR when
+ * the message replies to one of the bot's own messages — replying to Talli means
+ * you're talking to Talli, so no bookkeeping is needed. In a DM it engages on
+ * everything. The quoted Talli message is passed to the agent as context so it
+ * knows what's being answered. An unlinked chat is told to connect first.
  */
 export async function handleMessage(ctx: TalliContext): Promise<void> {
   const chatId = String(ctx.chat!.id);
@@ -25,11 +35,12 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
 
   const isGroup = isGroupChat(ctx);
   const mentioned = !!ctx.message?.text?.match(MENTION);
+  const replyToBot = isReplyToBot(ctx);
 
   const linked = await chatLinkService.findActiveChat("telegram", chatId);
   if (!linked) {
-    // Only answer an explicit mention in an unlinked group; ignore chatter/replies.
-    if (isGroup && !mentioned) return;
+    // Answer an explicit mention or a reply to us in an unlinked group; ignore other chatter.
+    if (isGroup && !mentioned && !replyToBot) return;
     await safeReply(
       ctx,
       isGroup ? messages.groupNotLinked : messages.notLinked,
@@ -38,25 +49,13 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     return;
   }
 
+  // In a group, engage only when addressed: @mentioned or replying to Talli.
+  if (isGroup && !mentioned && !replyToBot) return;
+
   const senderId = String(ctx.from!.id);
-
-  // A reply only counts as a command when it answers one of Talli's OWN pending
-  // clarifications. A bare reply that just quotes an old Talli message must NOT
-  // re-trigger the bot — otherwise Talli replies to itself in a loop.
-  const pending = await botCommandService.findPendingForReply(
-    linked.id,
-    senderId,
-    isGroup,
-    ctx.message?.reply_to_message?.message_id
-  );
-
-
-  // Talli act only when @-mentioned
-  if (isGroup && !mentioned && !pending) return;
-
   const identity = await platformUserService.upsert({
     platform: "telegram",
-    platformUserId: String(ctx.from!.id),
+    platformUserId: senderId,
     firstName: ctx.from?.first_name,
     username: ctx.from?.username,
   });
@@ -71,9 +70,27 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };
 
+  // A reply that answers a still-open clarification continues that action; any
+  // other message (including a plain reply to Talli) is a fresh agent turn, with
+  // the quoted Talli line handed over as context so the model has the thread.
+  const pending = await botCommandService.findPendingForReply(
+    linked.id,
+    senderId,
+    isGroup,
+    ctx.message?.reply_to_message?.message_id
+  );
+
+  const quoted = replyToBot ? ctx.message?.reply_to_message?.text?.trim() : undefined;
+  console.log(`🔍 [telegram] msg chat=${chatId}: ${JSON.stringify({
+    text,
+    pending,
+    quoted,
+    dispatchCtx,
+  }, null, 2)}`)
+
   const result = pending
     ? await intentDispatcherService.continue(pending.id, text, dispatchCtx)
-    : await intentDispatcherService.handleMessageAgent(text, dispatchCtx);
+    : await intentDispatcherService.handleMessageAgent(text, dispatchCtx, quoted);
 
   await render(ctx, result, isGroup);
 }

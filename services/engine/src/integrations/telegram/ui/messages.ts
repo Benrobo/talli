@@ -356,15 +356,15 @@ export const messages = {
     targetAmount?: number,
     deadline?: string
   ): string {
+    const isFixed = amount > 0;
     return [
       "💰 *Create collection*",
       "",
       `Title: *${title}*`,
-      `Amount: *${formatNaira(amount)}* per person`,
+      isFixed ? `Everyone pays: *${formatNaira(amount)}*` : "Open pot — *anyone can chip in any amount*",
       targetAmount ? `Target: *${formatNaira(targetAmount)}*` : "",
       deadline ? `Deadline: *${deadline}*` : "",
       "",
-      "\n",
       "*Should I create it?*",
     ]
       .filter(Boolean)
@@ -504,15 +504,23 @@ export const messages = {
   pickCollection(items: { title: string; amount: number; createdAt: Date }[]): string {
     const lines = ["💰 *Which collection do you want to pay?*", ""];
     items.forEach((c) => {
-      lines.push(`• *${c.title}* — ${formatNaira(c.amount)}/person  ·  _${dayjs(c.createdAt).format("DD MMM")}_`);
+      const amountLabel = c.amount > 0 ? `${formatNaira(c.amount)}/person` : "open pot";
+      lines.push(`• *${c.title}* — ${amountLabel}  ·  _${dayjs(c.createdAt).format("DD MMM")}_`);
     });
     lines.push("", "Tap one below to pay.");
     return lines.join("\n");
   },
 
   collectionCard(title: string, amount: number): string {
-    return [`💰 *${title}*`, "", `Amount: *${formatNaira(amount)}* per person`, "", "Tap below to pay."].join("\n");
+    const line = amount > 0 ? `Amount: *${formatNaira(amount)}* per person` : "*Open pot* — chip in any amount";
+    return [`💰 *${title}*`, "", line, "", "Tap below to pay."].join("\n");
   },
+
+  contributeAsk(title: string): string {
+    return `💰 How much would you like to put into *${title}*? Reply with an amount.`;
+  },
+
+  contributeBadAmount: "🙏 Send just a number, like 500 or 2000.",
 
   jarCreated(name: string): string {
     return `✅ Savings jar *${name}* created.`;

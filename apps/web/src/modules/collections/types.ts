@@ -8,6 +8,10 @@ export interface Member {
   name: string;
   status: MemberStatus;
   note?: string;
+  paidAmount: number;
+  contributionCount: number;
+  platform: "telegram" | "whatsapp" | null;
+  username: string | null;
 }
 
 export interface Collection {

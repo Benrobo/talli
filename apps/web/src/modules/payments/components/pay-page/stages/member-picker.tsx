@@ -17,11 +17,14 @@ import {
   CheckoutSecureFooter,
 } from "@/modules/payments/components/nomba-checkout-ui";
 import { SECURE_NOTE } from "../constants";
+import { CollectionBanner } from "../collection-banner";
 
 export function MemberPicker({
+  seed,
   title,
   payTo,
   targetAmount,
+  collected,
   members,
   remaining,
   isOpenContribution,
@@ -32,9 +35,11 @@ export function MemberPicker({
   onContinue,
   onNewPayer,
 }: {
+  seed: string;
   title: string;
   payTo: string;
   targetAmount: number | null;
+  collected: number;
   members: CollectionPayMember[];
   remaining: number;
   isOpenContribution: boolean;
@@ -67,8 +72,10 @@ export function MemberPicker({
     >
       <div className="overflow-hidden rounded-[22px] border border-hairline bg-card shadow-card">
         <SheetHeader
+          seed={seed}
           title={title}
           payTo={payTo}
+          collected={collected}
           remaining={remaining}
           total={members.length}
           isOpenContribution={isOpenContribution}
@@ -107,50 +114,99 @@ export function MemberPicker({
 }
 
 function SheetHeader({
+  seed,
   title,
   payTo,
+  collected,
   remaining,
   total,
   isOpenContribution,
   targetAmount,
 }: {
+  seed: string;
   title: string;
   payTo: string;
+  collected: number;
   remaining: number;
   total: number;
   isOpenContribution: boolean;
   targetAmount: number | null;
 }) {
+  const target = targetAmount ?? 0;
+  const hasTarget = target > 0;
+  const pct = hasTarget ? Math.min(100, Math.round((collected / target) * 100)) : 0;
+  const left = hasTarget ? Math.max(0, target - collected) : 0;
+
   return (
-    <div className="border-b border-hairline-soft p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[12px] font-medium text-content-muted">Collection</div>
-          <div className="mt-0.5 truncate font-display text-[23px] font-bold leading-tight tracking-[-0.02em] text-foreground">
+    <div className="border-b border-hairline-soft">
+      {/* Decorative strip — Twitter-style banner, no text inside it. */}
+      <CollectionBanner seed={seed} className="h-40" />
+
+      <div className="relative px-5 pb-5">
+        {/* Action pill straddles the banner edge, like a profile's follow button. */}
+        <div className="flex justify-end pt-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-2.5 py-1 text-[11px] font-semibold text-iris-deep shadow-chip">
+            <Icon icon={TickDouble02Icon} size={12} />
+            {isOpenContribution ? "Choose amount" : "Tap your name"}
+          </span>
+        </div>
+
+        <div className="-mt-3 min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-content-faint">
+            Collection
+          </div>
+          <div className="mt-0.5 truncate font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-foreground">
             {title}
           </div>
           <div className="mt-1 text-[12.5px] text-content-faint">To {payTo}</div>
-          {isOpenContribution && targetAmount ? (
-            <div className="mt-1 text-[12.5px] text-content-muted">
-              Target {formatNaira(targetAmount)}
+        </div>
+
+        {hasTarget ? (
+          <div className="mt-4">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-content-faint">
+                  Collected
+                </div>
+                <div className="font-display tabular text-[22px] font-extrabold leading-none tracking-[-0.02em] text-foreground">
+                  {formatNaira(collected)}
+                </div>
+              </div>
+              <div className="text-right text-[12px] text-content-muted">
+                <span className="font-semibold text-foreground">{formatNaira(left)}</span> to go
+              </div>
             </div>
-          ) : null}
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-iris-soft px-2.5 py-1 text-[11px] font-medium text-iris-deep">
-          <Icon icon={TickDouble02Icon} size={12} />
-          {isOpenContribution ? "Choose amount" : "Tap your name"}
-        </span>
+            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-inset">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${pct}%` }}
+                transition={{ type: "spring", stiffness: 120, damping: 22 }}
+                className="h-full rounded-full bg-iris"
+              />
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-[11px] text-content-faint">
+              <span>{pct}% of {formatNaira(target)}</span>
+              {!isOpenContribution && total > 0 ? <span>{remaining} of {total} left</span> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 flex items-end justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-content-faint">
+                Collected so far
+              </div>
+              <div className="font-display tabular text-[22px] font-extrabold leading-none tracking-[-0.02em] text-foreground">
+                {formatNaira(collected)}
+              </div>
+            </div>
+            {!isOpenContribution && total > 0 ? (
+              <div className="text-right text-[12px] text-content-muted">
+                <span className="font-semibold text-foreground">{remaining}</span> of {total} left
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
-      {total > 0 && !isOpenContribution ? (
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-content-faint">
-            Members
-          </span>
-          <span className="text-[11.5px] text-content-faint">
-            {remaining} of {total} left
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }

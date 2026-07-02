@@ -7,6 +7,7 @@ import { commandParserService } from "./command-parser.service.js";
 import { isAdminOnlyInGroup, type ChatScope } from "../constants/chat-capabilities.js";
 import { botCommandService, type CommandContext } from "./bot-command.service.js";
 import { collectionService } from "./collection.service.js";
+import { paymentService } from "./payment.service.js";
 import { billSplitService } from "./bill-split.service.js";
 import { savingsService } from "./savings.service.js";
 import { balanceService } from "./balance.service.js";
@@ -109,12 +110,16 @@ class IntentDispatcherService {
    * guardrail (scope, admin, confirm-before-money, ownership) still holds and AI
    * never moves money on its own. Falls back to the classic dispatcher on error.
    */
-  async handleMessageAgent(text: string, ctx: DispatchContext): Promise<DispatchResult> {
+  async handleMessageAgent(
+    text: string,
+    ctx: DispatchContext,
+    quotedTalliMessage?: string
+  ): Promise<DispatchResult> {
     try {
       const parseCtx = await this.parseContext(ctx);
       const output = await runAgent({
         text,
-        context: this.contextSummary(parseCtx),
+        context: this.contextSummary(parseCtx, quotedTalliMessage),
         userId: ctx.userId,
         linkedChatId: ctx.linkedChatId,
         scope: ctx.scope,
@@ -150,41 +155,46 @@ class IntentDispatcherService {
     }
   }
 
-  /** Flattens the parse context into a compact block for the agent system prompt. */
-  private contextSummary(parseCtx: {
-    knownJars: string[];
-    beneficiaryDetails: {
-      alias: string;
-      accountName: string;
-      accountNumber: string;
-      bankName: string | null;
-    }[];
-    recentHistory: string[];
-  }): string {
+  /**
+   * The compact context block for the agent. Deliberately thin: it carries only
+   * saved recipients (so a send names the real account without a lookup) and the
+   * last couple of chat turns for continuity. It never restates live numbers —
+   * balances, jars, collections, who's paid — because those are tools. Replaying
+   * them here makes the model answer from memory instead of calling the tool.
+   */
+  private contextSummary(
+    parseCtx: {
+      beneficiaryDetails: {
+        alias: string;
+        accountName: string;
+        accountNumber: string;
+        bankName: string | null;
+      }[];
+      recentHistory: string[];
+    },
+    quotedTalliMessage?: string
+  ): string {
     const lines: string[] = [];
-    lines.push(
-      parseCtx.knownJars.length ? `Their savings jars: ${parseCtx.knownJars.join(", ")}` : "They have no savings jars yet."
-    );
+
+    if (quotedTalliMessage) {
+      lines.push(`They replied to this message of yours:\n"${quotedTalliMessage.trim().replace(/[\r\n]/g, "")}"`);
+    }
 
     if (parseCtx.beneficiaryDetails.length) {
       const recipients = parseCtx.beneficiaryDetails
         .map((b) => {
           const dest = [b.bankName, b.accountNumber].filter(Boolean).join(" ");
-          return `  - ${b.alias}: ${b.accountName}${dest ? ` (${dest})` : ""}`;
+          return `- ${b.alias}: ${b.accountName}${dest ? ` (${dest})` : ""}`;
         })
         .join("\n");
-      lines.push(
-        `Saved recipients (use these directly — no lookup needed):\n${recipients}`
-      );
-    } else {
-      lines.push("No saved recipients yet.");
+      lines.push(`Saved recipients (use directly, no lookup):\n${recipients}`);
     }
 
-    const history = parseCtx.recentHistory.join("\n").trim();
+    const history = parseCtx.recentHistory.slice(-4).join("\n").trim();
     if (history) {
-      lines.push(`Recent chat:\n${history}`);
+      lines.push(`Last few turns (for continuity only — never a source of live numbers):\n${history}`);
     }
-    return lines.join("\n");
+    return lines.join("\n\n");
   }
 
   async handleBillPhoto(bill: ParsedBill, caption: string, ctx: DispatchContext): Promise<DispatchResult> {
@@ -325,6 +335,10 @@ class IntentDispatcherService {
       return this.continueAgent(command.id, command.rawText, prior.clarification ?? "", answer, rounds, ctx);
     }
 
+    if (prior.intent === "pay_collection" && prior.status === "needs_clarification" && prior.target) {
+      return this.continueContribution(command.id, prior.target, answer, ctx);
+    }
+
     const intent = await commandParserService.parse(command.rawText, {
       ...(await this.parseContext(ctx)),
       priorExchange: {
@@ -419,6 +433,61 @@ class IntentDispatcherService {
     return { text: reply, keyboard: output.keyboard, checkoutUrl: output.checkoutUrl };
   }
 
+  /**
+   * Continues an open-pot contribution: the tapper was asked "how much?" and
+   * replied. We parse the amount, enroll them as a member for that amount, and
+   * issue a flash account to transfer to — the polling reconcile credits the pot
+   * once the money lands. A non-numeric reply re-asks against the same command.
+   */
+  private async continueContribution(
+    commandId: string,
+    collectionId: string,
+    answer: string,
+    ctx: DispatchContext
+  ): Promise<DispatchResult> {
+    const amount = this.parseAmount(answer);
+    if (!amount || amount <= 0) {
+      await botCommandService.setReplyText(commandId, messages.contributeBadAmount);
+      return { text: messages.contributeBadAmount, clarify: { commandId } };
+    }
+
+    try {
+      const member = await collectionService.resolvePayMember(collectionId, {
+        payerName: ctx.senderName,
+        amount,
+        platformUserId: ctx.senderPlatformId,
+      });
+
+      const { flashAccountNumber, flashBankName } = await paymentService.createCollectionCheckout({
+        amount,
+        collectionId,
+        collectionMemberId: member.id,
+        payerPlatformUserId: ctx.senderPlatformId,
+      });
+
+      await botCommandService.setStatus(commandId, "confirmed");
+      const text = messages.flashAccount(amount, flashAccountNumber, flashBankName, {
+        id: ctx.senderPlatformId,
+        name: ctx.senderName,
+      });
+      await botCommandService.setReplyText(commandId, text);
+      return { text };
+    } catch (err) {
+      logger.error(`[dispatch] contribution failed: ${(err as Error).message}`);
+      await botCommandService.setStatus(commandId, "failed", (err as Error).message);
+      return { text: messages.payFailed };
+    }
+  }
+
+  /** Pulls a whole-naira amount out of a short reply like "500", "₦2,000", "2k". */
+  private parseAmount(text: string): number | null {
+    const cleaned = text.trim().toLowerCase().replace(/[₦,\s]/g, "");
+    const kMatch = cleaned.match(/^(\d+(?:\.\d+)?)k$/);
+    if (kMatch) return Math.round(parseFloat(kMatch[1]!) * 1000);
+    const n = Number(cleaned);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+  }
+
   /** Confirm tap: execute the stored intent. */
   async confirm(commandId: string, ctx: DispatchContext): Promise<DispatchResult> {
     const command = await this.loadCommand(commandId);
@@ -503,11 +572,12 @@ class IntentDispatcherService {
 
   private async runCreateCollection(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
     const deadline = intent.deadline ? dayjs(intent.deadline) : null;
+    const isFixed = intent.amount != null;
     const collection = await collectionService.create(ctx.userId, {
       title: intent.title!,
       purpose: "",
-      collectionType: "fixed_per_person",
-      amountPerMember: intent.amount,
+      collectionType: isFixed ? "fixed_per_person" : "open_contribution",
+      amountPerMember: isFixed ? intent.amount : undefined,
       targetAmount: intent.targetAmount,
       deadline: deadline?.isValid() ? deadline.toDate() : undefined,
       linkedChatId: ctx.linkedChatId,
@@ -598,7 +668,7 @@ class IntentDispatcherService {
   }
 
   private async runPayCollection(ctx: DispatchContext): Promise<DispatchResult> {
-    const collections = await collectionService.listPayableForChat(ctx.linkedChatId);
+    const collections = await collectionService.listPayableForChat(ctx.linkedChatId, ctx.userId);
     if (collections.length === 0) {
       return { text: messages.noPayableCollections };
     }

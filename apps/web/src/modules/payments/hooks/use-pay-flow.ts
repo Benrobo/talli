@@ -40,7 +40,13 @@ export function usePayFlow(reference: string) {
 
   const amount = selectedMember?.expectedAmount ?? view?.amountPerMember ?? 0;
 
+  // The checkout response carries the exact pending-payment id, which is the
+  // reliable source right after creating a checkout. The collection view lags (it
+  // isn't refetched on checkout) and, for a brand-new open-pot payer, has no
+  // matching member row yet — relying on it made verify fail instantly. So prefer
+  // the checkout id, then fall back to the view for resumed/existing pendings.
   const pendingPaymentId =
+    checkout?.pendingPaymentId ??
     selectedMember?.pendingPayment?.pendingPaymentId ??
     members.find((member) => member.id === pendingCheckout?.memberId)?.pendingPayment
       ?.pendingPaymentId ??
@@ -72,6 +78,8 @@ export function usePayFlow(reference: string) {
     setSelectedMemberId(member.id);
     setPendingCheckout({ memberId: member.id });
     setCheckout({
+      pendingPaymentId: pending.pendingPaymentId,
+      memberId: member.id,
       amount: pending.amount,
       payerName: member.displayName,
       flashAccountNumber: pending.flashAccountNumber,

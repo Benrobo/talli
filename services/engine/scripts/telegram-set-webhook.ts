@@ -2,19 +2,43 @@ import { bot } from "../src/integrations/telegram/index.js";
 import env from "../src/config/env.js";
 
 /**
- * Manage the Telegram webhook registration. URL is built from PUBLIC_API_URL,
- * so switching environments is just re-running this.
+ * Manage the Telegram webhook registration. The target base URL is chosen by a
+ * `dev`/`prod` argument (Telegram requires https), so pointing the bot at an
+ * environment is a one-liner and doesn't depend on which .env is loaded.
  *
- *   bun run scripts/telegram-set-webhook.ts set | info | delete
+ *   bun run scripts/telegram-set-webhook.ts set dev
+ *   bun run scripts/telegram-set-webhook.ts set prod
+ *   bun run scripts/telegram-set-webhook.ts info
+ *   bun run scripts/telegram-set-webhook.ts delete
+ *
+ * Override a base per-env with TELEGRAM_WEBHOOK_BASE_DEV / _PROD if the hosts change.
  */
 
+const ENV_BASES: Record<string, string> = {
+  dev: process.env.TELEGRAM_WEBHOOK_BASE_DEV ?? "https://talli-dev-engine.benlabtest.space",
+  prod: process.env.TELEGRAM_WEBHOOK_BASE_PROD ?? "https://talli-engine.benlabtest.space",
+};
+
 const command = process.argv[2] ?? "info";
+const target = (process.argv[3] ?? "").toLowerCase();
+
+/** Resolves the https base for the requested environment, or exits with guidance. */
+function resolveBase(): string {
+  if (!target) {
+    throw new Error('Pass an environment: "dev" or "prod" (e.g. `set prod`)');
+  }
+  const base = ENV_BASES[target];
+  if (!base) {
+    throw new Error(`Unknown environment "${target}" — use "dev" or "prod"`);
+  }
+  if (!/^https:\/\//i.test(base)) {
+    throw new Error(`Telegram requires an https webhook URL — "${base}" isn't https`);
+  }
+  return base.replace(/\/+$/, "");
+}
 
 async function set(): Promise<void> {
-  if (!env.PUBLIC_API_URL) {
-    throw new Error("PUBLIC_API_URL is not set — needed to build the webhook URL");
-  }
-  const url = `${env.PUBLIC_API_URL}/api/webhook/telegram`;
+  const url = `${resolveBase()}/api/webhook/telegram`;
 
   await bot.api.deleteWebhook({ drop_pending_updates: true });
   console.log("🧹 cleared existing webhook + pending updates");
@@ -23,7 +47,7 @@ async function set(): Promise<void> {
     secret_token: env.TELEGRAM_WEBHOOK_SECRET,
     allowed_updates: ["message", "callback_query", "my_chat_member"],
   });
-  console.log(`✅ webhook set → ${url}`);
+  console.log(`✅ webhook set (${target}) → ${url}`);
 
   await bot.api.setMyCommands([
     { command: "start", description: "Connect this chat with a code" },
@@ -53,6 +77,6 @@ const actions: Record<string, () => Promise<void>> = { set, info, delete: remove
 (actions[command] ?? info)()
   .then(() => process.exit(0))
   .catch((err) => {
-    console.error(err);
+    console.error(err instanceof Error ? `❌ ${err.message}` : err);
     process.exit(1);
   });
