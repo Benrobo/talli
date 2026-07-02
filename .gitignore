@@ -68,6 +68,5 @@ src/routeTree.gen.ts
 /docs/nomba-test-credentials.md
 /docs/talli-artifacts
 
-# Local git history tooling (user-level config)
-scripts/rewrite-commit-dates.sh
-scripts/rewrite-commit-dates.config*
+# Local git history tooling (never commit)
+scripts/rewrite-commit-dates*
