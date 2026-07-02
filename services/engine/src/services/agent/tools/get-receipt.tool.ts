@@ -12,17 +12,26 @@ export const getReceiptTool = defineTool({
     "you should tell them there's no payment to receipt yet. The receipt image is attached automatically.",
   parameters: z.object({}),
   execute: async (_params, ctx) => {
-    const reference = await receiptService.latestReferenceForPayer(ctx.senderPlatformId);
+    const reference =
+      (await receiptService.latestReferenceForPayer(ctx.senderPlatformId)) ??
+      (ctx.scope === "private" ? await receiptService.latestReference(ctx.userId) : null);
+
+    console.log(
+      `🧾 [getReceipt] sender=${ctx.senderPlatformId} user=${ctx.userId} reference=${reference ?? "none"}`
+    );
+
     if (!reference) {
-      return { found: false };
+      return { found: false, reason: "no_payment" };
     }
 
     try {
       const image = await receiptService.renderByReference(reference);
       ctx.emit.photo(image, "🧾 Here's your receipt.");
       return { found: true, reference };
-    } catch {
-      return { found: false };
+    } catch (err) {
+      console.log({err})
+      console.log(`🧾 [getReceipt] render failed for ${reference}: ${(err as Error).message}`);
+      return { found: false, reason: "render_failed", reference };
     }
   },
 });
