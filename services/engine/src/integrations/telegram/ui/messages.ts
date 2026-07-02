@@ -19,10 +19,6 @@ function escapeMarkdown(text: string): string {
   return text.replace(/[\[\]()*_`]/g, "").trim() || "member";
 }
 
-/** Wraps literal text for Telegram legacy Markdown (code span — safe for URLs with `_`). */
-function markdownCode(text: string): string {
-  return `\`${text.replace(/`/g, "'")}\``;
-}
 
 interface CollectionLine {
   title: string;
@@ -399,7 +395,7 @@ export const messages = {
       `🧾 *${escapeMarkdown(title)}* is ready!`,
       "",
       "Share this link so each person can pick what they had and pay for it:",
-      markdownCode(url),
+      `[${url}](${url})`,
       "",
       "_No Talli account needed. I'll confirm here as each payment lands._",
     ].join("\n");

@@ -46,12 +46,16 @@ export async function safeReply(
   keyboard?: InlineKeyboard
 ): Promise<void> {
   try {
-    await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
+    await ctx.reply(text, {
+      parse_mode: "Markdown",
+      reply_markup: keyboard,
+      link_preview_options: { is_disabled: true },
+    });
   } catch (err) {
     const message = (err as Error).message;
     if (message.includes("can't parse entities")) {
       try {
-        await ctx.reply(text, { reply_markup: keyboard });
+        await ctx.reply(text, { reply_markup: keyboard, link_preview_options: { is_disabled: true } });
         return;
       } catch (plainErr) {
         logger.error(`[telegram] plain reply failed in chat ${ctx.chat?.id}: ${(plainErr as Error).message}`);
