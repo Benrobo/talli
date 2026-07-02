@@ -1,5 +1,6 @@
 
 export const BRAND = {
+  logoUrl: "https://talli.benlabtest.space/talli-logo.png",
   iris: "#6d4ae6",
   irisDeep: "#5636c4",
   irisSoft: "#eee9fc",
@@ -50,7 +51,7 @@ ${
             <table role="presentation" cellspacing="0" cellpadding="0" border="0">
               <tr>
                 <td style="vertical-align:middle;">
-                  <div style="width:34px;height:34px;border-radius:10px;background:${BRAND.iris};text-align:center;line-height:34px;color:#ffffff;font-weight:800;font-size:16px;font-family:${FONT};">T</div>
+                  <img src="${BRAND.logoUrl}" alt="Talli" width="34" height="34" style="display:block;width:34px;height:34px;border:0;outline:none;text-decoration:none;" />
                 </td>
                 <td style="vertical-align:middle;padding-left:10px;">
                   <span style="font-size:18px;font-weight:800;letter-spacing:-0.02em;color:${BRAND.ink};">Talli</span>

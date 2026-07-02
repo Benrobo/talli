@@ -195,3 +195,14 @@ main {
     transform: none;
   }
 }
+
+/* iOS zooms the page when a focused input's font-size is under 16px. Force all
+   form controls to 16px on small screens so focus never triggers a zoom; larger
+   screens keep the design's tighter sizes. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

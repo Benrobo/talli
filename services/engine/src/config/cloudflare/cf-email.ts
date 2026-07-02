@@ -3,7 +3,6 @@ import logger from "../../lib/logger.js";
 import { cfClient } from "./client.js";
 
 type SendEmailProps = {
-  /** from: Talli not <xxxx@elorah.app> */
   from?: string;
   to: string;
   subject: string;

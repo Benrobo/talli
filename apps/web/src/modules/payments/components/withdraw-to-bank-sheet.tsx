@@ -12,6 +12,8 @@ import {
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowDown01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
   BankIcon,
   Clock01Icon,
   MoneySend01Icon,
@@ -19,6 +21,8 @@ import {
 } from "@benrobo/iconary/core/duotone-rounded";
 import { Cancel01Icon, Tick02Icon } from "@benrobo/iconary/core/solid-rounded";
 import { formatNaira } from "@/lib/format";
+import { AmountOdometer } from "@/components/ui/amount-odometer";
+import { AmountNumpad } from "@/components/ui/amount-numpad";
 import { useBanks, useLookupAccount } from "@/api/http/v1/transfers/transfers.hooks";
 import type { Bank } from "@/api/http/v1/transfers/transfers.types";
 
@@ -31,7 +35,7 @@ export interface WithdrawResult {
   bankName: string;
 }
 
-type View = "form" | "result";
+type View = "amount" | "destination" | "result";
 
 export function WithdrawToBankSheet({
   open,
@@ -52,7 +56,7 @@ export function WithdrawToBankSheet({
     bankName: string;
   }) => Promise<WithdrawResult>;
 }) {
-  const [view, setView] = useState<View>("form");
+  const [view, setView] = useState<View>("amount");
   const [amountInput, setAmountInput] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [bank, setBank] = useState<Bank | null>(null);
@@ -61,11 +65,11 @@ export function WithdrawToBankSheet({
   const [result, setResult] = useState<WithdrawResult | null>(null);
 
   const lookup = useLookupAccount();
-  const amount = Number(amountInput);
+  const amount = Number(amountInput || "0");
 
   useEffect(() => {
     if (!open) {
-      setView("form");
+      setView("amount");
       setAmountInput("");
       setAccountNumber("");
       setBank(null);
@@ -95,11 +99,10 @@ export function WithdrawToBankSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountNumber, bank]);
 
-  const canSubmit = amount > 0 && amount <= available && !!bank && !!resolvedName;
+  const amountValid = amount > 0 && amount <= available;
+  const canSubmit = amountValid && !!bank && !!resolvedName;
 
   async function submit() {
-    if (!amount || amount <= 0) return setError("Enter an amount greater than zero");
-    if (amount > available) return setError(`You can withdraw up to ${formatNaira(available)}.`);
     if (!bank || !resolvedName) return;
     setError(null);
     try {
@@ -114,36 +117,68 @@ export function WithdrawToBankSheet({
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={title} className="max-w-[440px] pb-7">
       <AnimatePresence mode="wait" initial={false}>
-        {view === "form" ? (
+        {view === "amount" ? (
           <motion.div
-            key="form"
+            key="amount"
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -16 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="pt-2"
+            className="pt-1"
           >
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="text-[12.5px] font-medium text-content-muted">{title}</div>
+              <AmountOdometer value={amount} muted={amount === 0} className="mt-2 text-[44px]" />
+              <p
+                className={cn(
+                  "mt-2 text-[12px]",
+                  amount > available ? "font-medium text-rose-deep" : "text-content-faint"
+                )}
+              >
+                {amount > available
+                  ? `Max ${formatNaira(available)}`
+                  : `Available ${formatNaira(available)}`}
+              </p>
+            </div>
+
+            <AmountNumpad value={amountInput} onChange={setAmountInput} max={available} />
+
+            <Button
+              block
+              size="lg"
+              className="mt-5"
+              disabled={!amountValid}
+              trailingIcon={<Icon icon={ArrowRight01Icon} size={17} />}
+              onClick={() => setView("destination")}
+            >
+              Continue
+            </Button>
+          </motion.div>
+        ) : view === "destination" ? (
+          <motion.div
+            key="destination"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="pt-1"
+          >
+            <button
+              type="button"
+              onClick={() => setView("amount")}
+              className="t-press mb-4 inline-flex items-center gap-1.5 rounded-full bg-inset/70 px-3 py-1.5 text-[12.5px] font-semibold text-foreground hover:bg-inset"
+            >
+              <Icon icon={ArrowLeft01Icon} size={14} />
+              {formatNaira(amount)}
+            </button>
+
             <div className="mb-5 flex flex-col items-center text-center">
               <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
                 <Icon icon={MoneySend01Icon} size={23} />
               </span>
-              <div className="font-display text-[18px] font-bold tracking-[-0.02em]">{title}</div>
-              <p className="mt-1 text-[12.5px] text-content-muted">
-                Available: <span className="font-semibold text-foreground">{formatNaira(available)}</span>
-              </p>
+              <div className="font-display text-[18px] font-bold tracking-[-0.02em]">Where to?</div>
+              <p className="mt-1 text-[12.5px] text-content-muted">Pick the bank and account.</p>
             </div>
-
-            <label className="mb-3 block">
-              <span className="mb-1.5 block text-[12.5px] font-medium text-content-muted">Amount</span>
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="₦0"
-                value={amountInput}
-                invalid={!!error && amount > available}
-                onChange={(e) => setAmountInput(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </label>
 
             <div className="mb-3">
               <span className="mb-1.5 block text-[12.5px] font-medium text-content-muted">Bank</span>
@@ -208,7 +243,7 @@ export function WithdrawToBankSheet({
               leadingIcon={<Icon icon={MoneySend01Icon} size={17} />}
               onClick={submit}
             >
-              {amount > 0 ? `Withdraw ${formatNaira(amount)}` : "Withdraw"}
+              {`Withdraw ${formatNaira(amount)}`}
             </Button>
           </motion.div>
         ) : (

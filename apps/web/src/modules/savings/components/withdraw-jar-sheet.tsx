@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { BottomSheet, Button, Input } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { BottomSheet, Button } from "@/components/ui";
+import { AmountOdometer } from "@/components/ui/amount-odometer";
+import { AmountNumpad } from "@/components/ui/amount-numpad";
 import { Icon } from "@benrobo/iconary/react";
 import { MoneyReceive01Icon } from "@benrobo/iconary/core/duotone-rounded";
 import { Tick02Icon } from "@benrobo/iconary/core/solid-rounded";
@@ -27,7 +30,8 @@ export function WithdrawJarSheet({
   const [error, setError] = useState<string | null>(null);
 
   const withdraw = useWithdrawSavings(jarId);
-  const amount = Number(amountInput);
+  const amount = Number(amountInput || "0");
+  const amountValid = amount > 0 && amount <= available;
 
   useEffect(() => {
     if (!open) {
@@ -38,8 +42,7 @@ export function WithdrawJarSheet({
   }, [open]);
 
   async function submit() {
-    if (!amount || amount <= 0) return setError("Enter an amount greater than zero");
-    if (amount > available) return setError(`This jar only has ${formatNaira(available)}.`);
+    if (!amountValid) return;
     setError(null);
     try {
       await withdraw.mutateAsync({ amount });
@@ -61,36 +64,28 @@ export function WithdrawJarSheet({
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="pt-2"
           >
-            <div className="mb-5 flex flex-col items-center text-center">
-              <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
-                <Icon icon={MoneyReceive01Icon} size={23} />
-              </span>
-              <div className="font-display text-[18px] font-bold tracking-[-0.02em]">Move to wallet</div>
-              <p className="mt-1 text-[12.5px] text-content-muted">
-                Available in {jarName}: <span className="font-semibold text-foreground">{formatNaira(available)}</span>
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="text-[12.5px] font-medium text-content-muted">Move to wallet</div>
+              <AmountOdometer value={amount} muted={amount === 0} className="mt-2 text-[44px]" />
+              <p
+                className={cn(
+                  "mt-2 text-[12px]",
+                  amount > available ? "font-medium text-rose-deep" : "text-content-faint"
+                )}
+              >
+                {amount > available ? `Max ${formatNaira(available)}` : `Available in ${jarName} · ${formatNaira(available)}`}
               </p>
             </div>
 
-            <label className="block">
-              <span className="mb-1.5 block text-[12.5px] font-medium text-content-muted">Amount</span>
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="₦0"
-                value={amountInput}
-                invalid={!!error}
-                onChange={(e) => setAmountInput(e.target.value.replace(/[^\d]/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && submit()}
-              />
-            </label>
-            {error ? <p className="mt-2 text-[12.5px] text-rose-deep">{error}</p> : null}
+            <AmountNumpad value={amountInput} onChange={setAmountInput} max={available} />
+            {error ? <p className="mt-2 text-center text-[12.5px] text-rose-deep">{error}</p> : null}
 
             <Button
               block
               size="lg"
               className="mt-5"
               loading={withdraw.isPending}
-              disabled={!amountInput}
+              disabled={!amountValid}
               leadingIcon={<Icon icon={MoneyReceive01Icon} size={17} />}
               onClick={submit}
             >

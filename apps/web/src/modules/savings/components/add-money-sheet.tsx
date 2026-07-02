@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@app/ui";
-import { BottomSheet, Button, Input } from "@/components/ui";
+import { BottomSheet, Button } from "@/components/ui";
+import { AmountOdometer } from "@/components/ui/amount-odometer";
+import { AmountNumpad } from "@/components/ui/amount-numpad";
 import { Icon } from "@benrobo/iconary/react";
 import {
   BankIcon,
   Copy01Icon,
   MoneyReceive01Icon,
-  MoneySavingJarIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import {
   Tick02Icon,
@@ -122,30 +123,13 @@ export function AddMoneySheet({
             className="pt-2"
           >
             <div className="mb-6 flex flex-col items-center text-center">
-              <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
-                <Icon icon={MoneySavingJarIcon} size={24} />
-              </span>
-              <div className="font-display text-[19px] font-bold tracking-[-0.02em]">
-                Add to {jarName}
-              </div>
-              <p className="mt-1 text-[13px] text-content-muted">
-                How much are you adding to this jar?
-              </p>
+              <div className="text-[12.5px] font-medium text-content-muted">Add to {jarName}</div>
+              <AmountOdometer value={Number(amountInput || "0")} muted={!amountInput} className="mt-2 text-[44px]" />
+              <p className="mt-2 text-[12px] text-content-faint">How much are you adding to this jar?</p>
             </div>
 
-            <label className="block">
-              <span className="mb-1.5 block text-[12.5px] font-medium text-content-muted">Amount</span>
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="₦0"
-                value={amountInput}
-                invalid={!!error}
-                onChange={(event) => setAmountInput(event.target.value.replace(/[^\d]/g, ""))}
-                onKeyDown={(event) => event.key === "Enter" && startFunding()}
-              />
-            </label>
-            {error ? <p className="mt-2 text-[12.5px] text-rose-deep">{error}</p> : null}
+            <AmountNumpad value={amountInput} onChange={setAmountInput} />
+            {error ? <p className="mt-2 text-center text-[12.5px] text-rose-deep">{error}</p> : null}
 
             <Button
               block

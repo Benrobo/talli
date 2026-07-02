@@ -68,10 +68,19 @@ export function BottomSheet({
       {open ? (
         <div
           className={cn(
-            "pointer-events-none inset-x-0 bottom-0 z-50 flex justify-center px-0 sm:px-4",
+            "pointer-events-none inset-0 z-50 flex items-end justify-center sm:px-4",
             isContained ? "absolute" : "fixed"
           )}
         >
+          <motion.div
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onPointerDown={() => onOpenChange(false)}
+            className="pointer-events-auto fixed inset-0 bg-foreground/40 backdrop-blur-[2px] sm:hidden"
+          />
           <motion.section
             ref={sheetRef}
             aria-labelledby={titleId}
