@@ -61,8 +61,9 @@ const ONE_DAY_SECONDS = 60 * 60 * 24;
 
 export const env = {
   ...parsed.data,
-  JWT_ACCESS_TOKEN_TTL:
-    parsed.data.NODE_ENV === "development" ? ONE_DAY_SECONDS : parsed.data.JWT_ACCESS_TOKEN_TTL,
+  // JWT_ACCESS_TOKEN_TTL:
+  //   parsed.data.NODE_ENV === "development" ? ONE_DAY_SECONDS : parsed.data.JWT_ACCESS_TOKEN_TTL,
+  JWT_ACCESS_TOKEN_TTL: ONE_DAY_SECONDS
 };
 export default env;
 
