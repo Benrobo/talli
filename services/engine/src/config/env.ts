@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const DEFAULT_ACCESS_TOKEN_TTL =
-  nodeEnv === "development" ? 60 * 60 * 24 : process.env.JWT_ACCESS_TOKEN_TTL;
+  nodeEnv === "development" ? 60 * 60 * 24 : Number(process.env.JWT_ACCESS_TOKEN_TTL );
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
