@@ -1,4 +1,3 @@
-import prisma from "../../../prisma/index.js";
 import { chatLinkService } from "../../../services/chat-link.service.js";
 import { balanceService } from "../../../services/balance.service.js";
 import { messages } from "../ui/messages.js";
@@ -18,15 +17,6 @@ export async function handleBalance(ctx: TalliContext): Promise<void> {
     return;
   }
 
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: linked.workspaceId },
-    select: { ownerUserId: true },
-  });
-  if (!workspace) {
-    await safeReply(ctx, messages.actionFailed);
-    return;
-  }
-
-  const overview = await balanceService.overview(workspace.ownerUserId, linked.workspaceId);
+  const overview = await balanceService.overview(linked.userId);
   await safeReply(ctx, messages.balance(overview));
 }

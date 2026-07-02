@@ -15,18 +15,24 @@ import {
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowLeft01Icon,
-  CheckmarkCircle02Icon,
   Coins01Icon,
   Copy01Icon,
   Delete02Icon,
   Edit02Icon,
+  FileEditIcon,
+  MoneySend01Icon,
+  RocketIcon,
+  Target01Icon,
   UserGroupIcon,
   Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { CheckmarkCircle02Icon } from "@benrobo/iconary/core/solid-rounded";
+import { useUpdateCollectionStatus } from "@/api/http/v1/collections/collections.hooks";
 import { formatNaira, toPercent } from "@/lib/format";
 import { MemberRow } from "@/modules/collections/components/member-row";
 import { EditCollectionDialog } from "@/modules/collections/components/edit-collection-dialog";
 import { DeleteCollectionDialog } from "@/modules/collections/components/delete-collection-dialog";
+import { CollectionTypeInfo } from "@/modules/collections/components/collection-type-info";
 import type { Collection, CollectionStatus } from "@/modules/collections/types";
 
 const STATUS: Record<CollectionStatus, { status: "info" | "neutral" | "pending"; label: string }> = {
@@ -40,11 +46,23 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
   const pct = toPercent(collection.collectedMinor, collection.targetMinor);
   const owing = Math.max(0, collection.targetMinor - collection.collectedMinor);
   const [copiedLink, setCopiedLink] = useState(false);
+  const updateStatus = useUpdateCollectionStatus(collection.slug);
 
   const paying = collection.members.filter((m) => m.status === "paying").length;
   const hiddenUnpaid = Math.max(0, collection.memberCount - collection.members.length);
   const hiddenAmount = hiddenUnpaid * collection.perPersonMinor;
   const stillToGo = Math.max(0, collection.memberCount - collection.paidCount - paying);
+
+  const isOpen = collection.collectionType === "open_contribution";
+  const isPerPerson = collection.collectionType === "fixed_per_person";
+  const hasGoal = collection.targetMinor > 0;
+  const goalCaption = hasGoal
+    ? `${pct}% of ${formatNaira(collection.targetMinor)} goal`
+    : isPerPerson && collection.perPersonMinor > 0
+      ? `${formatNaira(collection.perPersonMinor)} per person · add members to set a goal`
+      : isOpen
+        ? "Open goal · every contribution counts"
+        : "No goal set yet";
 
   function copyPayLink() {
     const payUrl = `${window.location.origin}/pay/${collection.payReference}`;
@@ -53,6 +71,17 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
       toast.success("Pay link copied");
       setTimeout(() => setCopiedLink(false), 1600);
     });
+  }
+
+  function changeStatus(status: "active" | "draft") {
+    updateStatus.mutate(
+      { status },
+      {
+        onSuccess: () =>
+          toast.success(status === "active" ? "Collection launched" : "Moved to draft"),
+        onError: () => toast.error("Could not update collection status"),
+      }
+    );
   }
 
   return (
@@ -69,7 +98,7 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
         <PageHeader
           className="mb-6"
           title={
-            <span className="inline-flex items-center gap-3">
+            <span className="inline-flex flex-wrap items-center gap-2 sm:gap-3">
               {collection.title}
               <StatusPill status={badge.status} dot={collection.status === "live"}>
                 {badge.label}
@@ -86,24 +115,44 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
           }
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              {collection.status === "draft" ? (
+                <Button
+                  leadingIcon={<Icon icon={RocketIcon} size={16} />}
+                  disabled={updateStatus.isPending}
+                  onClick={() => changeStatus("active")}
+                >
+                  Launch collection
+                </Button>
+              ) : null}
               {collection.status === "live" ? (
                 <>
                   <Link to="/pay/$reference" params={{ reference: collection.payReference }}>
-                    <Button>Pay</Button>
+                    <Button leadingIcon={<Icon icon={MoneySend01Icon} size={16} />}>Pay</Button>
                   </Link>
                   <Button
                     variant="secondary"
-                    leadingIcon={<Icon icon={Copy01Icon} size={16} />}
+                    leadingIcon={<Icon icon={Copy01Icon} size={16} className="text-iris-deep" />}
                     onClick={copyPayLink}
                   >
                     {copiedLink ? "Copied" : "Copy pay link"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    leadingIcon={<Icon icon={FileEditIcon} size={16} />}
+                    disabled={updateStatus.isPending}
+                    onClick={() => changeStatus("draft")}
+                  >
+                    Move to draft
                   </Button>
                 </>
               ) : null}
               <EditCollectionDialog
                 collection={collection}
                 trigger={
-                  <Button variant="secondary" leadingIcon={<Icon icon={Edit02Icon} size={16} />}>
+                  <Button
+                    variant="secondary"
+                    leadingIcon={<Icon icon={Edit02Icon} size={16} className="text-iris-deep" />}
+                  >
                     Edit
                   </Button>
                 }
@@ -111,7 +160,10 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
               <DeleteCollectionDialog
                 collection={collection}
                 trigger={
-                  <Button variant="secondary" leadingIcon={<Icon icon={Delete02Icon} size={16} />}>
+                  <Button
+                    variant="secondary"
+                    leadingIcon={<Icon icon={Delete02Icon} size={16} className="text-rose-deep" />}
+                  >
                     Delete
                   </Button>
                 }
@@ -122,28 +174,51 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
       </FadeIn>
 
       <FadeIn delay={0.08} className="mb-6 grid grid-cols-1 gap-3.5 sm:grid-cols-[1.3fr_1fr_1fr]">
-        <StatCard
-          tone="filled"
-          label="Collected so far"
-          value={formatNaira(collection.collectedMinor)}
-          icon={Wallet01Icon}
-        >
-          <ProgressBar
-            value={pct}
-            className="mt-3.5 h-1.5"
-            trackClassName="bg-white/20"
-            barClassName="bg-white"
-          />
-          <div className="tabular mt-2 text-[11.5px] text-white/70">
-            {pct}% of {formatNaira(collection.targetMinor)}
+        <div className="relative">
+          <div className="absolute right-16 top-[26px] z-10">
+            <CollectionTypeInfo collection={collection} />
           </div>
-        </StatCard>
+          <StatCard
+            tone="filled"
+            label="Collected so far"
+            value={formatNaira(collection.collectedMinor)}
+            icon={Wallet01Icon}
+          >
+            {hasGoal ? (
+              <>
+                <ProgressBar
+                  value={pct}
+                  className="mt-3.5 h-1.5"
+                  trackClassName="bg-white/20"
+                  barClassName="bg-white"
+                />
+                <div className="tabular mt-2 text-[11.5px] text-white/70">{goalCaption}</div>
+              </>
+            ) : (
+              <div className="mt-3 text-[11.5px] text-white/70">{goalCaption}</div>
+            )}
+          </StatCard>
+        </div>
         <StatCard
           label="Paid"
           value={`${collection.paidCount} / ${collection.memberCount}`}
           icon={CheckmarkCircle02Icon}
         />
-        <StatCard label="Still owing" value={formatNaira(owing)} icon={Coins01Icon} />
+        {hasGoal ? (
+          <StatCard
+            label="Target"
+            value={formatNaira(collection.targetMinor)}
+            icon={Target01Icon}
+            sub={owing > 0 ? `${formatNaira(owing)} still owing` : "Fully funded"}
+          />
+        ) : (
+          <StatCard
+            label={isPerPerson ? "Per person" : "Still owing"}
+            value={isPerPerson ? formatNaira(collection.perPersonMinor) : formatNaira(owing)}
+            icon={Coins01Icon}
+            sub={isPerPerson ? "each member pays this" : undefined}
+          />
+        )}
       </FadeIn>
 
       <FadeIn delay={0.14}>

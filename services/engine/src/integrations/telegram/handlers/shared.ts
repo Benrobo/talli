@@ -1,6 +1,5 @@
 import type { InlineKeyboard } from "grammy";
 import logger from "../../../lib/logger.js";
-import prisma from "../../../prisma/index.js";
 import { chatLinkService } from "../../../services/chat-link.service.js";
 import { platformUserService } from "../../../services/platform-user.service.js";
 import type { DispatchContext } from "../../../services/intent-dispatcher.service.js";
@@ -8,20 +7,14 @@ import { GROUP_TELEGRAM_CHAT_TYPES } from "../../../constants/chat-capabilities.
 import type { TalliContext } from "../types.js";
 
 /**
- * Resolves the linked chat, workspace, and a ready {@link DispatchContext} for the
- * sender of an update. Returns null when the chat isn't linked or the workspace is
- * missing, so callers can show the connect prompt. Shared by the text and photo
- * handlers so context-building stays in one place.
+ * Resolves the linked chat and a ready {@link DispatchContext} for the sender of
+ * an update. Returns null when the chat isn't linked, so callers can show the
+ * connect prompt. The acting account is the chat's owner ({@link linked.userId}).
+ * Shared by the text and photo handlers so context-building stays in one place.
  */
 export async function resolveDispatchContext(ctx: TalliContext): Promise<DispatchContext | null> {
   const linked = await chatLinkService.findActiveChat("telegram", String(ctx.chat!.id));
   if (!linked) return null;
-
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: linked.workspaceId },
-    select: { name: true, ownerUserId: true },
-  });
-  if (!workspace) return null;
 
   const identity = await platformUserService.upsert({
     platform: "telegram",
@@ -33,12 +26,10 @@ export async function resolveDispatchContext(ctx: TalliContext): Promise<Dispatc
   const isGroup = isGroupChat(ctx);
   return {
     scope: isGroup ? "group" : "private",
-    workspaceId: linked.workspaceId,
+    userId: linked.userId,
     linkedChatId: linked.id,
     platform: "telegram",
     senderPlatformId: String(ctx.from!.id),
-    ownerUserId: workspace.ownerUserId,
-    workspaceName: workspace.name,
     senderName: platformUserService.formatName(identity),
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };

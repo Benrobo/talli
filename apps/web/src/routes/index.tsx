@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@app/ui";
 import { TalliLogo } from "@/components/brand/talli-logo";
 import { Button } from "@/components/ui";
+import { LANDING_ILLUSTRATION_PRELOADS } from "@/constants/illustrations";
+import { usePreloadAssets } from "@/hooks/use-preload-assets";
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowRight01Icon,
@@ -11,14 +13,16 @@ import {
   MinusSignIcon,
   PlusSignIcon,
   SecurityLockIcon,
-  Tick02Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { Tick02Icon } from "@benrobo/iconary/core/solid-rounded";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
 function LandingPage() {
+  usePreloadAssets(LANDING_ILLUSTRATION_PRELOADS);
+
   return (
     <div className="min-h-dvh bg-canvas text-content antialiased">
       <SiteHeader />
@@ -42,10 +46,10 @@ function LandingPage() {
 function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-hairline bg-canvas/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-3.5">
+      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
         <Link to="/" className="flex items-center gap-2.5">
           <TalliLogo className="h-8" />
-          <span className="font-display text-[19px] font-bold tracking-tight">Talli</span>
+          <span className="font-display text-[18px] font-bold tracking-tight sm:text-[19px]">Talli</span>
         </Link>
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-[13.5px] font-medium text-content-muted md:flex">
           <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
@@ -53,7 +57,7 @@ function SiteHeader() {
           <a href="#faq" className="transition-colors hover:text-foreground">FAQ</a>
         </nav>
         <div className="flex items-center gap-1.5">
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild className="hidden min-[380px]:inline-flex" variant="ghost" size="sm">
             <Link to="/auth">Sign in</Link>
           </Button>
           <Button asChild size="sm">
@@ -99,9 +103,9 @@ function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-hairline">
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-stretch lg:grid-cols-[1fr_0.92fr]">
-        <div className="flex flex-col justify-center px-6 py-16 sm:px-8 lg:py-24">
+        <div className="flex flex-col justify-center px-4 py-14 sm:px-8 sm:py-16 lg:py-24">
           <PixelEyebrow>Built for chat</PixelEyebrow>
-          <h1 className="mt-6 font-display text-[3.5rem] font-bold leading-[0.95] tracking-[-0.045em]">
+          <h1 className="mt-6 font-display text-[clamp(2.4rem,12vw,3.5rem)] font-bold leading-[0.98] tracking-[-0.045em] sm:leading-[0.95]">
             Collect money where you already talk.
             <br />
             Talli keeps the <StruckWord>count</StruckWord>.
@@ -110,11 +114,11 @@ function Hero() {
             Message Talli to open a collection, savings jar, or payout. Transfers reconcile on
             their own — payment status stays in the conversation, not a spreadsheet.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button asChild size="lg" trailingIcon={<Icon icon={ArrowRight01Icon} size={17} />}>
+          <div className="mt-8 grid grid-cols-1 gap-3 min-[390px]:flex min-[390px]:flex-wrap min-[390px]:items-center">
+            <Button asChild className="w-full min-[390px]:w-auto" size="lg" trailingIcon={<Icon icon={ArrowRight01Icon} size={17} />}>
               <Link to="/auth">Start free</Link>
             </Button>
-            <Button asChild variant="secondary" size="lg">
+            <Button asChild className="w-full min-[390px]:w-auto" variant="secondary" size="lg">
               <Link to="/auth">See how it works</Link>
             </Button>
           </div>
@@ -125,7 +129,7 @@ function Hero() {
           </ul>
         </div>
 
-        <div className="t-dither relative flex items-center justify-center border-t border-hairline px-6 py-14 sm:px-10 lg:border-l lg:border-t-0">
+        <div className="t-dither relative flex items-center justify-center border-t border-hairline px-4 py-10 sm:px-10 sm:py-14 lg:border-l lg:border-t-0">
           <div className="relative w-full max-w-[400px]">
             <div className="absolute -right-3 -top-5 z-10 hidden items-center gap-2 rounded-[13px] border border-hairline bg-paper px-3 py-2 shadow-lift sm:flex">
               <span className="flex size-7 items-center justify-center rounded-full bg-emerald-soft text-emerald-deep">
@@ -148,9 +152,9 @@ function ProblemBand() {
   const qs = ["Who has paid?", "Who hasn’t paid?", "How much have we collected?", "Did that transfer land?", "Who needs a reminder?"];
   return (
     <section className="band-night relative overflow-hidden text-white">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 sm:py-24">
+      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24">
         <PixelEyebrow onDark>Sound familiar?</PixelEyebrow>
-        <h2 className="mt-5 max-w-[720px] font-display text-[32px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[44px]">
+        <h2 className="mt-5 max-w-[720px] font-display text-[29px] font-bold leading-[1.08] tracking-[-0.035em] sm:text-[44px] sm:leading-[1.06]">
           Group money already happens in chat.
           <span className="text-white/45"> The tracking is still manual.</span>
         </h2>
@@ -180,7 +184,7 @@ function ProblemBand() {
 function Thesis() {
   return (
     <section id="how" className="border-b border-hairline bg-paper">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 sm:py-24">
+      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24">
         <div className="max-w-[640px]">
           <PixelEyebrow>You run the group. Talli runs the money.</PixelEyebrow>
           <h2 className="mt-5 font-display text-[32px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[40px]">
@@ -188,7 +192,7 @@ function Thesis() {
           </h2>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-x-10 gap-y-12 md:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 sm:mt-14 md:grid-cols-3 md:gap-y-12">
           <ThesisStep
             n="01"
             title="Create from chat"
@@ -284,7 +288,7 @@ function MockCount() {
 function ProductShot() {
   return (
     <section className="border-b border-hairline">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 sm:py-24">
+      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-[620px] text-center">
           <PixelEyebrow>One clear view</PixelEyebrow>
           <h2 className="mt-5 font-display text-[32px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[40px]">
@@ -295,7 +299,7 @@ function ProductShot() {
             can actually trust.
           </p>
         </div>
-        <div className="t-dither mt-12 rounded-[24px] border border-hairline p-4 sm:p-8">
+        <div className="t-dither mt-10 rounded-[20px] border border-hairline p-2.5 sm:mt-12 sm:rounded-[24px] sm:p-8">
           <DashboardMock />
         </div>
       </div>
@@ -322,13 +326,13 @@ function DashboardMock() {
           <span className="size-2 rounded-full bg-inset" />
         </span>
       </div>
-      <div className="p-5">
-        <div className="grid grid-cols-3 gap-3">
+      <div className="p-3 sm:p-5">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
           {stats.map((s) => (
             <div
               key={s.label}
               className={cn(
-                "rounded-[14px] p-4",
+                "rounded-[14px] p-3.5 sm:p-4",
                 s.tone === "filled" ? "band-iris text-white shadow-hero" : "border border-hairline bg-card"
               )}
             >
@@ -409,7 +413,7 @@ function FeatureChapter({
 }) {
   return (
     <section id={id} className={cn("border-b border-hairline", tone === "paper" ? "bg-paper" : "bg-canvas")}>
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-10 px-6 py-20 sm:py-24 lg:grid-cols-2 lg:gap-16">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-9 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
         <div className={cn(reverse && "lg:order-2")}>
           <PixelEyebrow>{kicker}</PixelEyebrow>
           <h2 className="mt-5 font-display text-[28px] font-bold leading-[1.08] tracking-[-0.03em] sm:text-[34px]">{title}</h2>
@@ -422,7 +426,7 @@ function FeatureChapter({
             ))}
           </ul>
         </div>
-        <div className={cn("relative", reverse && "lg:order-1")}>{mock}</div>
+        <div className={cn("relative min-w-0", reverse && "lg:order-1")}>{mock}</div>
       </div>
     </section>
   );
@@ -517,14 +521,14 @@ function SaveChapter() {
       body={<>Open a jar for rent, school fees or December — <Mark>“Save ₦2,000 to my rent jar.”</Mark> Lock it to a date if you don’t trust yourself, and ask Talli for your progress anytime.</>}
       points={["Lock it or keep it open", "Track it to the goal", "One wallet for all of it"]}
       mock={
-        <div className="rounded-[18px] border border-hairline bg-paper p-6 shadow-[0_24px_60px_-46px_rgba(23,20,39,0.5)]">
+        <div className="rounded-[18px] border border-hairline bg-paper p-4 shadow-[0_24px_60px_-46px_rgba(23,20,39,0.5)] sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-content-faint">Rent jar · locked</span>
             <span className="inline-flex items-center gap-1 text-[11px] text-content-faint">
               <Icon icon={SecurityLockIcon} size={12} /> Sept 1
             </span>
           </div>
-          <div className="flex items-end justify-between">
+          <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
               <div className="text-[11.5px] text-content-muted">Saved</div>
               <div className="font-display text-[28px] font-bold tracking-tight">₦140,000</div>
@@ -575,7 +579,7 @@ function AskStrip() {
   const asks = ["Who has paid?", "Who hasn’t paid?", "How much remains?", "Did Tunde pay?", "Remind unpaid members", "Show my receipt"];
   return (
     <section className="border-b border-hairline bg-canvas">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 sm:py-24">
+      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24">
         <div className="max-w-[620px]">
           <PixelEyebrow>Ask Talli anything</PixelEyebrow>
           <h2 className="mt-5 font-display text-[30px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[38px]">
@@ -610,14 +614,14 @@ const SCENARIOS = [
 function ScenarioWall() {
   return (
     <section className="band-night text-white">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 sm:py-24">
+      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24">
         <div className="max-w-[640px]">
           <PixelEyebrow onDark>What Talli replaces</PixelEyebrow>
           <h2 className="mt-5 font-display text-[32px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[42px]">
             The chasing, the spreadsheet, the “did you send it?”
           </h2>
         </div>
-        <div className="mt-12 columns-1 gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4">
+        <div className="mt-10 columns-1 gap-4 sm:mt-12 sm:columns-2 lg:columns-3 [&>*]:mb-4">
           {SCENARIOS.map((s, i) => (
             <div key={i} className="break-inside-avoid rounded-[16px] border border-white/10 bg-white/[0.04] p-5">
               <p className="text-[14.5px] leading-relaxed text-white/85">{s.text}</p>
@@ -645,7 +649,7 @@ function Faq() {
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section id="faq" className="border-b border-hairline bg-paper">
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-x-16 gap-y-8 px-6 py-20 sm:py-24 lg:grid-cols-[0.7fr_1.3fr]">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-x-16 gap-y-8 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[0.7fr_1.3fr]">
         <div className="lg:sticky lg:top-24 lg:self-start">
           <PixelEyebrow>Questions</PixelEyebrow>
           <h2 className="mt-5 font-display text-[30px] font-bold leading-[1.02] tracking-[-0.035em] sm:text-[38px]">
@@ -697,16 +701,16 @@ function Faq() {
 
 function FinalCta() {
   return (
-    <section className="px-6 py-20 sm:py-24">
-      <div className="band-iris relative mx-auto max-w-[1200px] overflow-hidden rounded-[28px] px-8 py-16 text-white shadow-hero sm:px-14">
+    <section className="px-4 py-16 sm:px-6 sm:py-24">
+      <div className="band-iris relative mx-auto max-w-[1200px] overflow-hidden rounded-[22px] px-5 py-12 text-white shadow-hero sm:rounded-[28px] sm:px-14 sm:py-16">
         <div className="relative max-w-[620px]">
-          <h2 className="font-display text-[34px] font-bold leading-[1.02] tracking-[-0.035em] sm:text-[48px]">
+          <h2 className="font-display text-[31px] font-bold leading-[1.04] tracking-[-0.035em] sm:text-[48px] sm:leading-[1.02]">
             Stop chasing people for money.
           </h2>
           <p className="mt-4 max-w-[440px] text-[15.5px] leading-relaxed text-white/75">
             Create the collection, share it in the group, and let Talli keep count.
           </p>
-          <div className="mt-8 flex items-center gap-4">
+          <div className="mt-8 flex flex-col items-start gap-3 min-[390px]:flex-row min-[390px]:items-center min-[390px]:gap-4">
             <Button asChild size="lg" variant="secondary" trailingIcon={<Icon icon={ArrowRight01Icon} size={17} />}>
               <Link to="/auth">Get started free</Link>
             </Button>
@@ -721,7 +725,7 @@ function FinalCta() {
 function SiteFooter() {
   return (
     <footer className="border-t border-hairline">
-      <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
+      <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 px-4 py-8 text-center sm:flex-row sm:px-6 sm:text-left">
         <Link to="/" className="flex items-center gap-2.5">
           <TalliLogo className="h-7" />
           <span className="font-display text-[16px] font-bold tracking-tight">Talli</span>
@@ -788,7 +792,7 @@ function LiveChat() {
         </span>
       </div>
 
-      <div className="flex h-[420px] flex-col justify-end gap-2.5 overflow-hidden px-3.5 py-4">
+      <div className="flex h-[360px] flex-col justify-end gap-2.5 overflow-hidden px-3 py-3.5 sm:h-[420px] sm:px-3.5 sm:py-4">
         <AnimatePresence initial={false} mode="popLayout">
           {steps.map((step, i) => (
             <motion.div
@@ -812,7 +816,7 @@ function ChatStepView({ step }: { step: ChatStep }) {
   if (step.kind === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[86%] rounded-2xl rounded-tr-md bg-[#2b5278] px-4 py-2.5 text-[13px] leading-relaxed text-white">
+        <div className="max-w-[90%] break-words rounded-2xl rounded-tr-md bg-[#2b5278] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-white sm:max-w-[86%] sm:px-4 sm:text-[13px]">
           {step.text}
           <span className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/55">
             9:41 <Icon icon={Tick02Icon} size={11} strokeWidth={2.5} className="text-[#6fc2ff]" />
@@ -840,7 +844,7 @@ function ChatStepView({ step }: { step: ChatStep }) {
   if (step.kind === "card") {
     return (
       <div className="flex justify-start">
-        <div className="w-full max-w-[92%] rounded-2xl rounded-tl-md bg-[#182533] px-4 py-3 text-white">
+        <div className="w-full max-w-[95%] break-words rounded-2xl rounded-tl-md bg-[#182533] px-3.5 py-3 text-white sm:max-w-[92%] sm:px-4">
           <div className="mb-2 text-[12.5px] font-bold text-[#e9a23b]">Talli</div>
           <div className="text-[13px] font-semibold">💰 Create collection</div>
           <div className="mt-2 space-y-1">
@@ -856,7 +860,7 @@ function ChatStepView({ step }: { step: ChatStep }) {
   }
   return (
     <div className="flex justify-start">
-      <div className="flex w-full max-w-[92%] items-center gap-3 rounded-2xl rounded-tl-md bg-[#182533] px-3.5 py-2.5 text-white">
+      <div className="flex w-full max-w-[95%] items-center gap-2.5 rounded-2xl rounded-tl-md bg-[#182533] px-3 py-2.5 text-white sm:max-w-[92%] sm:gap-3 sm:px-3.5">
         <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full text-[10.5px] font-bold text-white", step.tone)}>
           {step.initials}
         </span>
@@ -888,7 +892,7 @@ function TgChat({ children, header }: { children: ReactNode; header?: ReactNode 
 function TgUserBubble({ children, time }: { children: ReactNode; time: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[86%] rounded-2xl rounded-tr-md bg-[#2b5278] px-4 py-3 text-[13px] leading-relaxed text-white">
+      <div className="max-w-[92%] break-words rounded-2xl rounded-tr-md bg-[#2b5278] px-3.5 py-3 text-[12.5px] leading-relaxed text-white sm:max-w-[86%] sm:px-4 sm:text-[13px]">
         {children}
         <span className="mt-1.5 flex items-center justify-end gap-1 text-[10.5px] text-white/55">
           {time}
@@ -902,7 +906,7 @@ function TgUserBubble({ children, time }: { children: ReactNode; time: string })
 function TgBotCard({ children }: { children: ReactNode }) {
   return (
     <div className="flex justify-start">
-      <div className="w-fit max-w-[92%] rounded-2xl rounded-tl-md bg-[#182533] px-4 py-3 text-white">
+      <div className="w-fit max-w-[95%] break-words rounded-2xl rounded-tl-md bg-[#182533] px-3.5 py-3 text-white sm:max-w-[92%] sm:px-4">
         <div className="mb-2 text-[12.5px] font-bold text-[#e9a23b]">Talli</div>
         {children}
       </div>
@@ -912,7 +916,7 @@ function TgBotCard({ children }: { children: ReactNode }) {
 
 function TgActions() {
   return (
-    <div className="mt-3 flex gap-2">
+    <div className="mt-3 flex flex-wrap gap-2">
       <button className="inline-flex items-center gap-1.5 rounded-lg bg-[#22c55e]/15 px-4 py-2 text-[12.5px] font-semibold text-[#4ade80]">
         <Icon icon={Tick02Icon} size={13} strokeWidth={2.75} />
         Confirm

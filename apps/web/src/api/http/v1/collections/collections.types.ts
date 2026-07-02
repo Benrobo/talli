@@ -102,12 +102,23 @@ export type DeleteCollectionResponse = ApiSuccess<null>;
 
 export type CollectionPayMemberStatus = "available" | "claimed";
 
+export interface CollectionPendingPayment {
+  pendingPaymentId: string;
+  amount: number;
+  flashAccountNumber: string | null;
+  flashBankName: string | null;
+  flashAccountName: string | null;
+  expiresAt: string | null;
+}
+
 export interface CollectionPayMember {
   id: string;
   displayName: string;
   expectedAmount: number;
   paidAmount: number;
   status: CollectionPayMemberStatus;
+  pendingPayment: CollectionPendingPayment | null;
+  lastFailedAmount: number | null;
 }
 
 export interface CollectionPayView {
@@ -137,5 +148,18 @@ export interface CollectionPayCheckoutPayload {
   amount?: number;
 }
 
+export type CollectionPayVerifyStatus =
+  | "pending"
+  | "completed"
+  | "failed"
+  | "expired"
+  | "cancelled";
+
+export interface CollectionPayVerifyResult {
+  status: CollectionPayVerifyStatus;
+  amount: number;
+}
+
 export type GetCollectionPayViewResponse = ApiSuccess<CollectionPayView>;
 export type CollectionPayCheckoutResponse = ApiSuccess<CollectionPayCheckoutResult>;
+export type CollectionPayVerifyResponse = ApiSuccess<CollectionPayVerifyResult>;

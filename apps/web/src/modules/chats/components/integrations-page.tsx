@@ -1,5 +1,6 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import dayjs from "dayjs";
 import { cn } from "@/lib/utils";
 import {
   Button,
@@ -22,9 +23,9 @@ import {
   Location01Icon,
   MoreHorizontalIcon,
   RefreshIcon,
-  Tick02Icon,
   UserGroupIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { Tick02Icon } from "@benrobo/iconary/core/solid-rounded";
 import {
   useConnectedChats,
   useCreateLinkCode,
@@ -86,17 +87,14 @@ function toChatPlatform(platform: string): ChatPlatform {
 }
 
 function formatChatMeta(chat: ConnectedChat): string {
-  const linkedDate = new Date(chat.createdAt).toLocaleDateString("en-NG", {
-    month: "short",
-    day: "numeric",
-  });
+  const linkedDate = dayjs(chat.createdAt).format("MMM D");
   const typeLabel = chat.chatType === "group" ? "Group" : "Private chat";
   const connector = chat.connectedBy ? ` · linked by ${chat.connectedBy}` : "";
   return `${typeLabel}${connector} · ${linkedDate}`;
 }
 
 function formatExpiry(expiresAt: string): string {
-  const minutes = Math.max(1, Math.round((new Date(expiresAt).getTime() - Date.now()) / 60_000));
+  const minutes = Math.max(1, dayjs(expiresAt).diff(dayjs(), "minute"));
   return `Single-use · expires in ${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
@@ -130,7 +128,7 @@ export function IntegrationsPage() {
       <div className="mb-6">
         <h1 className="font-display text-[25px] font-bold tracking-[-0.02em] text-foreground">Integrations</h1>
         <p className="mt-1 text-[13.5px] text-content-muted">
-          Connect a chat so Talli can collect, split and send for this workspace.
+          Connect a chat so Talli can collect, split and send for you.
         </p>
       </div>
 
@@ -165,10 +163,10 @@ function PanelHeader({
   connectedCount: number;
 }) {
   return (
-    <div className="flex items-center gap-3.5 border-b border-hairline-soft p-5">
+    <div className="flex flex-wrap items-center gap-3 border-b border-hairline-soft p-4 sm:gap-3.5 sm:p-5">
       <PlatformTile platform={platform} className="size-12 rounded-[14px]" />
       <div className="flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-display text-[19px] font-bold tracking-[-0.02em] text-foreground">{name}</span>
           {connectedCount > 0 ? (
             <StatusPill status="success" dot>
@@ -250,7 +248,7 @@ function TelegramPanel({ chats }: { chats: ConnectedChat[] }) {
     <div className="overflow-hidden rounded-[18px] border border-hairline bg-card shadow-card">
       <PanelHeader platform="telegram" name="Telegram" connectedCount={chats.length} />
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.11em] text-content-faint">
           Add Talli to a chat
         </div>
@@ -360,16 +358,17 @@ function TelegramPanel({ chats }: { chats: ConnectedChat[] }) {
             </p>
             <Button
               onClick={generateCode}
-              disabled={!selectedPurpose || createLinkCode.isPending}
+              disabled={!selectedPurpose}
+              loading={createLinkCode.isPending}
               leadingIcon={<Icon icon={Link01Icon} size={16} />}
             >
-              {createLinkCode.isPending ? "Generating…" : "Generate link code"}
+              Generate link code
             </Button>
           </div>
         )}
       </div>
 
-      <div className="border-t border-hairline-soft px-5 pb-1 pt-4">
+      <div className="border-t border-hairline-soft px-4 pb-1 pt-4 sm:px-5">
         <div className="flex items-center justify-between">
           <span className="text-[13px] font-semibold text-foreground">Connected chats</span>
           <span className="text-[12px] text-content-faint">{chats.length} active</span>
@@ -475,16 +474,16 @@ function ChatTile({
 
 function ComingSoonStrip({ integration }: { integration: Integration }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-[16px] border border-dashed border-hairline bg-inset/40 p-4">
+    <div className="flex flex-wrap items-center gap-3.5 rounded-[16px] border border-dashed border-hairline bg-inset/40 p-4">
       <PlatformTile platform={integration.platform} className="size-11 opacity-70 grayscale" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-[14.5px] font-semibold text-foreground">{integration.name}</span>
           <StatusPill status="neutral">Coming soon</StatusPill>
         </div>
-        <p className="mt-0.5 truncate text-[12.5px] text-content-muted">{integration.blurb}</p>
+        <p className="mt-0.5 text-[12.5px] leading-relaxed text-content-muted">{integration.blurb}</p>
       </div>
-      <Button variant="secondary" size="sm" trailingIcon={<Icon icon={ArrowRight01Icon} size={14} />}>
+      <Button className="w-full sm:w-auto" variant="secondary" size="sm" trailingIcon={<Icon icon={ArrowRight01Icon} size={14} />}>
         Notify me
       </Button>
     </div>

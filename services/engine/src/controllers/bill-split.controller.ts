@@ -3,22 +3,13 @@ import sendResponse from "../lib/send-response.js";
 import { BadRequestException } from "../lib/exception.js";
 import { billSplitService } from "../services/bill-split.service.js";
 import { billParserService } from "../services/bill-parser.service.js";
-import { workspaceService } from "../services/workspace.service.js";
 import type { BillSplitCheckoutInput } from "../schemas/bill-split.schema.js";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 class BillSplitController {
-  private async workspaceId(ctx: Context): Promise<string> {
-    const userId = ctx.get("userId") as string;
-    const workspaceId = await workspaceService.getActiveWorkspaceId(userId);
-    if (!workspaceId) throw new BadRequestException("No active workspace");
-    return workspaceId;
-  }
-
   async createFromImage(ctx: Context) {
     const userId = ctx.get("userId") as string;
-    const workspaceId = await this.workspaceId(ctx);
 
     const body = await ctx.req.parseBody();
     const file = body.image;
@@ -35,7 +26,6 @@ class BillSplitController {
 
     const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Bill split";
     const { url, billSplit } = await billSplitService.createFromItems({
-      workspaceId,
       ownerUserId: userId,
       source: "web",
       title,
@@ -47,27 +37,31 @@ class BillSplitController {
   }
 
   async getByToken(ctx: Context) {
-    const billSplit = await billSplitService.getByToken(ctx.req.param("token"));
+    const token = ctx.req.param("token");
+    if (!token) throw new BadRequestException("Bill split token is required");
+    const billSplit = await billSplitService.getByToken(token);
     return sendResponse.success(ctx, "Bill split fetched", 200, billSplit);
   }
 
   async checkout(ctx: Context) {
+    const token = ctx.req.param("token");
+    if (!token) throw new BadRequestException("Bill split token is required");
     const input = ctx.get("validatedData") as BillSplitCheckoutInput;
-    const result = await billSplitService.checkout(ctx.req.param("token"), input);
+    const result = await billSplitService.checkout(token, input);
     return sendResponse.success(ctx, "Checkout created", 201, result);
   }
 
   async list(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
-    const billSplits = await billSplitService.list(workspaceId);
+    const userId = ctx.get("userId") as string;
+    const billSplits = await billSplitService.list(userId);
     return sendResponse.success(ctx, "Bill splits fetched", 200, { billSplits });
   }
 
   async detail(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
     const billSplitId = ctx.req.param("id");
     if (!billSplitId) throw new BadRequestException("Bill split id is required");
-    const billSplit = await billSplitService.getDetail(workspaceId, billSplitId);
+    const billSplit = await billSplitService.getDetail(userId, billSplitId);
     return sendResponse.success(ctx, "Bill split fetched", 200, billSplit);
   }
 }

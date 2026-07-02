@@ -24,21 +24,21 @@ export const homeData: HomeData = {
   ],
   activity: [
     {
-      kind: "paid",
+      reason: "collection",
       text: "Opeyemi paid ₦3,000 to Saturday football",
       who: "Opeyemi",
       when: "just now",
       link: { to: "/app/collections/$slug", params: { slug: "saturday-football" } },
     },
     {
-      kind: "sent",
+      reason: "send",
       text: "You sent ₦5,000 to Tunde",
       who: "₦5,000",
       when: "32m ago",
       link: { to: "/app/sent" },
     },
     {
-      kind: "saved",
+      reason: "savings_deposit",
       text: "You saved ₦2,000 to Rent jar",
       who: "₦2,000",
       when: "1h ago",

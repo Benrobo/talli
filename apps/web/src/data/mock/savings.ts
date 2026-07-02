@@ -4,6 +4,8 @@ export const jars: Jar[] = [
   {
     id: "rent",
     name: "Rent",
+    icon: "home",
+    accentColor: "#8b5cf6",
     savedMinor: 4_400_000,
     targetMinor: 20_000_000,
     targetAmountMinor: 20_000_000,
@@ -20,6 +22,8 @@ export const jars: Jar[] = [
   {
     id: "laptop",
     name: "Laptop",
+    icon: "laptop",
+    accentColor: "#3b82f6",
     savedMinor: 0,
     targetMinor: 50_000_000,
     targetAmountMinor: 50_000_000,
@@ -32,6 +36,8 @@ export const jars: Jar[] = [
   {
     id: "emergency",
     name: "Emergency",
+    icon: "rainy-day",
+    accentColor: "#14b8a6",
     savedMinor: 1_500_000,
     targetMinor: 10_000_000,
     targetAmountMinor: 10_000_000,

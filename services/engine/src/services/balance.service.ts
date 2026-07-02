@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
-import { walletService } from "./wallet.service.js";
+import { ledgerService } from "./ledger.service.js";
 
 export interface JarSummary {
   name: string;
@@ -33,23 +33,23 @@ export interface FinancialOverview {
  * money moves here.
  */
 class BalanceService {
-  async overview(userId: string, workspaceId: string): Promise<FinancialOverview> {
-    const wallet = await walletService.ensureWallet(userId);
+  async overview(userId: string): Promise<FinancialOverview> {
+    const walletBalance = await ledgerService.getBalance(userId);
 
     const jars = await prisma.savingsJar.findMany({
-      where: { workspaceId, ownerUserId: userId, status: "active" },
+      where: { ownerUserId: userId, status: "active" },
       orderBy: { createdAt: "desc" },
     });
 
     const collections = await prisma.collection.findMany({
-      where: { workspaceId, status: { in: ["active", "partially_paid"] } },
+      where: { ownerUserId: userId, status: { in: ["active", "partially_paid"] } },
       orderBy: { createdAt: "desc" },
       include: { members: { select: { paidAmount: true, expectedAmount: true } } },
     });
 
     return {
-      walletBalance: wallet.balance,
-      currency: wallet.currency,
+      walletBalance,
+      currency: "NGN",
       jars: jars.map((j) => ({
         name: j.name,
         currentAmount: j.currentAmount,

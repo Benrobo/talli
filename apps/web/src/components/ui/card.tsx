@@ -16,7 +16,7 @@ function Card({ className, tone = "light", padded = true, ...props }: CardProps)
         "flex flex-col rounded-[18px] text-card-foreground",
         tone === "light" && "border border-hairline bg-card shadow-card",
         tone === "night" && "band-night text-white shadow-lift",
-        padded && "p-5",
+        padded && "p-4 sm:p-5",
         className
       )}
       {...props}

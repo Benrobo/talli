@@ -4,12 +4,14 @@ import { Button, Card, Spotlight } from "@/components/ui";
 import { Icon } from "@benrobo/iconary/react";
 import {
   BankIcon,
-  Clock01Icon,
   Copy01Icon,
   Download01Icon,
   LockIcon,
-  Tick02Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import {
+  Clock01Icon,
+  Tick02Icon,
+} from "@benrobo/iconary/core/solid-rounded";
 import { formatNaira } from "@/lib/format";
 
 export interface NombaCheckoutDetails {
@@ -46,7 +48,7 @@ export function NombaPayTransferContent({
     <>
       <Spotlight className="mb-6 p-6 text-center">
         <div className="mb-1.5 text-[13px] text-white/70">{transferLabel}</div>
-        <div className="tabular text-[42px] font-extrabold leading-none tracking-[-0.03em]">
+        <div className="tabular break-words text-[36px] font-extrabold leading-none tracking-[-0.03em] sm:text-[42px]">
           {formatNaira(checkout.amount)}
         </div>
         <div className="mt-2 text-[13px] text-white/70">for {title}</div>
@@ -87,18 +89,34 @@ export function NombaPayTransferContent({
 export function NombaPayTransferActions({
   checkoutUrl,
   onPaid,
+  onCancel,
+  cancelling,
 }: {
   checkoutUrl: string;
   onPaid: () => void;
+  onCancel?: () => void;
+  cancelling?: boolean;
 }) {
   return (
     <div className="flex w-full flex-col items-center gap-3">
-      <a href={checkoutUrl} target="_blank" rel="noreferrer" className="text-[13px] font-medium text-iris-deep">
-        Select another payment method →
-      </a>
+      {checkoutUrl ? (
+        <a href={checkoutUrl} target="_blank" rel="noreferrer" className="text-[13px] font-medium text-iris-deep">
+          Select another payment method →
+        </a>
+      ) : null}
       <button type="button" onClick={onPaid} className="text-[12px] text-content-faint">
         I've sent the transfer
       </button>
+      {onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelling}
+          className="mt-1 text-[12px] font-medium text-rose-deep transition-colors hover:text-rose disabled:opacity-50"
+        >
+          {cancelling ? "Cancelling…" : "Cancel this payment"}
+        </button>
+      ) : null}
     </div>
   );
 }

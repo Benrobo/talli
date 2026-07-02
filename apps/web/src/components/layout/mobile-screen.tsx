@@ -12,7 +12,7 @@ interface MobileScreenProps {
 
 export function MobileScreen({ children, className, footer, brand = true }: MobileScreenProps) {
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-canvas px-4 py-8">
+    <div className="relative flex min-h-dvh items-start justify-center overflow-x-hidden bg-canvas px-4 py-5 sm:items-center sm:py-8">
       {brand ? <BrandBackdrop /> : null}
       <div className="relative flex w-full max-w-[400px] flex-col">
         {brand ? (

@@ -36,12 +36,23 @@ export interface CollectionWithProgress extends Collection {
 
 export type CollectionPayMemberStatus = "available" | "claimed";
 
+export interface PendingPaymentView {
+  pendingPaymentId: string;
+  amount: number;
+  flashAccountNumber: string | null;
+  flashBankName: string | null;
+  flashAccountName: string | null;
+  expiresAt: string | null;
+}
+
 export interface CollectionPayMemberView {
   id: string;
   displayName: string;
   expectedAmount: number;
   paidAmount: number;
   status: CollectionPayMemberStatus;
+  pendingPayment: PendingPaymentView | null;
+  lastFailedAmount: number | null;
 }
 
 export interface CollectionPayView {
@@ -79,19 +90,14 @@ export interface CreditResult {
  * the caller's job (the webhook dedupes before calling `creditMember`).
  */
 class CollectionService {
-  async create(
-    workspaceId: string,
-    userId: string,
-    input: CreateCollectionInput
-  ): Promise<Collection> {
+  async create(userId: string, input: CreateCollectionInput): Promise<Collection> {
     if (input.collectionType === "fixed_per_person" && !input.amountPerMember) {
       throw new BadRequestException("amountPerMember is required for a fixed-per-person collection");
     }
 
     return prisma.collection.create({
       data: {
-        workspaceId,
-        createdByUserId: userId,
+        ownerUserId: userId,
         linkedChatId: input.linkedChatId,
         title: input.title,
         purpose: input.purpose,
@@ -109,9 +115,9 @@ class CollectionService {
    * dashboard listing can show metadata (collected vs target, who's paid, status,
    * deadline) without a follow-up call per row.
    */
-  async list(workspaceId: string): Promise<CollectionWithProgress[]> {
+  async list(ownerUserId: string): Promise<CollectionWithProgress[]> {
     const collections = await prisma.collection.findMany({
-      where: { workspaceId },
+      where: { ownerUserId },
       orderBy: { createdAt: "desc" },
       include: { members: { select: { paidAmount: true, expectedAmount: true, status: true } } },
     });
@@ -133,12 +139,33 @@ class CollectionService {
       where: { id: collectionId },
       include: {
         members: { orderBy: { createdAt: "asc" } },
-        workspace: { select: { name: true } },
+        owner: { select: { name: true, email: true } },
       },
     });
     if (!collection) throw new NotFoundException("Collection not found");
     if (!["active", "partially_paid"].includes(collection.status)) {
       throw new BadRequestException("This collection is not accepting payments");
+    }
+
+    const memberIds = collection.members.map((member) => member.id);
+    const recentPayments = await prisma.pendingPayment.findMany({
+      where: {
+        collectionId,
+        status: { in: ["pending", "failed", "expired"] },
+        collectionMemberId: { in: memberIds },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    const pendingByMember = new Map<string, (typeof recentPayments)[number]>();
+    const failedByMember = new Map<string, (typeof recentPayments)[number]>();
+    for (const payment of recentPayments) {
+      const memberId = payment.collectionMemberId;
+      if (!memberId) continue;
+      if (payment.status === "pending") {
+        if (!pendingByMember.has(memberId)) pendingByMember.set(memberId, payment);
+      } else if (!failedByMember.has(memberId)) {
+        failedByMember.set(memberId, payment);
+      }
     }
 
     return {
@@ -148,20 +175,35 @@ class CollectionService {
       collectionType: collection.collectionType,
       amountPerMember: collection.amountPerMember,
       targetAmount: collection.targetAmount,
-      payTo: collection.workspace.name,
+      payTo: collection.owner.name ?? collection.owner.email,
       due: collection.deadline?.toISOString() ?? null,
-      members: collection.members.map((member) => ({
-        id: member.id,
-        displayName: member.displayName,
-        expectedAmount: member.expectedAmount,
-        paidAmount: member.paidAmount,
-        status:
-          collection.collectionType === "open_contribution"
-            ? "available"
-            : this.isMemberPaid(member)
-              ? "claimed"
-              : "available",
-      })),
+      members: collection.members.map((member) => {
+        const pending = pendingByMember.get(member.id);
+        const failed = failedByMember.get(member.id);
+        return {
+          id: member.id,
+          displayName: member.displayName,
+          expectedAmount: member.expectedAmount,
+          paidAmount: member.paidAmount,
+          status:
+            collection.collectionType === "open_contribution"
+              ? "available"
+              : this.isMemberPaid(member)
+                ? "claimed"
+                : "available",
+          pendingPayment: pending
+            ? {
+                pendingPaymentId: pending.id,
+                amount: pending.amount,
+                flashAccountNumber: pending.flashAccountNumber,
+                flashBankName: pending.flashBankName,
+                flashAccountName: pending.flashAccountName,
+                expiresAt: pending.expiresAt?.toISOString() ?? null,
+              }
+            : null,
+          lastFailedAmount: !pending && failed ? failed.amount : null,
+        };
+      }),
     };
   }
 
@@ -190,9 +232,9 @@ class CollectionService {
   }
 
   /** A collection with its members and a paid-progress summary. */
-  async getWithProgress(workspaceId: string, collectionId: string) {
+  async getWithProgress(ownerUserId: string, collectionId: string) {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
       include: { members: { orderBy: { createdAt: "asc" } } },
     });
     if (!collection) throw new NotFoundException("Collection not found");
@@ -210,12 +252,12 @@ class CollectionService {
    * caller can compute page metadata.
    */
   async listMembers(
-    workspaceId: string,
+    ownerUserId: string,
     collectionId: string,
     options: { page: number; pageSize: number; status?: CollectionMember["status"] }
   ): Promise<{ members: CollectionMember[]; total: number; page: number; pageSize: number }> {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
       select: { id: true },
     });
     if (!collection) throw new NotFoundException("Collection not found");
@@ -245,19 +287,23 @@ class CollectionService {
    * returns the page plus total count for page metadata.
    */
   async listPayments(
-    workspaceId: string,
+    ownerUserId: string,
     collectionId: string,
     options: { page: number; pageSize: number }
   ): Promise<{ payments: Payment[]; total: number; page: number; pageSize: number }> {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
       select: { id: true },
     });
     if (!collection) throw new NotFoundException("Collection not found");
 
     const page = Math.max(1, options.page);
     const pageSize = Math.min(100, Math.max(1, options.pageSize));
-    const where = { collectionId, status: "successful" as const };
+    const where = {
+      collectionId,
+      kind: "collection_payment" as const,
+      status: "successful" as const,
+    };
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
@@ -274,12 +320,12 @@ class CollectionService {
 
   /** Updates a collection's status (e.g. close or cancel it). */
   async updateStatus(
-    workspaceId: string,
+    ownerUserId: string,
     collectionId: string,
     status: "draft" | "active" | "closed" | "cancelled"
   ): Promise<Collection> {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
     });
     if (!collection) throw new NotFoundException("Collection not found");
 
@@ -290,7 +336,7 @@ class CollectionService {
   }
 
   async update(
-    workspaceId: string,
+    ownerUserId: string,
     collectionId: string,
     input: {
       title: string;
@@ -301,10 +347,14 @@ class CollectionService {
     }
   ): Promise<Collection> {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
       include: {
         members: { select: { paidAmount: true } },
-        payments: { where: { status: "successful" }, take: 1, select: { id: true } },
+        payments: {
+          where: { kind: "collection_payment", status: "successful" },
+          take: 1,
+          select: { id: true },
+        },
       },
     });
     if (!collection) throw new NotFoundException("Collection not found");
@@ -343,12 +393,16 @@ class CollectionService {
     });
   }
 
-  async remove(workspaceId: string, collectionId: string): Promise<void> {
+  async remove(ownerUserId: string, collectionId: string): Promise<void> {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
       include: {
         members: { select: { paidAmount: true } },
-        payments: { where: { status: "successful" }, take: 1, select: { id: true } },
+        payments: {
+          where: { kind: "collection_payment", status: "successful" },
+          take: 1,
+          select: { id: true },
+        },
       },
     });
     if (!collection) throw new NotFoundException("Collection not found");
@@ -365,12 +419,12 @@ class CollectionService {
 
   /** Adds a named member up front (for `named_members` collections). */
   async addMember(
-    workspaceId: string,
+    ownerUserId: string,
     collectionId: string,
     input: { displayName: string; expectedAmount: number; platformUserId?: string }
   ): Promise<CollectionMember> {
     const collection = await prisma.collection.findFirst({
-      where: { id: collectionId, workspaceId },
+      where: { id: collectionId, ownerUserId },
     });
     if (!collection) throw new NotFoundException("Collection not found");
 
@@ -594,6 +648,25 @@ class CollectionService {
       select: { id: true },
     });
     return pending !== null;
+  }
+
+  /**
+   * Cancels a member's in-flight collection payment so they can start over. The
+   * Nomba order is left to expire on its own (no money has moved); we only flip
+   * our reconciliation record to `cancelled` and stop it from blocking a new
+   * checkout. Idempotent — a member with nothing pending is a no-op.
+   */
+  async cancelMemberPending(collectionId: string, memberId: string): Promise<void> {
+    const member = await prisma.collectionMember.findFirst({
+      where: { id: memberId, collectionId },
+      select: { id: true },
+    });
+    if (!member) throw new NotFoundException("Member not found on this collection");
+
+    await prisma.pendingPayment.updateMany({
+      where: { collectionId, collectionMemberId: memberId, status: "pending" },
+      data: { status: "cancelled" },
+    });
   }
 
   private memberStatus(paid: number, expected: number): CollectionMember["status"] {

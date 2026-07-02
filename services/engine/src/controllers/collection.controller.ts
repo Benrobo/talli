@@ -4,7 +4,6 @@ import sendResponse from "../lib/send-response.js";
 import { BadRequestException } from "../lib/exception.js";
 import { collectionService } from "../services/collection.service.js";
 import { paymentService } from "../services/payment.service.js";
-import { workspaceService } from "../services/workspace.service.js";
 import type {
   CreateCollectionInput,
   AddMemberInput,
@@ -14,40 +13,34 @@ import type {
 } from "../schemas/collection.schema.js";
 
 class CollectionController {
-  private async workspaceId(ctx: Context): Promise<string> {
-    const userId = ctx.get("userId") as string;
-    const workspaceId = await workspaceService.getActiveWorkspaceId(userId);
-    if (!workspaceId) throw new BadRequestException("No active workspace");
-    return workspaceId;
-  }
-
   async create(ctx: Context) {
     const userId = ctx.get("userId") as string;
-    const workspaceId = await this.workspaceId(ctx);
     const input = ctx.get("validatedData") as CreateCollectionInput;
-    const collection = await collectionService.create(workspaceId, userId, input);
+    const collection = await collectionService.create(userId, input);
     return sendResponse.success(ctx, "Collection created", 201, collection);
   }
 
   async list(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
-    const collections = await collectionService.list(workspaceId);
+    const userId = ctx.get("userId") as string;
+    const collections = await collectionService.list(userId);
     return sendResponse.success(ctx, "Collections fetched", 200, collections);
   }
 
   async get(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
-    const collection = await collectionService.getWithProgress(workspaceId, ctx.req.param("id"));
+    const userId = ctx.get("userId") as string;
+    const id = ctx.req.param("id");
+    if (!id) throw new BadRequestException("Collection id is required");
+    const collection = await collectionService.getWithProgress(userId, id);
     return sendResponse.success(ctx, "Collection fetched", 200, collection);
   }
 
   async listMembers(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
     const page = Number(ctx.req.query("page") ?? "1");
     const pageSize = Number(ctx.req.query("pageSize") ?? "20");
     const status = ctx.req.query("status") as CollectionMemberStatus | undefined;
 
-    const result = await collectionService.listMembers(workspaceId, ctx.req.param("id") ?? "", {
+    const result = await collectionService.listMembers(userId, ctx.req.param("id") ?? "", {
       page: Number.isFinite(page) ? page : 1,
       pageSize: Number.isFinite(pageSize) ? pageSize : 20,
       status,
@@ -65,11 +58,11 @@ class CollectionController {
   }
 
   async listPayments(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
     const page = Number(ctx.req.query("page") ?? "1");
     const pageSize = Number(ctx.req.query("pageSize") ?? "20");
 
-    const result = await collectionService.listPayments(workspaceId, ctx.req.param("id") ?? "", {
+    const result = await collectionService.listPayments(userId, ctx.req.param("id") ?? "", {
       page: Number.isFinite(page) ? page : 1,
       pageSize: Number.isFinite(pageSize) ? pageSize : 20,
     });
@@ -86,33 +79,37 @@ class CollectionController {
   }
 
   async addMember(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
+    const id = ctx.req.param("id");
+    if (!id) throw new BadRequestException("Collection id is required");
     const input = ctx.get("validatedData") as AddMemberInput;
-    const member = await collectionService.addMember(workspaceId, ctx.req.param("id"), input);
+    const member = await collectionService.addMember(userId, id, input);
     return sendResponse.success(ctx, "Member added", 201, member);
   }
 
   async updateStatus(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
+    const id = ctx.req.param("id");
+    if (!id) throw new BadRequestException("Collection id is required");
     const { status } = ctx.get("validatedData") as UpdateCollectionStatusInput;
-    const collection = await collectionService.updateStatus(workspaceId, ctx.req.param("id"), status);
+    const collection = await collectionService.updateStatus(userId, id, status);
     return sendResponse.success(ctx, "Collection updated", 200, collection);
   }
 
   async update(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
     const collectionId = ctx.req.param("id");
     if (!collectionId) throw new BadRequestException("Collection id is required");
     const input = ctx.get("validatedData") as UpdateCollectionInput;
-    const collection = await collectionService.update(workspaceId, collectionId, input);
+    const collection = await collectionService.update(userId, collectionId, input);
     return sendResponse.success(ctx, "Collection updated", 200, collection);
   }
 
   async remove(ctx: Context) {
-    const workspaceId = await this.workspaceId(ctx);
+    const userId = ctx.get("userId") as string;
     const collectionId = ctx.req.param("id");
     if (!collectionId) throw new BadRequestException("Collection id is required");
-    await collectionService.remove(workspaceId, collectionId);
+    await collectionService.remove(userId, collectionId);
     return sendResponse.success(ctx, "Collection deleted", 200, null);
   }
 
@@ -129,6 +126,27 @@ class CollectionController {
     const input = ctx.get("validatedData") as CollectionPayCheckoutInput;
     const result = await paymentService.checkoutCollectionPay(reference, input);
     return sendResponse.success(ctx, "Checkout created", 201, result);
+  }
+
+  async cancelPay(ctx: Context) {
+    const reference = ctx.req.param("reference");
+    if (!reference) throw new BadRequestException("Collection reference is required");
+    const body = (await ctx.req.json().catch(() => ({}))) as { memberId?: string };
+    if (!body.memberId) throw new BadRequestException("memberId is required");
+    await collectionService.cancelMemberPending(reference, body.memberId);
+    return sendResponse.success(ctx, "Pending payment cancelled", 200, { cancelled: true });
+  }
+
+  async verifyPay(ctx: Context) {
+    const reference = ctx.req.param("reference");
+    if (!reference) throw new BadRequestException("Collection reference is required");
+    const body = (await ctx.req.json().catch(() => ({}))) as { pendingPaymentId?: string };
+    if (!body.pendingPaymentId) throw new BadRequestException("pendingPaymentId is required");
+    const result = await paymentService.reconcileOnce(body.pendingPaymentId, reference);
+    return sendResponse.success(ctx, "Payment status fetched", 200, {
+      status: result.status,
+      amount: result.amount,
+    });
   }
 }
 

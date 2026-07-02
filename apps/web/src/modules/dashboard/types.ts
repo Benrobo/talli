@@ -1,10 +1,9 @@
-export type ActivityKind = "paid" | "sent" | "saved";
-
 export type ActivityLink =
   | { to: "/app/collections/$slug"; params: { slug: string } }
   | { to: "/app/collections" }
   | { to: "/app/savings" }
   | { to: "/app/sent" }
+  | { to: "/app/home" }
   | { to: "/app/savings/$id"; params: { id: string } };
 
 export interface ActiveCollection {
@@ -26,7 +25,7 @@ export interface HomeJar {
 }
 
 export interface ActivityItem {
-  kind: ActivityKind;
+  reason: string;
   text: string;
   who: string;
   when: string;

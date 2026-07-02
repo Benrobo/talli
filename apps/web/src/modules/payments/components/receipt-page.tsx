@@ -1,9 +1,9 @@
-import { Link } from "@tanstack/react-router";
 import { cn } from "@app/ui";
 import { Button, Card, Spotlight } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
 import { Icon } from "@benrobo/iconary/react";
-import { Download01Icon, Tick02Icon } from "@benrobo/iconary/core/duotone-rounded";
+import { Download01Icon } from "@benrobo/iconary/core/duotone-rounded";
+import { Tick02Icon } from "@benrobo/iconary/core/solid-rounded";
 import { formatNaira } from "@/lib/format";
 import { paymentReceipt } from "@/data/mock/payments";
 
@@ -13,20 +13,13 @@ export function PaymentReceiptPage() {
   return (
     <MobileScreen
       footer={
-        <div className="flex flex-col gap-3">
-          <Link to="/app/receipts">
-            <Button block size="lg">
-              Go back to receipts
-            </Button>
-          </Link>
-          <Button
-            block
-            variant="secondary"
-            leadingIcon={<Icon icon={Download01Icon} size={16} />}
-          >
-            Download receipt
-          </Button>
-        </div>
+        <Button
+          block
+          size="lg"
+          leadingIcon={<Icon icon={Download01Icon} size={16} />}
+        >
+          Download receipt
+        </Button>
       }
     >
       <div className="flex flex-col items-center pt-6 text-center">

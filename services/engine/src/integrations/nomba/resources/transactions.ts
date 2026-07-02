@@ -3,12 +3,16 @@ import type { NombaHttpClient } from "../client.js";
 export interface Transaction {
   id: string;
   status: string;
-  amount: number;
+  amount: number | string;
   type: string;
   source: string;
   entryType: string;
   merchantTxRef: string;
   timeCreated: string;
+  sessionId?: string;
+  recipientAccountNumber?: string;
+  virtualAccountReference?: string;
+  recipientAccountType?: string;
   [key: string]: unknown;
 }
 
@@ -25,6 +29,13 @@ export interface ListTransactionsQuery {
   cursor?: string;
   dateFrom?: string;
   dateTo?: string;
+}
+
+export interface VirtualAccountTransactionsQuery {
+  virtualAccountNumber: string;
+  dateFrom: string;
+  dateTo: string;
+  limit?: number;
 }
 
 export interface TransactionPage {
@@ -60,7 +71,24 @@ export class TransactionResource {
     return this.http.request<TransactionPage>({
       method: "GET",
       path: "/v1/transactions/accounts",
-      query,
+      query: {
+        limit: query.limit,
+        cursor: query.cursor,
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+      },
+    });
+  }
+
+  async listByVirtualAccount(query: VirtualAccountTransactionsQuery): Promise<TransactionPage> {
+    return this.http.request<TransactionPage>({
+      method: "POST",
+      path: "/v1/transactions/accounts",
+      body: {
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+        limit: query.limit ?? 50,
+      },
     });
   }
 }

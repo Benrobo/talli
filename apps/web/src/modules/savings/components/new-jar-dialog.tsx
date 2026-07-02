@@ -1,21 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Input,
-  Switch,
-} from "@/components/ui";
+import { z } from "zod";
+import { BottomSheet, Button, Input, Switch } from "@/components/ui";
+import { Icon } from "@benrobo/iconary/react";
 import { useCreateSavingsJar } from "@/api/http/v1/savings/savings.hooks";
 import { createSavingsJarSchema } from "@/api/http/v1/savings/savings.types";
-import { z } from "zod";
+import { JarStylePicker } from "@/modules/savings/components/jar-style-picker";
+import {
+  DEFAULT_JAR_COLOR,
+  DEFAULT_JAR_ICON,
+  jarIconFor,
+} from "@/modules/savings/jar-style";
 
 interface NewJarDialogProps {
   trigger: ReactNode;
@@ -24,26 +20,23 @@ interface NewJarDialogProps {
 export function NewJarDialog({ trigger }: NewJarDialogProps) {
   const createJar = useCreateSavingsJar();
   const [open, setOpen] = useState(false);
+  const [icon, setIcon] = useState(DEFAULT_JAR_ICON);
+  const [accentColor, setAccentColor] = useState(DEFAULT_JAR_COLOR);
 
   const form = useForm({
-    defaultValues: {
-      name: "",
-      target: "",
-      locked: false,
-      unlockDate: "",
-    },
+    defaultValues: { name: "", target: "", locked: false, unlockDate: "" },
     onSubmit: async ({ value }) => {
-      const targetAmount = Number(value.target);
       try {
         const payload = createSavingsJarSchema.parse({
           name: value.name.trim(),
-          targetAmount,
+          icon,
+          accentColor,
+          targetAmount: Number(value.target),
           lockUntil: value.locked && value.unlockDate ? new Date(value.unlockDate) : undefined,
         });
         await createJar.mutateAsync(payload);
         toast.success("Savings jar created");
-        setOpen(false);
-        form.reset();
+        reset();
       } catch (error) {
         if (error instanceof z.ZodError) {
           toast.error(error.issues[0]?.message ?? "Invalid input");
@@ -54,29 +47,54 @@ export function NewJarDialog({ trigger }: NewJarDialogProps) {
     },
   });
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (!o) form.reset();
-      }}
-    >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[420px]">
-        <DialogHeader>
-          <DialogTitle className="text-[20px] font-bold tracking-[-0.01em]">New savings jar</DialogTitle>
-          <DialogDescription>Set money aside — lock it until a date or keep it flexible.</DialogDescription>
-        </DialogHeader>
+  function reset() {
+    setOpen(false);
+    form.reset();
+    setIcon(DEFAULT_JAR_ICON);
+    setAccentColor(DEFAULT_JAR_COLOR);
+  }
 
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="contents">
+        {trigger}
+      </button>
+
+      <BottomSheet
+        open={open}
+        onOpenChange={(next) => (next ? setOpen(true) : reset())}
+        title="New savings jar"
+        description="Set money aside — make it yours with an icon and color."
+        className="max-w-[460px] pb-7"
+      >
         <form
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-4 pt-1"
           onSubmit={(event) => {
             event.preventDefault();
             event.stopPropagation();
             form.handleSubmit();
           }}
         >
+          <form.Subscribe
+            selector={(state) => state.values.name}
+            children={(name) => (
+              <div className="flex items-center gap-3.5">
+                <span
+                  className="flex size-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-chip transition-colors"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  <Icon icon={jarIconFor(icon)} size={26} />
+                </span>
+                <div className="min-w-0">
+                  <div className="font-display text-[17px] font-bold tracking-[-0.01em] text-foreground">
+                    {name.trim() || "New jar"}
+                  </div>
+                  <div className="text-[12px] text-content-muted">This is how it'll look</div>
+                </div>
+              </div>
+            )}
+          />
+
           <form.Field
             name="name"
             validators={{
@@ -87,7 +105,7 @@ export function NewJarDialog({ trigger }: NewJarDialogProps) {
                 <span className="mb-1.5 block text-[12.5px] font-medium text-content-muted">Jar name</span>
                 <Input
                   autoFocus
-                  placeholder="e.g. Rent, Laptop, Emergency"
+                  placeholder="e.g. Rent, Laptop, Detty December"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
@@ -116,6 +134,13 @@ export function NewJarDialog({ trigger }: NewJarDialogProps) {
                 />
               </label>
             )}
+          />
+
+          <JarStylePicker
+            icon={icon}
+            accentColor={accentColor}
+            onIconChange={setIcon}
+            onColorChange={setAccentColor}
           />
 
           <form.Field
@@ -158,22 +183,24 @@ export function NewJarDialog({ trigger }: NewJarDialogProps) {
               ) : null
             }
           />
-        </form>
 
-        <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={createJar.isPending}>
-            Cancel
-          </Button>
           <form.Subscribe
             selector={(state) => [state.canSubmit, state.isSubmitting] as const}
             children={([canSubmit, isSubmitting]) => (
-              <Button onClick={() => form.handleSubmit()} disabled={!canSubmit || isSubmitting || createJar.isPending}>
-                {createJar.isPending ? "Creating…" : "Create jar"}
+              <Button
+                block
+                size="lg"
+                type="submit"
+                className="mt-1"
+                disabled={!canSubmit || isSubmitting}
+                loading={createJar.isPending}
+              >
+                Create jar
               </Button>
             )}
           />
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </form>
+      </BottomSheet>
+    </>
   );
 }

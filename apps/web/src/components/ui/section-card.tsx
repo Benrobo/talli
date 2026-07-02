@@ -26,12 +26,12 @@ export function SectionCard({
       )}
     >
       {title || action ? (
-        <div className="flex items-center justify-between gap-3 border-b border-hairline-soft px-5 py-4">
-          <div className="text-[15px] font-semibold text-foreground">{title}</div>
-          {action ? <div className="flex items-center gap-2">{action}</div> : null}
+        <div className="flex flex-wrap items-start justify-between gap-2.5 border-b border-hairline-soft px-4 py-3.5 sm:items-center sm:px-5 sm:py-4">
+          <div className="min-w-0 text-[15px] font-semibold text-foreground">{title}</div>
+          {action ? <div className="flex min-w-0 items-center gap-2">{action}</div> : null}
         </div>
       ) : null}
-      <div className={cn(!flush && "p-[18px]", bodyClassName)}>{children}</div>
+      <div className={cn(!flush && "p-4 sm:p-[18px]", bodyClassName)}>{children}</div>
     </div>
   );
 }

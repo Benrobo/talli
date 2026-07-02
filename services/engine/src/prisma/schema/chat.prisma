@@ -31,8 +31,8 @@ enum BotCommandStatus {
 /// `/start <code>`; everything the bot does is scoped through this link.
 model LinkedChat {
   id                        String           @id @default(cuid())
-  workspaceId               String
-  workspace                 Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId                    String
+  user                      User             @relation("LinkedChatOwner", fields: [userId], references: [id], onDelete: Cascade)
   platform                  ChatPlatform
   chatType                  ChatType
   platformChatId            String
@@ -48,12 +48,12 @@ model LinkedChat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  botCommands   BotCommand[]
-  collections   Collection[]
-  billSplits    BillSplit[]
+  botCommands BotCommand[]
+  collections Collection[]
+  billSplits  BillSplit[]
 
   @@unique([platform, platformChatId])
-  @@index([workspaceId])
+  @@index([userId])
   @@index([status])
   @@map("linked_chats")
 }
@@ -63,8 +63,6 @@ model LinkedChat {
 /// Stored hashed, expires, and is marked `usedAt` once redeemed.
 model ChatLinkCode {
   id              String          @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   platform        ChatPlatform
   codeHash        String
   purpose         ChatLinkPurpose
@@ -75,7 +73,7 @@ model ChatLinkCode {
 
   createdAt DateTime @default(now())
 
-  @@index([workspaceId])
+  @@index([createdByUserId])
   @@index([codeHash])
   @@index([expiresAt])
   @@map("chat_link_codes")
@@ -116,8 +114,8 @@ model PlatformUser {
 /// short-term chat history.
 model BotCommand {
   id               String           @id @default(cuid())
-  workspaceId      String
-  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   linkedChatId     String?
   linkedChat       LinkedChat?      @relation(fields: [linkedChatId], references: [id], onDelete: SetNull)
   platform         ChatPlatform
@@ -135,7 +133,7 @@ model BotCommand {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  @@index([workspaceId])
+  @@index([userId])
   @@index([linkedChatId])
   @@index([status])
   @@map("bot_commands")

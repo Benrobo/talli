@@ -58,10 +58,11 @@ export function DeleteCollectionDialog({ collection, trigger }: DeleteCollection
           </Button>
           <Button
             variant="destructive"
-            disabled={!canDelete || deleteCollection.isPending}
+            disabled={!canDelete}
+            loading={deleteCollection.isPending}
             onClick={handleDelete}
           >
-            {deleteCollection.isPending ? "Deleting…" : "Delete collection"}
+            Delete collection
           </Button>
         </DialogFooter>
       </DialogContent>

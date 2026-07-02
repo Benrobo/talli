@@ -1,5 +1,7 @@
+import type { PaymentKind } from "@prisma/client";
 import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
+import { ledgerService } from "./ledger.service.js";
 
 export interface MetricDelta {
   value: string;
@@ -8,9 +10,6 @@ export interface MetricDelta {
 
 export interface WalletMetrics {
   currency: string;
-  totalBalanceAcrossWorkspaces: {
-    amount: number;
-  };
   totalBalance: {
     amount: number;
     delta: MetricDelta | null;
@@ -72,19 +71,6 @@ interface SentTotals {
   count: number;
 }
 
-interface JarBalanceRow {
-  currentAmount: number;
-}
-
-interface JarIdRow {
-  id: string;
-}
-
-interface SavingsLedgerRow {
-  amount: number;
-  type: "deposit" | "withdrawal" | "adjustment";
-}
-
 interface CollectionMemberPaidRow {
   paidAmount: number;
   expectedAmount: number;
@@ -100,12 +86,13 @@ interface ActiveCollectionRow {
   members: CollectionMemberPaidRow[];
 }
 
-interface TransferAmountRow {
-  amount: number;
+interface CollectingCollectionRow {
+  id: string;
+  members: { paidAmount: number }[];
 }
 
-interface WorkspaceMembershipRow {
-  workspaceId: string;
+interface TransferAmountRow {
+  amount: number;
 }
 
 interface TopJarRow {
@@ -115,14 +102,23 @@ interface TopJarRow {
   targetAmount: number | null;
 }
 
-interface RecentTransactionRow {
+interface RecentPaymentRow {
   id: string;
-  type: "credit" | "debit";
-  reason: string;
+  direction: "credit" | "debit";
+  kind: PaymentKind;
   amount: number;
   createdAt: Date;
   referenceId: string | null;
 }
+
+const REASON_BY_KIND: Record<PaymentKind, string> = {
+  savings_deposit: "savings_deposit",
+  savings_withdrawal: "savings_withdrawal",
+  collection_payment: "collection",
+  transfer_out: "send",
+  wallet_topup: "topup",
+  refund: "refund",
+};
 
 function formatPercentChange(current: number, previous: number): MetricDelta | null {
   if (previous === 0) {
@@ -140,16 +136,9 @@ function formatPercentChange(current: number, previous: number): MetricDelta | n
   return { value: `${rounded >= 0 ? "+" : "-"}${formatted}%`, direction };
 }
 
-function sumMemberPaid(members: CollectionMemberPaidRow[]): number {
-  return members.reduce((memberSum: number, member: CollectionMemberPaidRow) => {
+function sumMemberPaid(members: { paidAmount: number }[]): number {
+  return members.reduce((memberSum: number, member) => {
     return memberSum + member.paidAmount;
-  }, 0);
-}
-
-function sumSavingsLedger(txs: SavingsLedgerRow[]): number {
-  return txs.reduce((sum: number, tx: SavingsLedgerRow) => {
-    if (tx.type === "withdrawal") return sum - tx.amount;
-    return sum + tx.amount;
   }, 0);
 }
 
@@ -163,43 +152,37 @@ function sumTransferAmounts(rows: TransferAmountRow[]): number {
  * motion), not the Nomba-funded wallet float.
  */
 class WalletMetricsService {
-  async get(userId: string, workspaceId: string): Promise<WalletMetrics> {
+  async get(userId: string): Promise<WalletMetrics> {
     const startOfThisMonth = dayjs().startOf("month").toDate();
     const startOfLastMonth = dayjs().subtract(1, "month").startOf("month").toDate();
     const endOfLastMonth = dayjs().subtract(1, "month").endOf("month").toDate();
 
-    const [jarsNow, jarsLastMonth, collecting, sentThisMonth, sentLastMonth, currency, totalBalanceAcrossWorkspaces] =
-      await Promise.all([
-        this.jarsTotal(userId, workspaceId),
-        this.jarsTotalAt(userId, workspaceId, endOfLastMonth),
-        this.collectingTotals(workspaceId, startOfThisMonth),
-        this.sentTotals(workspaceId, startOfThisMonth, null),
-        this.sentTotals(workspaceId, startOfLastMonth, endOfLastMonth),
-        this.workspaceCurrency(workspaceId),
-        this.totalBalanceAcrossWorkspaces(userId),
-      ]);
+    const [jarsNow, collecting, sentThisMonth, sentLastMonth, walletBalance] = await Promise.all([
+      this.jarsTotal(userId),
+      this.collectingTotals(userId, startOfThisMonth),
+      this.sentTotals(userId, startOfThisMonth, null),
+      this.sentTotals(userId, startOfLastMonth, endOfLastMonth),
+      ledgerService.getBalance(userId),
+    ]);
     const [activeCollection, topJars, recentTransactions] = await Promise.all([
-      this.activeCollectionByCash(workspaceId),
-      this.topJarsByCash(userId, workspaceId),
+      this.activeCollectionByCash(userId),
+      this.topJarsByCash(userId),
       this.recentTransactions(userId),
     ]);
 
     const totalNow = jarsNow.amount + collecting.amount;
-    const totalLastMonth = jarsLastMonth + collecting.amountAtMonthStart;
+    const totalLastMonth = collecting.amountAtMonthStart;
 
     return {
-      currency,
-      totalBalanceAcrossWorkspaces: {
-        amount: totalBalanceAcrossWorkspaces,
-      },
+      currency: "NGN",
       totalBalance: {
-        amount: totalNow,
+        amount: walletBalance,
         delta: formatPercentChange(totalNow, totalLastMonth),
       },
       savedAcrossJars: {
         amount: jarsNow.amount,
         activeJars: jarsNow.count,
-        delta: formatPercentChange(jarsNow.amount, jarsLastMonth),
+        delta: null,
       },
       collectingNow: {
         amount: collecting.amount,
@@ -217,59 +200,27 @@ class WalletMetricsService {
     };
   }
 
-  private async workspaceCurrency(workspaceId: string): Promise<string> {
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { currency: true },
-    });
-    return workspace?.currency ?? "NGN";
-  }
-
-  private async jarsTotal(userId: string, workspaceId: string): Promise<JarsTotal> {
-    const jars: JarBalanceRow[] = await prisma.savingsJar.findMany({
-      where: { workspaceId, ownerUserId: userId, status: "active" },
+  private async jarsTotal(userId: string): Promise<JarsTotal> {
+    const jars = await prisma.savingsJar.findMany({
+      where: { ownerUserId: userId, status: "active" },
       select: { currentAmount: true },
     });
 
-    const amount = jars.reduce((sum: number, jar: JarBalanceRow) => sum + jar.currentAmount, 0);
+    const amount = jars.reduce((sum: number, jar) => sum + jar.currentAmount, 0);
     return { amount, count: jars.length };
   }
 
-  private async jarsTotalAt(userId: string, workspaceId: string, asOf: Date): Promise<number> {
-    const jars: JarIdRow[] = await prisma.savingsJar.findMany({
-      where: { workspaceId, ownerUserId: userId, status: "active" },
-      select: { id: true },
-    });
-
-    const jarIds = jars.map((jar: JarIdRow) => jar.id);
-    if (jarIds.length === 0) return 0;
-
-    const txs: SavingsLedgerRow[] = await prisma.savingsTransaction.findMany({
-      where: {
-        savingsJarId: { in: jarIds },
-        status: "completed",
-        createdAt: { lte: asOf },
-      },
-      select: { amount: true, type: true },
-    });
-
-    return sumSavingsLedger(txs);
-  }
-
-  private async collectingTotals(
-    workspaceId: string,
-    startOfThisMonth: Date
-  ): Promise<CollectingTotals> {
-    const collections: ActiveCollectionRow[] = await prisma.collection.findMany({
-      where: { workspaceId, status: { in: ["active", "partially_paid"] } },
+  private async collectingTotals(userId: string, startOfThisMonth: Date): Promise<CollectingTotals> {
+    const collections: CollectingCollectionRow[] = await prisma.collection.findMany({
+      where: { ownerUserId: userId, status: { in: ["active", "partially_paid"] } },
       select: {
         id: true,
         members: { select: { paidAmount: true } },
       },
     });
 
-    const collectionIds = collections.map((row: ActiveCollectionRow) => row.id);
-    const amount = collections.reduce((sum: number, row: ActiveCollectionRow) => {
+    const collectionIds = collections.map((row: CollectingCollectionRow) => row.id);
+    const amount = collections.reduce((sum: number, row: CollectingCollectionRow) => {
       return sum + sumMemberPaid(row.members);
     }, 0);
 
@@ -278,6 +229,8 @@ class WalletMetricsService {
       const prior = await prisma.payment.aggregate({
         where: {
           collectionId: { in: collectionIds },
+          kind: "collection_payment",
+          direction: "credit",
           status: "successful",
           paidAt: { lt: startOfThisMonth },
         },
@@ -289,19 +242,19 @@ class WalletMetricsService {
     return { amount, count: collections.length, amountAtMonthStart };
   }
 
-  private async sentTotals(workspaceId: string, from: Date, to: Date | null): Promise<SentTotals> {
+  private async sentTotals(userId: string, from: Date, to: Date | null): Promise<SentTotals> {
     const createdAt = to ? { gte: from, lte: to } : { gte: from };
     const rows: TransferAmountRow[] = await prisma.transfer.findMany({
-      where: { workspaceId, status: "sent", createdAt },
+      where: { userId, status: "sent", createdAt },
       select: { amount: true },
     });
 
     return { amount: sumTransferAmounts(rows), count: rows.length };
   }
 
-  private async activeCollectionByCash(workspaceId: string): Promise<WalletMetrics["activeCollection"]> {
+  private async activeCollectionByCash(userId: string): Promise<WalletMetrics["activeCollection"]> {
     const collections: ActiveCollectionRow[] = await prisma.collection.findMany({
-      where: { workspaceId, status: { in: ["active", "partially_paid"] } },
+      where: { ownerUserId: userId, status: { in: ["active", "partially_paid"] } },
       select: {
         id: true,
         title: true,
@@ -345,9 +298,9 @@ class WalletMetricsService {
     };
   }
 
-  private async topJarsByCash(userId: string, workspaceId: string): Promise<WalletMetrics["topJars"]> {
+  private async topJarsByCash(userId: string): Promise<WalletMetrics["topJars"]> {
     const jars: TopJarRow[] = await prisma.savingsJar.findMany({
-      where: { workspaceId, ownerUserId: userId, status: "active" },
+      where: { ownerUserId: userId, status: "active" },
       select: {
         id: true,
         name: true,
@@ -367,18 +320,12 @@ class WalletMetricsService {
   }
 
   private async recentTransactions(userId: string): Promise<WalletMetrics["recentTransactions"]> {
-    const wallet = await prisma.wallet.findUnique({
+    const rows: RecentPaymentRow[] = await prisma.payment.findMany({
       where: { userId },
-      select: { id: true },
-    });
-    if (!wallet) return [];
-
-    const rows: RecentTransactionRow[] = await prisma.walletTransaction.findMany({
-      where: { walletId: wallet.id },
       select: {
         id: true,
-        type: true,
-        reason: true,
+        direction: true,
+        kind: true,
         amount: true,
         createdAt: true,
         referenceId: true,
@@ -389,47 +336,12 @@ class WalletMetricsService {
 
     return rows.map((row) => ({
       id: row.id,
-      type: row.type,
-      reason: row.reason,
+      type: row.direction,
+      reason: REASON_BY_KIND[row.kind] ?? row.kind,
       amount: row.amount,
       createdAt: row.createdAt.toISOString(),
       referenceId: row.referenceId,
     }));
-  }
-
-  private async totalBalanceAcrossWorkspaces(userId: string): Promise<number> {
-    const memberships: WorkspaceMembershipRow[] = await prisma.workspaceMember.findMany({
-      where: { userId },
-      select: { workspaceId: true },
-    });
-    const workspaceIds = memberships.map((membership: WorkspaceMembershipRow) => membership.workspaceId);
-    if (workspaceIds.length === 0) return 0;
-
-    const jars = await prisma.savingsJar.aggregate({
-      where: {
-        ownerUserId: userId,
-        workspaceId: { in: workspaceIds },
-        status: "active",
-      },
-      _sum: { currentAmount: true },
-    });
-
-    const collections: ActiveCollectionRow[] = await prisma.collection.findMany({
-      where: {
-        workspaceId: { in: workspaceIds },
-        status: { in: ["active", "partially_paid"] },
-      },
-      select: {
-        id: true,
-        members: { select: { paidAmount: true } },
-      },
-    });
-
-    const collecting = collections.reduce((sum: number, row: ActiveCollectionRow) => {
-      return sum + sumMemberPaid(row.members);
-    }, 0);
-
-    return (jars._sum.currentAmount ?? 0) + collecting;
   }
 }
 

@@ -8,6 +8,8 @@ export interface Deposit {
 export interface Jar {
   id: string;
   name: string;
+  icon: string;
+  accentColor: string;
   savedMinor: number;
   targetMinor: number;
   targetAmountMinor: number | null;

@@ -19,8 +19,13 @@ interface DataTableProps<T> {
 
 export function DataTable<T>({ columns, rows, rowKey, onRowClick, className }: DataTableProps<T>) {
   return (
-    <div className={cn("overflow-hidden rounded-[15px] border border-hairline bg-card shadow-card", className)}>
-      <table className="w-full border-collapse">
+    <div
+      className={cn(
+        "overflow-x-auto overscroll-x-contain rounded-[15px] border border-hairline bg-card shadow-card",
+        className
+      )}
+    >
+      <table className="w-full min-w-[680px] border-collapse">
         <thead>
           <tr className="border-b border-hairline-soft">
             {columns.map((col) => (
@@ -43,7 +48,7 @@ export function DataTable<T>({ columns, rows, rowKey, onRowClick, className }: D
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               className={cn(
-                "border-b border-hairline-soft transition-colors last:border-b-0",
+                "group/row border-b border-hairline-soft transition-colors last:border-b-0",
                 onRowClick && "cursor-pointer hover:bg-muted/40"
               )}
             >

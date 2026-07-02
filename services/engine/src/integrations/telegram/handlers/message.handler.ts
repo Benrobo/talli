@@ -1,5 +1,4 @@
 import env from "../../../config/env.js";
-import prisma from "../../../prisma/index.js";
 import { chatLinkService } from "../../../services/chat-link.service.js";
 import { intentDispatcherService, type DispatchContext, type DispatchResult } from "../../../services/intent-dispatcher.service.js";
 import { botCommandService } from "../../../services/bot-command.service.js";
@@ -39,15 +38,6 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
     return;
   }
 
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: linked.workspaceId },
-    select: { name: true, ownerUserId: true },
-  });
-  if (!workspace) {
-    await safeReply(ctx, messages.actionFailed);
-    return;
-  }
-
   const identity = await platformUserService.upsert({
     platform: "telegram",
     platformUserId: String(ctx.from!.id),
@@ -59,12 +49,10 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
   const senderId = String(ctx.from!.id);
   const dispatchCtx: DispatchContext = {
     scope: isGroup ? "group" : "private",
-    workspaceId: linked.workspaceId,
+    userId: linked.userId,
     linkedChatId: linked.id,
     platform: "telegram",
     senderPlatformId: senderId,
-    ownerUserId: workspace.ownerUserId,
-    workspaceName: workspace.name,
     senderName: platformUserService.formatName(identity),
     isGroupAdmin: isGroup ? await isSenderAdmin(ctx) : true,
   };

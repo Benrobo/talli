@@ -30,6 +30,18 @@ router.post(
 );
 
 router.post(
+  "/collections/pay/:reference/cancel",
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 20, keyPrefix: "collection:cancel" }),
+  useCatchErrors(c.cancelPay.bind(c))
+);
+
+router.post(
+  "/collections/pay/:reference/verify",
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 30, keyPrefix: "collection:verify" }),
+  useCatchErrors(c.verifyPay.bind(c))
+);
+
+router.post(
   "/collections",
   validateSchema(createCollectionSchema),
   useCatchErrors(isAuthenticated(c.create.bind(c)))

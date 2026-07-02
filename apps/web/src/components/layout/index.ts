@@ -1,5 +1,5 @@
 export { DashboardLayout } from "./dashboard-layout";
-export { Sidebar } from "./sidebar";
-export { SidebarNavLink } from "./sidebar-nav-link";
-export { WorkspaceSwitcher } from "./workspace-switcher";
+export { MobileBottomNav } from "./mobile-bottom-nav";
+export { Topbar } from "./topbar";
+export { TopbarNavLink } from "./topbar-nav-link";
 export { MobileScreen } from "./mobile-screen";

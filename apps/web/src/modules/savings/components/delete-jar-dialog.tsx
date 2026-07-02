@@ -56,8 +56,13 @@ export function DeleteJarDialog({ jar, trigger }: DeleteJarDialogProps) {
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={deleteJar.isPending}>
             Cancel
           </Button>
-          <Button variant="destructive" disabled={!canDelete || deleteJar.isPending} onClick={handleDelete}>
-            {deleteJar.isPending ? "Deleting…" : "Delete jar"}
+          <Button
+            variant="destructive"
+            disabled={!canDelete}
+            loading={deleteJar.isPending}
+            onClick={handleDelete}
+          >
+            Delete jar
           </Button>
         </DialogFooter>
       </DialogContent>

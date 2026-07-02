@@ -2,16 +2,18 @@ enum PaymentProvider {
   nomba
 }
 
-enum PendingPaymentStatus {
-  pending
-  completed
-  expired
-  failed
+enum PaymentDirection {
+  credit
+  debit
 }
 
-enum PendingPaymentPurpose {
-  topup
-  collection
+enum PaymentKind {
+  wallet_topup
+  collection_payment
+  savings_deposit
+  savings_withdrawal
+  transfer_out
+  refund
 }
 
 enum PaymentStatus {
@@ -21,33 +23,51 @@ enum PaymentStatus {
   cancelled
 }
 
+enum PendingPaymentStatus {
+  pending
+  completed
+  expired
+  failed
+  cancelled
+}
+
+enum PendingPaymentPurpose {
+  wallet_topup
+  savings_funding
+  collection
+}
+
 model Payment {
   id                 String            @id @default(cuid())
-  workspaceId        String
-  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User              @relation("PaymentOwner", fields: [userId], references: [id], onDelete: Cascade)
+  direction          PaymentDirection
+  kind               PaymentKind
+  amount             Int
+  currency           String            @default("NGN")
+  status             PaymentStatus     @default(successful)
+  balanceAfter       Int?
   collectionId       String?
   collection         Collection?       @relation(fields: [collectionId], references: [id], onDelete: SetNull)
   collectionMemberId String?
   collectionMember   CollectionMember? @relation(fields: [collectionMemberId], references: [id], onDelete: SetNull)
   savingsJarId       String?
   savingsJar         SavingsJar?       @relation(fields: [savingsJarId], references: [id], onDelete: SetNull)
+  transferId         String?
   payerUserId        String?
   payer              User?             @relation("PaymentPayer", fields: [payerUserId], references: [id], onDelete: SetNull)
   payerPlatformId    String?
-  amount             Int
-  currency           String            @default("NGN")
   provider           PaymentProvider   @default(nomba)
   providerReference  String?
   providerOrderId    String?
-  status             PaymentStatus     @default(pending)
+  referenceId        String?           @unique
   paidAt             DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  savingsTransactions SavingsTransaction[]
-
-  @@index([workspaceId])
+  @@index([userId])
+  @@index([userId, kind])
   @@index([collectionId])
   @@index([savingsJarId])
   @@index([providerReference])
@@ -56,29 +76,30 @@ model Payment {
   @@map("payments")
 }
 
-/// A queued inbound bank transfer reconciled by polling (not webhooks). Serves
-/// wallet top-ups (walletId) and collection payments (collectionMemberId). The
-/// flash account number is what the payer transfers to.
 model PendingPayment {
-  id                  String                @id @default(cuid())
-  orderRefId          String                @unique
-  purpose             PendingPaymentPurpose
-  walletId            String?
-  collectionId        String?
-  collectionMemberId  String?
-  payerPlatformUserId String?
-  amount              Int
-  flashAccountNumber  String?
-  flashBankName       String?
-  flashAccountName    String?
-  status              PendingPaymentStatus  @default(pending)
-  pollAttempts        Int                   @default(0)
-  expiresAt           DateTime?
-  completedAt         DateTime?
+  id                   String                @id @default(cuid())
+  orderRefId           String                @unique
+  purpose              PendingPaymentPurpose
+  userId               String?
+  savingsJarId         String?
+  collectionId         String?
+  collectionMemberId   String?
+  payerPlatformUserId  String?
+  amount               Int
+  virtualAccountNumber String?
+  flashAccountNumber   String?
+  flashBankName        String?
+  flashAccountName     String?
+  status               PendingPaymentStatus  @default(pending)
+  providerTransactionId String?              @unique
+  pollAttempts         Int                   @default(0)
+  expiresAt            DateTime?
+  completedAt          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
+  @@index([userId])
   @@map("pending_payments")
 }

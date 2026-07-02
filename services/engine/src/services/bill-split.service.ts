@@ -13,7 +13,6 @@ const EXPIRY_DAYS = 7;
 const TOKEN_PREFIX = "bs_";
 
 export interface CreateBillSplitContext {
-  workspaceId: string;
   ownerUserId: string;
   source: BillSplitSource;
   linkedChatId?: string;
@@ -63,7 +62,7 @@ class BillSplitService {
     const token = `${TOKEN_PREFIX}${randomToken(16)}`;
     const expiresAt = dayjs().add(EXPIRY_DAYS, "day").toDate();
 
-    const collection = await collectionService.create(ctx.workspaceId, ctx.ownerUserId, {
+    const collection = await collectionService.create(ctx.ownerUserId, {
       title: ctx.title,
       purpose: "bill_split",
       collectionType: "named_members",
@@ -74,7 +73,6 @@ class BillSplitService {
     try {
       const billSplit = await prisma.billSplit.create({
         data: {
-          workspaceId: ctx.workspaceId,
           linkedChatId: ctx.linkedChatId,
           collectionId: collection.id,
           createdByUserId: ctx.ownerUserId,
@@ -142,13 +140,12 @@ class BillSplitService {
     const amount = chosen.reduce((sum, item) => sum + item.unitPrice, 0);
     const payerName = input.payerName.trim();
 
-    const member = await collectionService.addMember(billSplit.workspaceId, billSplit.collectionId, {
+    const member = await collectionService.addMember(billSplit.createdByUserId, billSplit.collectionId, {
       displayName: payerName,
       expectedAmount: amount,
     });
 
-    const pending = await paymentService.create({
-      purpose: "collection",
+    const pending = await paymentService.createCollectionCheckout({
       amount,
       collectionId: billSplit.collectionId,
       collectionMemberId: member.id,
@@ -229,9 +226,9 @@ class BillSplitService {
     });
   }
 
-  async list(workspaceId: string) {
+  async list(ownerUserId: string) {
     const billSplits = await prisma.billSplit.findMany({
-      where: { workspaceId },
+      where: { createdByUserId: ownerUserId },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -267,9 +264,9 @@ class BillSplitService {
     }));
   }
 
-  async getDetail(workspaceId: string, billSplitId: string) {
+  async getDetail(ownerUserId: string, billSplitId: string) {
     const billSplit = await prisma.billSplit.findFirst({
-      where: { id: billSplitId, workspaceId },
+      where: { id: billSplitId, createdByUserId: ownerUserId },
       include: {
         items: { orderBy: { sortOrder: "asc" } },
         selections: {

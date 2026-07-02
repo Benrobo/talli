@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import {
   Button,
   EmptyState,
@@ -24,6 +25,8 @@ import type { Jar } from "@/modules/savings/types";
 function toJar(record: {
   id: string;
   name: string;
+  icon: string;
+  accentColor: string;
   currentAmount: number;
   targetAmount: number | null;
   status: string;
@@ -32,12 +35,14 @@ function toJar(record: {
   return {
     id: record.id,
     name: record.name,
+    icon: record.icon,
+    accentColor: record.accentColor,
     savedMinor: record.currentAmount,
     targetMinor: record.targetAmount ?? record.currentAmount,
     targetAmountMinor: record.targetAmount,
     lockUntil: record.lockUntil,
     status: record.status === "locked" ? "locked" : "active",
-    lockText: record.lockUntil ? `unlocks ${new Date(record.lockUntil).toLocaleDateString("en-NG")}` : "no lock",
+    lockText: record.lockUntil ? `unlocks ${dayjs(record.lockUntil).format("DD/MM/YYYY")}` : "no lock",
     canEditAmounts: record.currentAmount === 0,
     deposits: [],
   };
@@ -92,7 +97,7 @@ export function SavingsPage() {
         </FadeIn>
       ) : (
         <>
-          <FadeIn delay={0.05} className="mb-5 grid grid-cols-3 gap-3.5">
+          <FadeIn delay={0.05} className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
             <StatCard
               tone="filled"
               label="Saved across jars"
@@ -118,7 +123,7 @@ export function SavingsPage() {
             <span className="text-[13px] font-semibold text-foreground">All jars</span>
           </FadeIn>
 
-          <Stagger className="grid grid-cols-3 gap-3.5">
+          <Stagger className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
             {jars.map((jar) => (
               <StaggerItem key={jar.id}>
                 <JarCard jar={jar} />

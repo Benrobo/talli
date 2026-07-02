@@ -6,6 +6,7 @@ export { Progress } from "./progress";
 export { ProgressBar } from "./progress-bar";
 export { RingProgress } from "./ring-progress";
 export { Avatar } from "./avatar";
+export { UserAvatar, dicebearUrl } from "./user-avatar";
 export { StatCard } from "./stat-card";
 export { Spotlight, IconChip, DeltaPill, TallyWatermark } from "./surface";
 export { BottomSheet } from "./bottom-sheet";
@@ -59,7 +60,6 @@ export {
   SelectItem,
   SelectSeparator,
 } from "./select";
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip";
 export {
   DropdownMenu,
   DropdownMenuTrigger,

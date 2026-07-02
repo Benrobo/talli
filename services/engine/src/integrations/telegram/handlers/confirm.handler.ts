@@ -1,4 +1,3 @@
-import prisma from "../../../prisma/index.js";
 import { chatLinkService } from "../../../services/chat-link.service.js";
 import { intentDispatcherService } from "../../../services/intent-dispatcher.service.js";
 import { botCommandService } from "../../../services/bot-command.service.js";
@@ -34,13 +33,7 @@ export async function handleConfirm(
   }
 
   const linked = await chatLinkService.findActiveChat("telegram", String(ctx.chat!.id));
-  const workspace = linked
-    ? await prisma.workspace.findUnique({
-        where: { id: linked.workspaceId },
-        select: { name: true, ownerUserId: true },
-      })
-    : null;
-  if (!linked || !workspace) {
+  if (!linked) {
     await safeReply(ctx, messages.actionFailed);
     return;
   }
@@ -54,12 +47,10 @@ export async function handleConfirm(
 
   const result = await intentDispatcherService.confirm(commandId, {
     scope: isGroupChat(ctx) ? "group" : "private",
-    workspaceId: linked.workspaceId,
+    userId: linked.userId,
     linkedChatId: linked.id,
     platform: "telegram",
     senderPlatformId: String(ctx.from!.id),
-    ownerUserId: workspace.ownerUserId,
-    workspaceName: workspace.name,
     senderName: platformUserService.formatName(identity),
     isGroupAdmin: true,
   });

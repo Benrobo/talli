@@ -20,8 +20,8 @@ export function ErrorState({
   className,
 }: ErrorStateProps) {
   return (
-    <div className={cn("flex min-h-[50vh] items-center justify-center px-6", className)}>
-      <div className="w-full max-w-[400px] rounded-[22px] border border-hairline bg-card px-8 py-12 text-center shadow-card">
+    <div className={cn("flex min-h-[50vh] items-center justify-center px-2 sm:px-6", className)}>
+      <div className="w-full max-w-[400px] rounded-[22px] border border-hairline bg-card px-4 py-10 text-center shadow-card sm:px-8 sm:py-12">
         <span className="mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl bg-rose-soft text-rose-deep shadow-chip">
           <Icon icon={AlertCircleIcon} size={30} />
         </span>

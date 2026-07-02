@@ -1,5 +1,53 @@
 import { sendEmail } from "../config/cloudflare/cf-email.js";
 import { generateOtpEmailHtml } from "../data/email-templates/otp-email.js";
+import { generatePaymentReceiptHtml } from "../data/email-templates/payment-receipt.js";
+import { generatePaymentFailedHtml } from "../data/email-templates/payment-failed.js";
+import { generatePaymentRecoveredHtml } from "../data/email-templates/payment-recovered.js";
+import { generateCollectionCompleteHtml } from "../data/email-templates/collection-complete.js";
+import { generateWalletTopupHtml } from "../data/email-templates/wallet-topup.js";
+
+interface PaymentReceiptProps {
+  payerName: string;
+  amount: number;
+  purpose: string;
+  from: string;
+  to: string;
+  reference: string;
+  dateLabel: string;
+}
+
+interface PaymentFailedProps {
+  payerName: string;
+  amount: number;
+  purpose: string;
+  reference: string;
+  retryUrl: string;
+}
+
+interface PaymentRecoveredProps {
+  payerName: string;
+  amount: number;
+  purpose: string;
+  reference: string;
+  dateLabel: string;
+}
+
+interface CollectionCompleteProps {
+  ownerName: string;
+  title: string;
+  totalCollected: number;
+  memberCount: number;
+}
+
+interface WalletTopupProps {
+  name: string;
+  amount: number;
+  newBalance: number;
+  reference: string;
+  dateLabel: string;
+}
+
+const naira = (amount: number): string => `₦${amount.toLocaleString("en-NG")}`;
 
 interface SendMailParams {
   to: string;
@@ -34,6 +82,46 @@ class MailService {
       to,
       subject: `${code} is your verification code`,
       html: generateOtpEmailHtml({ code, mode }),
+    });
+  }
+
+  async sendPaymentReceipt(to: string, props: PaymentReceiptProps): Promise<void> {
+    await this.send({
+      to,
+      subject: `Receipt — ${naira(props.amount)} for ${props.purpose}`,
+      html: generatePaymentReceiptHtml(props),
+    });
+  }
+
+  async sendPaymentFailed(to: string, props: PaymentFailedProps): Promise<void> {
+    await this.send({
+      to,
+      subject: `We couldn't confirm your ${naira(props.amount)} payment`,
+      html: generatePaymentFailedHtml(props),
+    });
+  }
+
+  async sendPaymentRecovered(to: string, props: PaymentRecoveredProps): Promise<void> {
+    await this.send({
+      to,
+      subject: `Confirmed — your ${naira(props.amount)} payment came through`,
+      html: generatePaymentRecoveredHtml(props),
+    });
+  }
+
+  async sendCollectionComplete(to: string, props: CollectionCompleteProps): Promise<void> {
+    await this.send({
+      to,
+      subject: `${props.title} is fully funded — ${naira(props.totalCollected)} raised`,
+      html: generateCollectionCompleteHtml(props),
+    });
+  }
+
+  async sendWalletTopup(to: string, props: WalletTopupProps): Promise<void> {
+    await this.send({
+      to,
+      subject: `${naira(props.amount)} added to your Talli wallet`,
+      html: generateWalletTopupHtml(props),
     });
   }
 }

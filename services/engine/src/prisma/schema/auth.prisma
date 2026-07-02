@@ -15,28 +15,47 @@ model User {
 
   passwordHash String?
 
+  walletBalance Int    @default(0)
+  currency      String @default("NGN")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  activeWorkspaceId String?
 
   accounts              Account[]
   sessions              AuthSession[]
   refreshTokens         RefreshToken[]
-  ownedWorkspaces       Workspace[]        @relation("WorkspaceOwner")
-  workspaceMemberships  WorkspaceMember[]
   verifiedLinkedChats   LinkedChat[]       @relation("LinkedChatVerifier")
   platformIdentities    PlatformUser[]     @relation("PlatformUserAccount")
+  linkedChats           LinkedChat[]       @relation("LinkedChatOwner")
   chatLinkCodesCreated  ChatLinkCode[]
-  collectionsCreated    Collection[]
+  botCommands           BotCommand[]
+  collections           Collection[]
   billSplitsCreated     BillSplit[]
   collectionMemberships CollectionMember[]
   savingsJars           SavingsJar[]
+  beneficiaries         Beneficiary[]
+  transfers             Transfer[]
+  payments              Payment[]          @relation("PaymentOwner")
   paymentsAsPayer       Payment[]          @relation("PaymentPayer")
-  wallet                Wallet?
+  virtualAccount        VirtualAccount?
   auditLogs             AuditLog[]
 
   @@map("users")
+}
+
+model VirtualAccount {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountRef    String   @unique
+  accountNumber String
+  bankName      String
+  accountName   String
+  provider      String   @default("nomba")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("virtual_accounts")
 }
 
 enum AccountProvider {

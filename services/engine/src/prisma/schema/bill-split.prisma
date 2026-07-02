@@ -17,8 +17,6 @@ enum BillSplitItemStatus {
 
 model BillSplit {
   id              String          @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   linkedChatId    String?
   linkedChat      LinkedChat?     @relation(fields: [linkedChatId], references: [id], onDelete: SetNull)
   collectionId    String          @unique
@@ -41,21 +39,21 @@ model BillSplit {
   items      BillSplitItem[]
   selections BillSplitSelection[]
 
-  @@index([workspaceId])
+  @@index([createdByUserId])
   @@index([linkedChatId])
   @@index([status])
   @@map("bill_splits")
 }
 
 model BillSplitItem {
-  id          String              @id @default(cuid())
-  billSplitId String
-  billSplit   BillSplit           @relation(fields: [billSplitId], references: [id], onDelete: Cascade)
-  label       String
-  unitPrice   Int
-  sortOrder   Int                 @default(0)
-  status      BillSplitItemStatus @default(available)
-  paidByName  String?
+  id                   String              @id @default(cuid())
+  billSplitId          String
+  billSplit            BillSplit           @relation(fields: [billSplitId], references: [id], onDelete: Cascade)
+  label                String
+  unitPrice            Int
+  sortOrder            Int                 @default(0)
+  status               BillSplitItemStatus @default(available)
+  paidByName           String?
   claimedBySelectionId String?
 
   createdAt DateTime @default(now())

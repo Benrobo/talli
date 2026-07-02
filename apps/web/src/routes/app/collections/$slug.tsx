@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import dayjs from "dayjs";
 import { CollectionDetailPage } from "@/modules/collections/components/collection-detail-page";
 import { useCollection, useCollectionMembers } from "@/api/http/v1/collections/collections.hooks";
 import { NotFoundState } from "@/components/empty-states";
@@ -53,7 +54,7 @@ function CollectionDetailRoute() {
     collectedMinor: totalCollected,
     paidCount: members.filter((member) => member.status === "paid").length,
     memberCount: members.length,
-    due: deadline ? new Date(deadline).toLocaleDateString("en-NG") : "",
+    due: deadline ? dayjs(deadline).format("DD/MM/YYYY") : "",
     deadline,
     canEditAmounts: totalCollected === 0 && !members.some((member) => member.paidAmount > 0),
     members: members.map((member) => ({

@@ -1,14 +1,15 @@
 import dayjs from "dayjs";
+import type { BillSplit } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import env from "../config/env.js";
 import { randomToken } from "../lib/utils.js";
 import { nomba } from "../integrations/nomba/index.js";
 import { telegram } from "../integrations/telegram/bot.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
-import { walletService } from "./wallet.service.js";
+import { ledgerService } from "./ledger.service.js";
 import { collectionService } from "./collection.service.js";
-import { savingsService } from "./savings.service.js";
 import { billSplitService } from "./bill-split.service.js";
+import { virtualAccountService } from "./virtual-account.service.js";
 import { mailService } from "./mail.service.js";
 import { receiptService } from "./receipt/index.js";
 import { emitToBill } from "../socket/server.js";
@@ -23,24 +24,27 @@ type TxClient = Parameters<typeof prisma.$transaction>[0] extends (
   ? T
   : never;
 
-export type PendingPurpose = "topup" | "collection";
-
-export interface CreatePendingInput {
-  purpose: PendingPurpose;
+export interface CreateCollectionCheckoutInput {
+  collectionId: string;
+  collectionMemberId: string;
   amount: number;
   customerEmail?: string;
-  walletId?: string;
-  collectionId?: string;
-  collectionMemberId?: string;
   payerPlatformUserId?: string;
 }
 
-export interface CreatedPending {
+export interface CreatedCollectionCheckout {
   pendingPayment: PendingPayment;
   flashAccountNumber: string;
   flashBankName: string;
   flashAccountName?: string;
   checkoutLink: string;
+}
+
+export interface CreatedVirtualAccountFunding {
+  pendingPayment: PendingPayment;
+  virtualAccountNumber: string;
+  bankName: string;
+  accountName: string;
 }
 
 export interface CollectionPayCheckoutResult {
@@ -53,39 +57,66 @@ export interface CollectionPayCheckoutResult {
 }
 
 const FALLBACK_EMAIL = "noreply@talli.app";
-const EXPIRY_MINUTES = 60;
-const MAX_POLL_ATTEMPTS = 90;
+const EXPIRY_MINUTES = 30;
+const POLL_INTERVAL_SECONDS = 5;
+const MAX_POLL_ATTEMPTS = (EXPIRY_MINUTES * 60) / POLL_INTERVAL_SECONDS;
 
-/**
- * Inbound bank-transfer payments. A pending payment is the in-flight
- * reconciliation record: a Nomba checkout order whose flash account number the
- * payer transfers to, polled by the cron until the money lands. On settlement it
- * is promoted to a permanent {@link Payment} row (the system of record) and the
- * destination is credited. Idempotent: a settled order credits once and writes
- * one Payment.
- */
 class PaymentService {
+  async createTopUp(userId: string, amount: number): Promise<CreatedVirtualAccountFunding> {
+    if (amount <= 0) throw new BadRequestException("Amount must be greater than zero");
+
+    const account = await virtualAccountService.requireByUser(userId);
+    const pendingPayment = await prisma.pendingPayment.create({
+      data: {
+        orderRefId: `talli_wallet_topup_${randomToken(10)}`,
+        purpose: "wallet_topup",
+        userId,
+        amount,
+        virtualAccountNumber: account.accountNumber,
+        expiresAt: dayjs().add(EXPIRY_MINUTES, "minute").toDate(),
+      },
+    });
+
+    return {
+      pendingPayment,
+      virtualAccountNumber: account.accountNumber,
+      bankName: account.bankName,
+      accountName: account.accountName,
+    };
+  }
+
   async createSavingsFunding(
-    workspaceId: string,
     userId: string,
     jarId: string,
     amount: number
-  ): Promise<CreatedPending> {
+  ): Promise<CreatedVirtualAccountFunding> {
     if (amount <= 0) throw new BadRequestException("Amount must be greater than zero");
 
     const jar = await prisma.savingsJar.findFirst({
-      where: { id: jarId, workspaceId, ownerUserId: userId },
+      where: { id: jarId, ownerUserId: userId },
       select: { id: true },
     });
     if (!jar) throw new NotFoundException("Savings jar not found");
 
-    const wallet = await walletService.ensureWallet(userId);
-    return this.create({
-      purpose: "topup",
-      amount,
-      walletId: wallet.id,
-      collectionId: jar.id,
+    const account = await virtualAccountService.requireByUser(userId);
+    const pendingPayment = await prisma.pendingPayment.create({
+      data: {
+        orderRefId: `talli_savings_funding_${randomToken(10)}`,
+        purpose: "savings_funding",
+        userId,
+        savingsJarId: jar.id,
+        amount,
+        virtualAccountNumber: account.accountNumber,
+        expiresAt: dayjs().add(EXPIRY_MINUTES, "minute").toDate(),
+      },
     });
+
+    return {
+      pendingPayment,
+      virtualAccountNumber: account.accountNumber,
+      bankName: account.bankName,
+      accountName: account.accountName,
+    };
   }
 
   async checkoutCollectionPay(
@@ -96,11 +127,10 @@ class PaymentService {
     const amount = Math.max(0, member.expectedAmount - member.paidAmount);
     if (amount <= 0) throw new BadRequestException("Nothing left to pay for this member");
 
-    const pending = await this.create({
-      purpose: "collection",
-      amount,
+    const pending = await this.createCollectionCheckout({
       collectionId,
       collectionMemberId: member.id,
+      amount,
     });
 
     if (!pending.checkoutLink) {
@@ -117,9 +147,13 @@ class PaymentService {
     };
   }
 
-  async create(input: CreatePendingInput): Promise<CreatedPending> {
+  async createCollectionCheckout(
+    input: CreateCollectionCheckoutInput
+  ): Promise<CreatedCollectionCheckout> {
+    if (input.amount <= 0) throw new BadRequestException("Amount must be greater than zero");
+
     const order = await nomba.checkout.createOrder({
-      orderReference: `talli_${input.purpose}_${randomToken(10)}`,
+      orderReference: `talli_collection_${randomToken(10)}`,
       amount: this.toNombaAmount(input.amount),
       currency: "NGN",
       customerEmail: input.customerEmail ?? FALLBACK_EMAIL,
@@ -134,9 +168,8 @@ class PaymentService {
     const pendingPayment = await prisma.pendingPayment.create({
       data: {
         orderRefId,
-        purpose: input.purpose,
+        purpose: "collection",
         amount: input.amount,
-        walletId: input.walletId,
         collectionId: input.collectionId,
         collectionMemberId: input.collectionMemberId,
         payerPlatformUserId: input.payerPlatformUserId,
@@ -168,54 +201,258 @@ class PaymentService {
     });
   }
 
-  /**
-   * Checks one pending payment against Nomba and settles it. Returns true when it
-   * reaches a terminal state (completed / expired / failed). Safe to call
-   * repeatedly — crediting is idempotent on the order reference.
-   */
   async reconcile(pendingId: string): Promise<boolean> {
     const pending = await prisma.pendingPayment.findUnique({ where: { id: pendingId } });
     if (!pending) throw new NotFoundException("Pending payment not found");
-    if (pending.status !== "pending") return true;
+    if (pending.status === "completed" || pending.status === "cancelled") return true;
 
-    if (pending.expiresAt && dayjs().isAfter(pending.expiresAt)) {
+    const previousStatus = pending.status;
+    const canExpire = previousStatus === "pending";
+
+    if (canExpire && pending.expiresAt && dayjs().isAfter(pending.expiresAt)) {
       await this.mark(pending.id, "expired");
       return true;
     }
 
-    let paid = false;
-    let receivedAmount = pending.amount;
-    try {
-      const receipt = await nomba.checkout.confirmReceipt(pending.orderRefId);
-      paid = receipt.status === true;
-      const received = this.fromNombaAmount(receipt.order?.amount);
-      if (received !== null) receivedAmount = received;
-    } catch (err) {
-      logger.warn(`[payment] reconcile ${pending.orderRefId} poll failed: ${(err as Error).message}`);
-    } finally {
+    const outcome =
+      pending.purpose === "collection"
+        ? await this.pollFlash(pending)
+        : await this.pollVirtualAccount(pending);
+
+    if (canExpire) {
       await prisma.pendingPayment.update({
         where: { id: pending.id },
         data: { pollAttempts: { increment: 1 } },
       });
     }
 
-    if (!paid) return false;
+    if (!outcome.paid) return previousStatus !== "pending";
 
-    await this.settle(pending, receivedAmount);
+    if (outcome.sessionId) {
+      const claimed = await this.claimTransaction(pending.id, outcome.sessionId);
+      if (!claimed) {
+        logger.warn(
+          `[payment] ${pending.orderRefId} could not claim tx ${outcome.sessionId} (already used) — not settling`
+        );
+        return previousStatus !== "pending";
+      }
+    }
+
+    await this.settle(pending, outcome.amount, previousStatus);
     return true;
   }
 
-  private async settle(pending: PendingPayment, amount: number): Promise<void> {
-    if (pending.purpose === "topup" && pending.walletId) {
-      if (pending.collectionId) {
-        const funded = await this.settleSavingsFunding(pending, amount);
-        if (funded) return;
+  private async claimTransaction(pendingId: string, sessionId: string): Promise<boolean> {
+    try {
+      const res = await prisma.pendingPayment.updateMany({
+        where: { id: pendingId, providerTransactionId: null },
+        data: { providerTransactionId: sessionId },
+      });
+      return res.count === 1;
+    } catch (err) {
+      if ((err as { code?: string }).code === "P2002") return false;
+      throw err;
+    }
+  }
+
+  private async pollFlash(
+    pending: PendingPayment
+  ): Promise<{ paid: boolean; amount: number; sessionId: string | null }> {
+    let paid = false;
+    let amount = pending.amount;
+    try {
+      const receipt = await nomba.checkout.confirmReceipt(pending.orderRefId);
+      paid = receipt.status === true;
+      const received = this.fromNombaAmount(receipt.order?.amount);
+      if (received !== null) amount = received;
+    } catch (err) {
+      logger.warn(`[payment] reconcile ${pending.orderRefId} poll failed: ${(err as Error).message}`);
+    }
+    return { paid, amount, sessionId: null };
+  }
+
+  private async pollVirtualAccount(
+    pending: PendingPayment
+  ): Promise<{ paid: boolean; amount: number; sessionId: string | null }> {
+    const tag = `[va-poll ${pending.orderRefId}]`;
+    const miss = { paid: false, amount: pending.amount, sessionId: null };
+    if (!pending.virtualAccountNumber) {
+      logger.warn(`${tag} no virtualAccountNumber on pending row — cannot poll`);
+      return miss;
+    }
+
+    const query = {
+      virtualAccountNumber: pending.virtualAccountNumber,
+      dateFrom: dayjs(pending.createdAt).format("YYYY-MM-DD"),
+      dateTo: dayjs().add(1, "day").format("YYYY-MM-DD"),
+    };
+
+    try {
+      const page = await nomba.transactions.listByVirtualAccount(query);
+      const results = page.results ?? [];
+
+      const va = pending.virtualAccountNumber;
+      const candidates = results.filter((tx) => {
+        if (String(tx.status).toUpperCase() !== "SUCCESS") return false;
+        if (String(tx.entryType).toUpperCase() !== "CREDIT") return false;
+        if (tx.recipientAccountNumber !== va) return false;
+        if (this.toNaira(tx.amount) !== pending.amount) return false;
+        if (!tx.timeCreated) return false;
+        return dayjs(tx.timeCreated).isAfter(pending.createdAt);
+      });
+
+      console.log(`${tag} fetched ${results.length} tx, ${candidates.length} candidate(s) for VA ${va} ₦${pending.amount} after ${pending.createdAt.toISOString()}`)
+      
+
+      if (candidates.length === 0) {
+        console.log(`🔴 ${tag} no fresh SUCCESS credit for ₦${pending.amount} yet`);
+        return miss;
       }
-      await walletService.credit(pending.walletId, amount, "topup", pending.orderRefId);
-    } else if (pending.purpose === "collection" && pending.collectionMemberId) {
+
+      const sessionIds = candidates
+        .map((tx) => this.sessionId(tx))
+        .filter((s): s is string => !!s);
+      const claimedRows = await prisma.pendingPayment.findMany({
+        where: { providerTransactionId: { in: sessionIds } },
+        select: { providerTransactionId: true },
+      });
+      const claimed = new Set(
+        claimedRows.map((row) => row.providerTransactionId).filter((s): s is string => !!s)
+      );
+
+      const match = candidates.find((tx) => {
+        const sid = this.sessionId(tx);
+        return !!sid && !claimed.has(sid);
+      });
+
+      if (!match) {
+        console.log(`🔴 ${tag} ${candidates.length} matching tx but all already claimed by other intents (claimed=${[...claimed].join(",") || "-"}) — NOT settling`);
+        return miss;
+      }
+
+      const sessionId = this.sessionId(match);
+
+      if (sessionId) {
+        try {
+          const confirmed = await nomba.transactions.requery(sessionId);
+
+          console.log(`[transactions.requery] ${sessionId} confirmed: ${JSON.stringify(confirmed, null, 2)}`)
+
+          if (String(confirmed.status).toUpperCase() !== "SUCCESS") {
+            console.log(`🔴 ${tag} requery not SUCCESS — holding`);
+            return miss;
+          }
+        } catch (err) {
+          console.log(`🔴 ${tag} requery ${sessionId} failed: ${(err as Error).message}`);
+          return miss;
+        }
+      }
+
+      const received = this.toNaira(match.amount);
+      logger.info(`${tag} confirmed paid — settling ₦${received ?? pending.amount} (session ${sessionId})`);
+      return { paid: true, amount: received ?? pending.amount, sessionId };
+    } catch (err) {
+      logger.warn(`${tag} poll failed: ${(err as Error).message}`);
+      return miss;
+    }
+  }
+
+  async reconcileOnce(
+    pendingPaymentId: string,
+    collectionReference: string
+  ): Promise<{ status: PendingPayment["status"]; amount: number }> {
+    const pending = await prisma.pendingPayment.findUnique({ where: { id: pendingPaymentId } });
+    if (!pending) throw new NotFoundException("Pending payment not found");
+    if (pending.purpose === "collection" && pending.collectionId !== collectionReference) {
+      throw new BadRequestException("Pending payment does not belong to this collection");
+    }
+
+    try {
+      await this.reconcile(pendingPaymentId);
+    } catch (err) {
+      logger.warn(`[payment] reconcileOnce ${pending.orderRefId} failed: ${(err as Error).message}`);
+    }
+
+    const fresh = await prisma.pendingPayment.findUnique({
+      where: { id: pendingPaymentId },
+      select: { status: true, amount: true },
+    });
+
+    return {
+      status: fresh?.status ?? pending.status,
+      amount: fresh?.amount ?? pending.amount,
+    };
+  }
+
+  async reconcileSavingsOnce(
+    pendingPaymentId: string,
+    jarId: string
+  ): Promise<{ status: PendingPayment["status"]; amount: number }> {
+    const pending = await prisma.pendingPayment.findUnique({ where: { id: pendingPaymentId } });
+    if (!pending) throw new NotFoundException("Pending payment not found");
+    if (pending.purpose !== "savings_funding" || pending.savingsJarId !== jarId) {
+      throw new BadRequestException("Pending payment does not belong to this jar");
+    }
+
+    try {
+      await this.reconcile(pendingPaymentId);
+    } catch (err) {
+      logger.warn(`[payment] reconcileSavingsOnce ${pending.orderRefId} failed: ${(err as Error).message}`);
+    }
+
+    const fresh = await prisma.pendingPayment.findUnique({
+      where: { id: pendingPaymentId },
+      select: { status: true, amount: true },
+    });
+
+    return {
+      status: fresh?.status ?? pending.status,
+      amount: fresh?.amount ?? pending.amount,
+    };
+  }
+
+  async cancelSavingsFunding(pendingPaymentId: string, jarId: string): Promise<void> {
+    await prisma.pendingPayment.deleteMany({
+      where: {
+        id: pendingPaymentId,
+        purpose: "savings_funding",
+        savingsJarId: jarId,
+        status: "pending",
+      },
+    });
+  }
+
+  private async settle(
+    pending: PendingPayment,
+    amount: number,
+    previousStatus: PendingPayment["status"] = "pending"
+  ): Promise<void> {
+    const claimableStatuses: PendingPayment["status"][] = ["pending", "failed", "expired"];
+
+    if (pending.purpose === "wallet_topup") {
+      if (!pending.userId) return;
+      console.log(`🔄 Payment Service Settling Wallet Topup: ${pending.orderRefId}`);
+      await ledgerService.credit(pending.userId, "wallet_topup", amount, {
+        referenceId: pending.orderRefId,
+        providerOrderId: pending.orderRefId,
+        paidAt: new Date(),
+      });
+      console.log(`✅ Payment Service Settled Wallet Topup: ${pending.orderRefId}`);
+      await this.completePending(pending.id);
+      return;
+    }
+
+    if (pending.purpose === "savings_funding") {
+      console.log(`🔄 Payment Service Settling Savings Funding: ${pending.orderRefId}`);
+      await this.settleSavingsFunding(pending, amount);
+      return;
+    }
+
+    if (pending.purpose === "collection" && pending.collectionMemberId) {
+      console.log(`🔄 Payment Service Settling Collection Payment: ${pending.orderRefId}`);
       const claim = await prisma.$transaction(async (tx: TxClient) => {
         const claimed = await tx.pendingPayment.updateMany({
-          where: { id: pending.id, status: "pending" },
+          where: { id: pending.id, status: { in: claimableStatuses } },
           data: { status: "completed", completedAt: new Date() },
         });
         if (claimed.count === 0) return null;
@@ -234,51 +471,112 @@ class PaymentService {
       if (!handledByBillSplit) {
         await this.announcePayment(claim, amount);
       }
+
+      await this.deliverCollectionPayerEmail(pending, amount, previousStatus);
       return;
     }
 
-    await prisma.pendingPayment.update({
-      where: { id: pending.id },
-      data: { status: "completed", completedAt: new Date() },
-    });
+    await this.completePending(pending.id);
   }
 
-  private async settleSavingsFunding(pending: PendingPayment, amount: number): Promise<boolean> {
-    if (!pending.collectionId) return false;
+  private async deliverCollectionPayerEmail(
+    pending: PendingPayment,
+    amount: number,
+    previousStatus: PendingPayment["status"]
+  ): Promise<void> {
+    try {
+      if (!pending.collectionMemberId) return;
+
+      const member = await prisma.collectionMember.findUnique({
+        where: { id: pending.collectionMemberId },
+        select: {
+          displayName: true,
+          appUser: { select: { email: true } },
+          collection: {
+            select: { purpose: true, title: true },
+          },
+        },
+      });
+
+      const email = member?.appUser?.email;
+      if (!email) {
+        logger.debug(`[payment] no payer email for pending ${pending.orderRefId}, skipping mail`);
+        return;
+      }
+
+      const payerName = member?.displayName ?? "there";
+      const purpose = member?.collection?.purpose || member?.collection?.title || "Collection payment";
+      const dateLabel = dayjs(pending.completedAt ?? new Date()).format("DD MMM YYYY, h:mm A");
+      const recovered = previousStatus === "failed" || previousStatus === "expired";
+
+      if (recovered) {
+        await mailService.sendPaymentRecovered(email, {
+          payerName,
+          amount,
+          purpose,
+          reference: pending.orderRefId,
+          dateLabel,
+        });
+      } else {
+        await mailService.sendPaymentReceipt(email, {
+          payerName,
+          amount,
+          purpose,
+          from: payerName,
+          to: member?.collection?.title ?? purpose,
+          reference: pending.orderRefId,
+          dateLabel,
+        });
+      }
+    } catch (err) {
+      logger.warn(`[payment] payer email failed for ${pending.orderRefId}: ${(err as Error).message}`);
+    }
+  }
+
+  private async settleSavingsFunding(pending: PendingPayment, amount: number): Promise<void> {
+    if (!pending.userId || !pending.savingsJarId) return;
 
     const claim = await prisma.pendingPayment.updateMany({
-      where: { id: pending.id, status: "pending" },
+      where: { id: pending.id, status: { in: ["pending", "failed", "expired"] } },
       data: { status: "completed", completedAt: new Date() },
     });
-    if (claim.count === 0) return true;
+    if (claim.count === 0) return;
 
-    const jar = await prisma.savingsJar.findUnique({
-      where: { id: pending.collectionId },
-      select: { id: true, workspaceId: true },
-    });
-    if (!jar) return false;
-
-    const existing = await prisma.payment.findFirst({
-      where: { providerOrderId: pending.orderRefId },
+    const jar = await prisma.savingsJar.findFirst({
+      where: { id: pending.savingsJarId, ownerUserId: pending.userId },
       select: { id: true },
     });
+    if (!jar) return;
 
-    const payment =
-      existing ??
-      (await prisma.payment.create({
+    const existing = await prisma.payment.findFirst({
+      where: {
+        OR: [{ referenceId: pending.orderRefId }, { providerOrderId: pending.orderRefId }],
+      },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    await prisma.$transaction(async (tx: TxClient) => {
+      await tx.payment.create({
         data: {
-          workspaceId: jar.workspaceId,
-          savingsJarId: jar.id,
+          userId: pending.userId!,
+          direction: "credit",
+          kind: "savings_deposit",
           amount,
+          status: "successful",
+          balanceAfter: null,
+          savingsJarId: jar.id,
           provider: "nomba",
           providerOrderId: pending.orderRefId,
-          status: "successful",
+          referenceId: pending.orderRefId,
           paidAt: pending.completedAt ?? new Date(),
         },
-      }));
-
-    await savingsService.creditJar(jar.id, amount, payment.id);
-    return true;
+      });
+      await tx.savingsJar.update({
+        where: { id: jar.id },
+        data: { currentAmount: { increment: amount } },
+      });
+    });
   }
 
   private async settleBillSplitIfAny(pending: PendingPayment, amount: number): Promise<boolean> {
@@ -315,7 +613,7 @@ class PaymentService {
   }
 
   private async deliverBillSplitReceipt(
-    billSplit: { id: string; workspaceId: string; title: string; source: string; linkedChatId: string | null },
+    billSplit: BillSplit,
     payerName: string,
     itemLabels: string[],
     amount: number
@@ -341,11 +639,11 @@ class PaymentService {
       return;
     }
 
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: billSplit.workspaceId },
-      select: { owner: { select: { email: true } } },
+    const owner = await prisma.user.findUnique({
+      where: { id: billSplit.createdByUserId },
+      select: { email: true },
     });
-    const email = workspace?.owner?.email;
+    const email = owner?.email;
     if (!email) return;
     await mailService.send({
       to: email,
@@ -356,55 +654,31 @@ class PaymentService {
     });
   }
 
-  /**
-   * Promotes a settled collection pending payment to the permanent ledger: writes
-   * one {@link Payment} row and credits the workspace owner's wallet. Both halves
-   * are idempotent on the Nomba order reference — the Payment is keyed on
-   * `providerOrderId` and the wallet ledger dedupes on `referenceId` — so a replay
-   * (cron retry or backfill) never doubles the money or the record. Shared by the
-   * live settle path and the backfill script.
-   */
   async recordCollectionPayment(pending: PendingPayment, amount: number): Promise<Payment> {
+    console.log(`🔄 Payment Service Recording Collection Payment: ${pending.orderRefId}`);
     if (!pending.collectionId || !pending.collectionMemberId) {
       throw new BadRequestException("Collection payment is missing its collection or member");
     }
 
     const collection = await prisma.collection.findUniqueOrThrow({
       where: { id: pending.collectionId },
-      select: { workspaceId: true, workspace: { select: { ownerUserId: true } } },
+      select: { ownerUserId: true },
     });
 
-    const wallet = await walletService.ensureWallet(collection.workspace.ownerUserId);
-    await walletService.credit(wallet.id, amount, "collection", pending.orderRefId);
-
-    const existing = await prisma.payment.findFirst({
-      where: { providerOrderId: pending.orderRefId },
+    const { payment } = await ledgerService.credit(collection.ownerUserId, "collection_payment", amount, {
+      referenceId: pending.orderRefId,
+      providerOrderId: pending.orderRefId,
+      collectionId: pending.collectionId,
+      collectionMemberId: pending.collectionMemberId,
+      payerPlatformId: pending.payerPlatformUserId ?? undefined,
+      paidAt: pending.completedAt ?? new Date(),
     });
-    if (existing) return existing;
 
-    return prisma.payment.create({
-      data: {
-        workspaceId: collection.workspaceId,
-        collectionId: pending.collectionId,
-        collectionMemberId: pending.collectionMemberId,
-        payerPlatformId: pending.payerPlatformUserId,
-        amount,
-        provider: "nomba",
-        providerOrderId: pending.orderRefId,
-        status: "successful",
-        paidAt: pending.completedAt ?? new Date(),
-      },
-    });
+    console.log(`✅ Payment Service Recorded Collection Payment: ${pending.orderRefId}`);
+
+    return payment;
   }
 
-  /**
-   * Posts a celebratory "X just paid" message to the collection's group with the
-   * running progress. Best-effort: a send failure (or no linked chat) is logged
-   * and swallowed — the payment is already credited and must not be rolled back
-   * by a notification problem. The bot client is imported from `telegram/bot.js`
-   * (not `telegram/index.js`) so the handler graph isn't pulled in — that would
-   * be a cycle, since handlers import this service.
-   */
   private async announcePayment(
     credit: Awaited<ReturnType<typeof collectionService.creditMember>>,
     amount: number
@@ -439,11 +713,15 @@ class PaymentService {
     }
   }
 
-  /** Parses Nomba's naira amount (number or "50.00" string) to integer naira. */
   private toNaira(value: unknown): number | null {
     if (value === undefined || value === null || value === "") return null;
     const n = typeof value === "string" ? Number(value) : (value as number);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+  }
+
+  private sessionId(tx: Record<string, unknown>): string | null {
+    const value = tx.sessionId ?? tx.session_id;
+    return typeof value === "string" && value.length > 0 ? value : null;
   }
 
   private toNombaAmount(amount: number): number {
@@ -454,6 +732,13 @@ class PaymentService {
     const naira = this.toNaira(value);
     if (naira === null) return null;
     return naira;
+  }
+
+  private async completePending(id: string): Promise<void> {
+    await prisma.pendingPayment.update({
+      where: { id },
+      data: { status: "completed", completedAt: new Date() },
+    });
   }
 
   private async mark(id: string, status: "expired" | "failed"): Promise<void> {

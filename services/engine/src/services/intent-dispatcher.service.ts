@@ -10,10 +10,9 @@ import { collectionService } from "./collection.service.js";
 import { billSplitService } from "./bill-split.service.js";
 import { savingsService } from "./savings.service.js";
 import { balanceService } from "./balance.service.js";
-import { walletService } from "./wallet.service.js";
+import { ledgerService } from "./ledger.service.js";
 import { transferService } from "./transfer.service.js";
 import { beneficiaryService } from "./beneficiary.service.js";
-import { randomToken } from "../lib/utils.js";
 import type { Intent } from "../schemas/intent.schema.js";
 import type { ParsedBill } from "./bill-parser.service.js";
 import logger from "../lib/logger.js";
@@ -31,8 +30,6 @@ const MAX_CLARIFY_ROUNDS = 3;
 
 export interface DispatchContext extends CommandContext {
   scope: ChatScope;
-  ownerUserId: string;
-  workspaceName?: string;
   senderName: string;
   isGroupAdmin: boolean;
 }
@@ -47,13 +44,12 @@ class IntentDispatcherService {
   /** Builds the parse context shared by first-pass and clarification re-parses. */
   private async parseContext(ctx: DispatchContext) {
     const [jars, beneficiaries, recentHistory] = await Promise.all([
-      savingsService.list(ctx.workspaceId),
-      beneficiaryService.listAliases(ctx.workspaceId),
+      savingsService.list(ctx.userId),
+      beneficiaryService.listAliases(ctx.userId),
       botCommandService.recentHistory(ctx.linkedChatId, ctx.senderPlatformId),
     ]);
     return {
       scope: ctx.scope,
-      workspaceName: ctx.workspaceName,
       knownJars: jars.map((j) => j.name),
       knownBeneficiaries: beneficiaries,
       recentHistory,
@@ -155,7 +151,7 @@ class IntentDispatcherService {
       case "save_to_jar": {
         if (!intent.title) return { clarify: messages.needsJarName, intent };
         if (!intent.amount) return { clarify: messages.needsSaveAmount(intent.title), intent };
-        const jar = await savingsService.findByName(ctx.workspaceId, intent.title);
+        const jar = await savingsService.findByName(ctx.userId, intent.title);
         if (!jar) return { clarify: messages.jarNotFound(intent.title), intent };
         return { intent };
       }
@@ -188,7 +184,7 @@ class IntentDispatcherService {
     }
 
     if (intent.recipientName) {
-      const saved = await transferService.resolveRecipient(ctx.workspaceId, intent.recipientName);
+      const saved = await transferService.resolveRecipient(ctx.userId, intent.recipientName);
       if (saved.found) {
         return {
           intent: {
@@ -353,7 +349,7 @@ class IntentDispatcherService {
 
   private async runCreateCollection(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
     const deadline = intent.deadline ? dayjs(intent.deadline) : null;
-    const collection = await collectionService.create(ctx.workspaceId, ctx.ownerUserId, {
+    const collection = await collectionService.create(ctx.userId, {
       title: intent.title!,
       purpose: "",
       collectionType: "fixed_per_person",
@@ -372,8 +368,7 @@ class IntentDispatcherService {
   private async runBillSplit(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
     const items = intent.items ?? [];
     const { url } = await billSplitService.createFromItems({
-      workspaceId: ctx.workspaceId,
-      ownerUserId: ctx.ownerUserId,
+      ownerUserId: ctx.userId,
       source: "telegram",
       linkedChatId: ctx.linkedChatId,
       title: intent.title ?? "Bill split",
@@ -387,7 +382,7 @@ class IntentDispatcherService {
   }
 
   private async runCreateJar(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
-    const jar = await savingsService.createJar(ctx.workspaceId, ctx.ownerUserId, {
+    const jar = await savingsService.createJar(ctx.userId, {
       name: intent.title!,
       targetAmount: intent.amount,
     });
@@ -395,18 +390,16 @@ class IntentDispatcherService {
   }
 
   private async runSaveToJar(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
-    const jar = await savingsService.findByName(ctx.workspaceId, intent.title!);
+    const jar = await savingsService.findByName(ctx.userId, intent.title!);
     if (!jar) return { text: messages.jarNotFound(intent.title!) };
 
-    const wallet = await walletService.ensureWallet(ctx.ownerUserId);
     const amount = intent.amount!;
-    if (wallet.balance < amount) {
-      return { text: messages.insufficientForSave(jar.name, amount, wallet.balance) };
+    const balance = await ledgerService.getBalance(ctx.userId);
+    if (balance < amount) {
+      return { text: messages.insufficientForSave(jar.name, amount, balance) };
     }
 
-    const reference = `talli_save_${randomToken(8)}`;
-    await walletService.debit(wallet.id, amount, "savings_deposit", reference);
-    await savingsService.creditJar(jar.id, amount);
+    await savingsService.depositFromWallet(ctx.userId, jar.id, amount);
     return { text: messages.savedToJar(jar.name, amount) };
   }
 
@@ -415,19 +408,18 @@ class IntentDispatcherService {
       return { text: messages.needsRecipient(intent.recipientName ?? "that person") };
     }
     const amount = intent.amount!;
-    const wallet = await walletService.ensureWallet(ctx.ownerUserId);
-    if (wallet.balance < amount) {
+    const balance = await ledgerService.getBalance(ctx.userId);
+    if (balance < amount) {
       const name = intent.resolvedAccountName ?? intent.recipientName ?? "that account";
-      return { text: messages.insufficientForSend(name, amount, wallet.balance) };
+      return { text: messages.insufficientForSend(name, amount, balance) };
     }
 
     const result = await transferService.payout({
-      workspaceId: ctx.workspaceId,
-      ownerUserId: ctx.ownerUserId,
+      userId: ctx.userId,
       amount,
       accountNumber: intent.accountNumber,
       bankName: intent.bankName,
-      senderName: ctx.workspaceName ?? ctx.senderName,
+      senderName: ctx.senderName,
       alias: intent.recipientName,
       createdByPlatformUserId: ctx.senderPlatformId,
     });
@@ -444,7 +436,7 @@ class IntentDispatcherService {
    * progress — wallet and savings are personal and must not leak into a group.
    */
   private async runStatusQuery(ctx: DispatchContext): Promise<DispatchResult> {
-    const overview = await balanceService.overview(ctx.ownerUserId, ctx.workspaceId);
+    const overview = await balanceService.overview(ctx.userId);
     if (ctx.scope === "group") {
       return { text: messages.collectionsOverview(overview.collections) };
     }

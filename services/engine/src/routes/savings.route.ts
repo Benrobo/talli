@@ -57,4 +57,18 @@ router.post(
   useCatchErrors(isAuthenticated(c.deposit.bind(c)))
 );
 
+router.post(
+  "/savings/:id/deposits/verify",
+  requireFeature("savings"),
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 60, keyPrefix: "savings:deposit-verify" }),
+  useCatchErrors(isAuthenticated(c.verifyDeposit.bind(c)))
+);
+
+router.post(
+  "/savings/:id/deposits/cancel",
+  requireFeature("savings"),
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 30, keyPrefix: "savings:deposit-cancel" }),
+  useCatchErrors(isAuthenticated(c.cancelDeposit.bind(c)))
+);
+
 export default router;

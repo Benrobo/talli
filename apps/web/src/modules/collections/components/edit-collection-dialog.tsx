@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
+import dayjs from "dayjs";
 import { z } from "zod";
 import {
   Button,
@@ -24,9 +25,9 @@ interface EditCollectionDialogProps {
 
 function toDateInput(value: string | null): string {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+  const date = dayjs(value);
+  if (!date.isValid()) return "";
+  return date.format("YYYY-MM-DD");
 }
 
 export function EditCollectionDialog({ collection, trigger }: EditCollectionDialogProps) {
@@ -195,9 +196,10 @@ export function EditCollectionDialog({ collection, trigger }: EditCollectionDial
             children={([canSubmit, isSubmitting]) => (
               <Button
                 onClick={() => form.handleSubmit()}
-                disabled={!canSubmit || isSubmitting || updateCollection.isPending}
+                disabled={!canSubmit || isSubmitting}
+                loading={updateCollection.isPending}
               >
-                {updateCollection.isPending ? "Saving…" : "Save changes"}
+                Save changes
               </Button>
             )}
           />

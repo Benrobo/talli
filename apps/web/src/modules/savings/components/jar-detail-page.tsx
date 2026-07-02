@@ -1,9 +1,9 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Button,
   EmptyState,
   FadeIn,
-  IconChip,
   ListRow,
   PageHeader,
   ProgressBar,
@@ -17,14 +17,16 @@ import {
   Delete02Icon,
   Edit02Icon,
   PlusSignIcon,
-  Tick02Icon,
   SquareLock02Icon,
   Coins01Icon,
   Target01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { TransactionIcon } from "@/modules/transactions/components/transaction-icon";
 import { formatNaira, formatNairaShort, toPercent } from "@/lib/format";
 import { EditJarDialog } from "@/modules/savings/components/edit-jar-dialog";
 import { DeleteJarDialog } from "@/modules/savings/components/delete-jar-dialog";
+import { AddMoneySheet } from "@/modules/savings/components/add-money-sheet";
+import { jarIconFor } from "@/modules/savings/jar-style";
 import type { Jar } from "@/modules/savings/types";
 
 interface JarDetailPageProps {
@@ -36,6 +38,7 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
   const locked = jar.status === "locked";
   const remaining = Math.max(0, jar.targetMinor - jar.savedMinor);
   const unlockDate = locked ? jar.lockText.replace(/^unlocks\s*/i, "") : "—";
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div>
@@ -51,7 +54,13 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
         <PageHeader
           className="mb-6"
           title={
-            <span className="inline-flex items-center gap-3">
+            <span className="inline-flex flex-wrap items-center gap-2.5 sm:gap-3">
+              <span
+                className="flex size-8 shrink-0 items-center justify-center rounded-[11px] text-white shadow-chip"
+                style={{ backgroundColor: jar.accentColor }}
+              >
+                <Icon icon={jarIconFor(jar.icon)} size={17} />
+              </span>
               {jar.name}
               {locked ? (
                 <StatusPill status="pending">Locked</StatusPill>
@@ -69,9 +78,12 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
           }
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Link to="/pay/jar/$id" params={{ id: jar.id }}>
-                <Button leadingIcon={<Icon icon={PlusSignIcon} size={16} />}>Add money</Button>
-              </Link>
+              <Button
+                leadingIcon={<Icon icon={PlusSignIcon} size={16} />}
+                onClick={() => setAddOpen(true)}
+              >
+                Add money
+              </Button>
               <EditJarDialog
                 jar={jar}
                 trigger={
@@ -95,7 +107,7 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
         />
       </FadeIn>
 
-      <FadeIn delay={0.05} className="mb-4 grid grid-cols-3 gap-3.5">
+      <FadeIn delay={0.05} className="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <StatCard
           tone="filled"
           label="Saved in jar"
@@ -159,11 +171,7 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
             jar.deposits.map((deposit) => (
               <ListRow
                 key={deposit.when}
-                leading={
-                  <IconChip tone="emerald" size="md">
-                    <Icon icon={Tick02Icon} size={16} />
-                  </IconChip>
-                }
+                leading={<TransactionIcon kind="savings_deposit" />}
                 title={
                   <span className="tabular font-semibold text-emerald-deep">
                     + {formatNaira(deposit.amountMinor)}
@@ -175,6 +183,8 @@ export function JarDetailPage({ jar }: JarDetailPageProps) {
           )}
         </SectionCard>
       </FadeIn>
+
+      <AddMoneySheet open={addOpen} onOpenChange={setAddOpen} jarId={jar.id} jarName={jar.name} />
     </div>
   );
 }

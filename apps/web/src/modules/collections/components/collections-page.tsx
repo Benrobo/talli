@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { MouseEvent } from "react";
-import toast from "react-hot-toast";
+import dayjs from "dayjs";
 import { cn } from "@app/ui";
 import {
   Button,
@@ -14,17 +13,17 @@ import {
   StaggerItem,
   Pressable,
 } from "@/components/ui";
-import { useCollections, useUpdateCollectionStatus } from "@/api/http/v1/collections/collections.hooks";
+import { useCollections } from "@/api/http/v1/collections/collections.hooks";
 import { CollectionsSkeleton } from "@/components/skeleton-loaders";
 import { Icon } from "@benrobo/iconary/react";
 import {
   ArrowRight01Icon,
-  CheckmarkCircle02Icon,
   Coins01Icon,
   PlusSignIcon,
   UserGroupIcon,
   Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { CheckmarkCircle02Icon } from "@benrobo/iconary/core/solid-rounded";
 import { formatNaira, toPercent } from "@/lib/format";
 import { NewCollectionDialog } from "@/modules/collections/components/new-collection-dialog";
 import type { CollectionRecord } from "@/api/http/v1/collections/collections.types";
@@ -140,30 +139,11 @@ export function CollectionsPage() {
 
 function CollectionCard({ collection }: { collection: CollectionRecord }) {
   const viewStatus = toViewStatus(collection.status);
-  const updateStatus = useUpdateCollectionStatus(collection.id);
   const badge = STATUS[viewStatus];
   const collected = collectedOf(collection);
   const target = collection.targetAmount ?? collected;
   const pct = toPercent(collected, target);
   const isDraft = viewStatus === "draft";
-  const canToggleDraft = viewStatus === "draft" || viewStatus === "live";
-  const targetStatus = viewStatus === "draft" ? "active" : "draft";
-
-  const handleToggleDraft = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    updateStatus.mutate(
-      { status: targetStatus },
-      {
-        onSuccess: () => {
-          toast.success(targetStatus === "active" ? "Collection launched" : "Moved back to draft");
-        },
-        onError: () => {
-          toast.error("Couldn't update collection status");
-        },
-      }
-    );
-  };
 
   return (
     <Pressable className="h-full">
@@ -192,16 +172,9 @@ function CollectionCard({ collection }: { collection: CollectionRecord }) {
         </div>
 
         {isDraft ? (
-          <div className="mt-auto flex items-center justify-between gap-2 rounded-[10px] bg-inset px-3 py-2 text-[12px] text-content-faint">
-            <span className="inline-flex items-center gap-1.5">
-              <Icon icon={ArrowRight01Icon} size={13} />
-              Waiting to launch
-            </span>
-            {canToggleDraft ? (
-              <Button size="sm" variant="secondary" onClick={handleToggleDraft} disabled={updateStatus.isPending}>
-                {updateStatus.isPending ? "..." : "Launch"}
-              </Button>
-            ) : null}
+          <div className="mt-auto flex items-center gap-1.5 rounded-[10px] bg-inset px-3 py-2 text-[12px] text-content-faint">
+            <Icon icon={ArrowRight01Icon} size={13} />
+            Waiting to launch — open to set it live
           </div>
         ) : (
           <div className="mt-auto">
@@ -215,13 +188,6 @@ function CollectionCard({ collection }: { collection: CollectionRecord }) {
               <ProgressBar value={pct} className="h-1.5 flex-1" />
               <span className="tabular w-8 text-right text-[11px] font-medium text-content-faint">{pct}%</span>
             </div>
-            {canToggleDraft ? (
-              <div className="mt-2 flex justify-end">
-                <Button size="sm" variant="ghost" onClick={handleToggleDraft} disabled={updateStatus.isPending}>
-                  {updateStatus.isPending ? "Updating..." : "Move to draft"}
-                </Button>
-              </div>
-            ) : null}
           </div>
         )}
       </Link>
@@ -231,7 +197,7 @@ function CollectionCard({ collection }: { collection: CollectionRecord }) {
 
 function subLine(collection: CollectionRecord): string {
   const viewStatus = toViewStatus(collection.status);
-  const due = collection.deadline ? new Date(collection.deadline).toLocaleDateString("en-NG") : null;
+  const due = collection.deadline ? dayjs(collection.deadline).format("DD/MM/YYYY") : null;
   const amountPerMember = collection.amountPerMember ?? 0;
   const targetAmount = collection.targetAmount ?? 0;
 

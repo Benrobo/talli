@@ -6,7 +6,8 @@ import { cn } from "@app/ui";
 import { Button, Card, Input, Spotlight } from "@/components/ui";
 import { MobileScreen } from "@/components/layout";
 import { Icon } from "@benrobo/iconary/react";
-import { AlertCircleIcon, ArrowLeft01Icon, BankIcon, Clock01Icon, Copy01Icon, Download01Icon, Invoice01Icon, LockIcon, PlusSignIcon, Tick02Icon, TickDouble02Icon, UserIcon } from "@benrobo/iconary/core/duotone-rounded";
+import { AlertCircleIcon, ArrowLeft01Icon, BankIcon, Copy01Icon, Download01Icon, Invoice01Icon, LockIcon, PlusSignIcon, UserIcon } from "@benrobo/iconary/core/duotone-rounded";
+import { Clock01Icon, Tick02Icon, TickDouble02Icon } from "@benrobo/iconary/core/solid-rounded";
 import { billSplitApi, type BillItem, type BillCheckoutResult } from "../api";
 import { useBillSocket } from "../use-bill-socket";
 
@@ -364,10 +365,11 @@ function NameStep({
             block
             size="lg"
             className="mt-4"
-            disabled={!value.trim() || submitting}
+            disabled={!value.trim()}
+            loading={submitting}
             onClick={() => onConfirm(value.trim())}
           >
-            {submitting ? "Setting up…" : "Continue"}
+            Continue
           </Button>
           {knownNames.length > 0 ? (
             <button
@@ -417,7 +419,7 @@ function PayStage({
     >
       <Spotlight className="mb-6 p-6 text-center">
         <div className="mb-1.5 text-[13px] text-white/70">{payerName}, transfer</div>
-        <div className="tabular text-[42px] font-extrabold leading-none tracking-[-0.03em]">
+        <div className="tabular break-words text-[36px] font-extrabold leading-none tracking-[-0.03em] sm:text-[42px]">
           {naira(checkout.amount)}
         </div>
         <div className="mt-2 text-[13px] text-white/70">for {title}</div>

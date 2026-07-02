@@ -79,7 +79,7 @@ function AuthPage() {
     <main className="flex min-h-dvh bg-screen">
       <BrandPanel />
 
-      <div className="flex flex-1 items-center justify-center px-6 py-10">
+      <div className="flex flex-1 items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
         <motion.div
           layout
           initial={{ opacity: 0, y: 16 }}
@@ -91,7 +91,7 @@ function AuthPage() {
             <TalliLogo className="mb-4 h-11" />
           </div>
 
-          <div className="rounded-[24px] border border-hairline bg-card p-8 shadow-lift">
+          <div className="rounded-[20px] border border-hairline bg-card p-5 shadow-lift sm:rounded-[24px] sm:p-8">
             <form.Subscribe selector={(state) => ({ mode: state.values.mode, email: state.values.email })}>
               {({ mode, email }) => (
                 <>

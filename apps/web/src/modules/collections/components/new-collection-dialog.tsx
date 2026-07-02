@@ -80,7 +80,7 @@ export function NewCollectionDialog({ trigger }: NewCollectionDialogProps) {
 
           <div>
             <span className="mb-1.5 block text-[12.5px] font-medium text-content-muted">How does it work?</span>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2">
               <ModeCard
                 active={mode === "per_person"}
                 onClick={() => setMode("per_person")}
@@ -118,8 +118,8 @@ export function NewCollectionDialog({ trigger }: NewCollectionDialogProps) {
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={createCollection.isPending}>
             Cancel
           </Button>
-          <Button disabled={!title.trim() || !amount || createCollection.isPending} onClick={handleCreate}>
-            {createCollection.isPending ? "Creating…" : "Create collection"}
+          <Button disabled={!title.trim() || !amount} loading={createCollection.isPending} onClick={handleCreate}>
+            Create collection
           </Button>
         </DialogFooter>
       </DialogContent>

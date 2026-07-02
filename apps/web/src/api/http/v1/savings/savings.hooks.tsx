@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
-import { useActiveWorkspaceId, workspaceScope } from "@/api/http/use-active-workspace-id";
 import { SAVINGS_API } from "./savings.api";
 import type {
   CreateSavingsJarPayload,
@@ -11,83 +10,86 @@ import type {
   ListSavingsJarsResponse,
   UpdateSavingsJarPayload,
   UpdateSavingsJarResponse,
+  VerifySavingsDepositResponse,
 } from "./savings.types";
 
 export const savingsQueryKeys = {
-  all: (workspaceId?: string) => ["savings", workspaceScope(workspaceId)] as const,
-  list: (workspaceId?: string) => [...savingsQueryKeys.all(workspaceId), "list"] as const,
-  detail: (workspaceId: string | undefined, id: string) =>
-    [...savingsQueryKeys.all(workspaceId), "detail", id] as const,
+  all: () => ["savings"] as const,
+  list: () => [...savingsQueryKeys.all(), "list"] as const,
+  detail: (id: string) => [...savingsQueryKeys.all(), "detail", id] as const,
 };
 
 export const useSavingsJars = () => {
-  const workspaceId = useActiveWorkspaceId();
-
   return useQuery<ListSavingsJarsResponse, AxiosError>({
-    queryKey: savingsQueryKeys.list(workspaceId),
+    queryKey: savingsQueryKeys.list(),
     queryFn: SAVINGS_API.LIST,
-    enabled: !!workspaceId,
   });
 };
 
 export const useSavingsJar = (id: string) => {
-  const workspaceId = useActiveWorkspaceId();
-
   return useQuery<GetSavingsJarResponse, AxiosError>({
-    queryKey: savingsQueryKeys.detail(workspaceId, id),
+    queryKey: savingsQueryKeys.detail(id),
     queryFn: () => SAVINGS_API.GET(id),
-    enabled: !!workspaceId && !!id,
+    enabled: !!id,
   });
 };
 
 export const useCreateSavingsJar = () => {
   const queryClient = useQueryClient();
-  const workspaceId = useActiveWorkspaceId();
 
   return useMutation<CreateSavingsJarResponse, AxiosError, CreateSavingsJarPayload>({
     mutationFn: SAVINGS_API.CREATE,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all() });
     },
   });
 };
 
-export const useDepositToSavingsJar = (id: string) => {
-  const queryClient = useQueryClient();
-  const workspaceId = useActiveWorkspaceId();
-
-  return useMutation<DepositToSavingsJarResponse, AxiosError, DepositToSavingsJarPayload>({
+export const useDepositToSavingsJar = (id: string) =>
+  useMutation<DepositToSavingsJarResponse, AxiosError, DepositToSavingsJarPayload>({
     mutationFn: (payload) => SAVINGS_API.DEPOSIT(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(workspaceId, id) });
+  });
+
+export const useVerifySavingsDeposit = (id: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<VerifySavingsDepositResponse, AxiosError, string>({
+    mutationFn: (pendingPaymentId) => SAVINGS_API.VERIFY_DEPOSIT(id, pendingPaymentId),
+    onSuccess: (response) => {
+      if (response.data.status === "completed") {
+        queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all() });
+        queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(id) });
+      }
     },
   });
 };
+
+export const useCancelSavingsDeposit = (id: string) =>
+  useMutation<void, AxiosError, string>({
+    mutationFn: (pendingPaymentId) => SAVINGS_API.CANCEL_DEPOSIT(id, pendingPaymentId),
+  });
 
 export const useUpdateSavingsJar = (id: string) => {
   const queryClient = useQueryClient();
-  const workspaceId = useActiveWorkspaceId();
 
   return useMutation<UpdateSavingsJarResponse, AxiosError, UpdateSavingsJarPayload>({
     mutationFn: (payload) => SAVINGS_API.UPDATE(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(workspaceId, id) });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(id) });
     },
   });
 };
 
 export const useDeleteSavingsJar = () => {
   const queryClient = useQueryClient();
-  const workspaceId = useActiveWorkspaceId();
 
   return useMutation<void, AxiosError, string>({
     mutationFn: async (id) => {
       await SAVINGS_API.DELETE(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all() });
     },
   });
 };

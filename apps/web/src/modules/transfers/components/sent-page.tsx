@@ -100,7 +100,7 @@ export function SentPage() {
         subtitle="Every send you made — typed in chat, confirmed by you."
       />
 
-      <FadeIn delay={0.05} className="mb-4 grid grid-cols-3 gap-3.5">
+      <FadeIn delay={0.05} className="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <StatCard
           tone="filled"
           label={`Sent in ${summary.monthLabel}`}

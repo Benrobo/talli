@@ -18,6 +18,7 @@ import type {
   GetCollectionPayViewResponse,
   CollectionPayCheckoutPayload,
   CollectionPayCheckoutResponse,
+  CollectionPayVerifyResponse,
 } from "./collections.types";
 
 export const COLLECTIONS_ENDPOINTS = {
@@ -28,6 +29,8 @@ export const COLLECTIONS_ENDPOINTS = {
   payments: (collectionId: string) => `/api/collections/${collectionId}/payments`,
   payView: (reference: string) => `/api/collections/pay/${reference}`,
   payCheckout: (reference: string) => `/api/collections/pay/${reference}/checkout`,
+  payCancel: (reference: string) => `/api/collections/pay/${reference}/cancel`,
+  payVerify: (reference: string) => `/api/collections/pay/${reference}/verify`,
 } as const;
 
 export const COLLECTIONS_API = {
@@ -89,4 +92,16 @@ export const COLLECTIONS_API = {
     payload: CollectionPayCheckoutPayload
   ): Promise<CollectionPayCheckoutResponse> =>
     apiClient.post(COLLECTIONS_ENDPOINTS.payCheckout(reference), payload).then((res) => res.data),
+
+  CANCEL_PAY: async (reference: string, memberId: string): Promise<void> => {
+    await apiClient.post(COLLECTIONS_ENDPOINTS.payCancel(reference), { memberId });
+  },
+
+  VERIFY_PAY: async (
+    reference: string,
+    pendingPaymentId: string
+  ): Promise<CollectionPayVerifyResponse> =>
+    apiClient
+      .post(COLLECTIONS_ENDPOINTS.payVerify(reference), { pendingPaymentId })
+      .then((res) => res.data),
 };

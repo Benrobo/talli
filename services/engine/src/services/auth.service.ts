@@ -5,8 +5,7 @@ import cacheAdapter from "../lib/cache-adapter.js";
 import redis from "../lib/redis.js";
 import { randomOtp } from "../lib/utils.js";
 import { mailService } from "./mail.service.js";
-import { workspaceService } from "./workspace.service.js";
-import { walletService } from "./wallet.service.js";
+import { virtualAccountService } from "./virtual-account.service.js";
 import {
   BadRequestException,
   UnauthorizedException,
@@ -55,8 +54,7 @@ class AuthService {
       update: { isVerified: true, ...(cleanName ? { name: cleanName } : {}) },
     });
 
-    await workspaceService.ensureDefaultWorkspace(user.id);
-    await walletService.ensureWallet(user.id);
+    await virtualAccountService.ensureForUser(user.id);
 
     const tokens = await this.createSession(user.id, user.email, context);
 

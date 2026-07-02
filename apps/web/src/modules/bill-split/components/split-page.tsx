@@ -1,4 +1,5 @@
 import { useState } from "react";
+import dayjs from "dayjs";
 import {
   BottomSheet,
   Button,
@@ -43,7 +44,7 @@ function splitStatusBadge(status: string) {
 const naira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
 function ageLabel(createdAt: string): string {
-  const mins = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60_000);
+  const mins = dayjs().diff(dayjs(createdAt), "minute");
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
@@ -82,7 +83,7 @@ export function SplitPage() {
         <EmptyState
           icon={AlertCircleIcon}
           title="Bill splits couldn't load"
-          description="Check your connection and try loading this workspace again."
+          description="Check your connection and try loading your bill splits again."
           action={
             <Button variant="secondary" onClick={() => query.refetch()}>
               Try again

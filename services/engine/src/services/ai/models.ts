@@ -1,4 +1,7 @@
+import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { openrouter } from "./provider.js";
+
+const model = (id: string): LanguageModelV2 => openrouter(id);
 
 /**
  * Catalog of model bindings used across the engine. Adding a new model here
@@ -6,19 +9,19 @@ import { openrouter } from "./provider.js";
  */
 export const MODELS = {
   google: {
-    geminiFlash: openrouter("google/gemini-2.5-flash"),
-    geminiPro: openrouter("google/gemini-2.5-pro"),
+    geminiFlash: model("google/gemini-2.5-flash"),
+    geminiPro: model("google/gemini-2.5-pro"),
   },
   openai: {
-    gpt4oMini: openrouter("openai/gpt-4o-mini"),
-    gpt4o: openrouter("openai/gpt-4o"),
+    gpt4oMini: model("openai/gpt-4o-mini"),
+    gpt4o: model("openai/gpt-4o"),
   },
   anthropic: {
-    haiku: openrouter("anthropic/claude-haiku-4-5"),
-    sonnet: openrouter("anthropic/claude-sonnet-4-5"),
+    haiku: model("anthropic/claude-haiku-4-5"),
+    sonnet: model("anthropic/claude-sonnet-4-5"),
   },
   deepseek: {
-    chat: openrouter("deepseek/deepseek-chat"),
+    chat: model("deepseek/deepseek-chat"),
   },
 } as const;
 

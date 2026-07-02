@@ -27,7 +27,7 @@ export function StatCard({
 }: StatCardProps) {
   if (tone === "filled") {
     return (
-      <Spotlight className={cn("p-5", className)}>
+      <Spotlight className={cn("min-w-0 p-4 sm:p-5", className)}>
         <div className="mb-4 flex items-start justify-between">
           <span className="text-[13px] font-medium text-white/75">{label}</span>
           {icon ? (
@@ -36,7 +36,9 @@ export function StatCard({
             </span>
           ) : null}
         </div>
-        <div className="font-display tabular text-[32px] font-bold leading-none tracking-[-0.02em]">{value}</div>
+        <div className="break-words font-display tabular text-[26px] font-bold leading-none tracking-[-0.02em] sm:text-[32px]">
+          {value}
+        </div>
         {delta || sub ? (
           <div className="mt-3.5 flex items-center gap-2">
             {delta ? <DeltaPill value={delta.value} direction={delta.direction} onDark /> : null}
@@ -49,7 +51,7 @@ export function StatCard({
   }
 
   return (
-    <div className={cn("rounded-[18px] border border-hairline bg-card p-5 shadow-card", className)}>
+    <div className={cn("min-w-0 rounded-[18px] border border-hairline bg-card p-4 shadow-card sm:p-5", className)}>
       <div className="mb-4 flex items-start justify-between">
         <span className="text-[13px] font-medium text-content-muted">{label}</span>
         {icon ? (
@@ -58,7 +60,7 @@ export function StatCard({
           </IconChip>
         ) : null}
       </div>
-      <div className="font-display tabular text-[30px] font-bold leading-none tracking-[-0.02em] text-foreground">
+      <div className="break-words font-display tabular text-[26px] font-bold leading-none tracking-[-0.02em] text-foreground sm:text-[30px]">
         {value}
       </div>
       {delta || sub ? (

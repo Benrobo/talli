@@ -39,8 +39,7 @@ export async function handlePay(ctx: TalliContext, collectionId: string): Promis
       return;
     }
 
-    const { flashAccountNumber, flashBankName } = await paymentService.create({
-      purpose: "collection",
+    const { flashAccountNumber, flashBankName } = await paymentService.createCollectionCheckout({
       amount: member.expectedAmount,
       collectionId,
       collectionMemberId: member.id,

@@ -1,0 +1,59 @@
+.tippy-box[data-theme~="talli-dark"] {
+  background-color: #1b1830;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: "Inter", system-ui, sans-serif;
+  box-shadow:
+    0 12px 28px -8px rgba(27, 24, 48, 0.45),
+    0 3px 8px -2px rgba(27, 24, 48, 0.28);
+}
+
+.tippy-box[data-theme~="talli-dark"] > .tippy-arrow::before {
+  color: #1b1830;
+}
+
+.tippy-box[data-theme~="talli-dark"] > .tippy-content {
+  padding: 6px 10px;
+  line-height: 1.5;
+}
+
+.tippy-box[data-theme~="talli-light"] {
+  background-color: #ffffff;
+  color: #1b1830;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: "Inter", system-ui, sans-serif;
+  box-shadow:
+    0 12px 28px -8px rgba(27, 24, 48, 0.22),
+    0 3px 8px -2px rgba(27, 24, 48, 0.14);
+}
+
+.tippy-box[data-theme~="talli-light"] > .tippy-arrow::before {
+  color: #ffffff;
+}
+
+.tippy-box[data-theme~="talli-light"] > .tippy-content {
+  padding: 6px 10px;
+  line-height: 1.5;
+}
+
+.tippy-box[data-animation="shift-away-subtle"][data-state="hidden"] {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.tippy-box[data-animation="shift-away-subtle"][data-state="hidden"][data-placement^="bottom"] {
+  transform: translateY(-3px);
+}
+
+.tippy-box[data-animation="shift-away-subtle"][data-state="hidden"][data-placement^="left"] {
+  transform: translateX(3px);
+}
+
+.tippy-box[data-animation="shift-away-subtle"][data-state="hidden"][data-placement^="right"] {
+  transform: translateX(-3px);
+}

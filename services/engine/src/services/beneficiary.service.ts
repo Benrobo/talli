@@ -2,7 +2,7 @@ import type { Beneficiary } from "@prisma/client";
 import prisma from "../prisma/index.js";
 
 export interface SaveBeneficiaryInput {
-  workspaceId: string;
+  userId: string;
   alias: string;
   accountName: string;
   accountNumber: string;
@@ -12,20 +12,20 @@ export interface SaveBeneficiaryInput {
 }
 
 /**
- * The workspace phone book of transfer recipients. Resolves a chat alias
+ * The user's phone book of transfer recipients. Resolves a chat alias
  * ("Tolu") to a verified account so the parser never needs account numbers, and
  * records new recipients on first successful transfer.
  */
 class BeneficiaryService {
-  async findByAlias(workspaceId: string, alias: string): Promise<Beneficiary | null> {
+  async findByAlias(userId: string, alias: string): Promise<Beneficiary | null> {
     return prisma.beneficiary.findFirst({
-      where: { workspaceId, alias: { equals: alias.trim(), mode: "insensitive" } },
+      where: { userId, alias: { equals: alias.trim(), mode: "insensitive" } },
     });
   }
 
-  async listAliases(workspaceId: string): Promise<string[]> {
+  async listAliases(userId: string): Promise<string[]> {
     const rows = await prisma.beneficiary.findMany({
-      where: { workspaceId },
+      where: { userId },
       select: { alias: true },
       orderBy: { lastUsedAt: "desc" },
       take: 20,
@@ -35,9 +35,9 @@ class BeneficiaryService {
 
   async save(input: SaveBeneficiaryInput): Promise<Beneficiary> {
     return prisma.beneficiary.upsert({
-      where: { workspaceId_alias: { workspaceId: input.workspaceId, alias: input.alias } },
+      where: { userId_alias: { userId: input.userId, alias: input.alias } },
       create: {
-        workspaceId: input.workspaceId,
+        userId: input.userId,
         alias: input.alias,
         accountName: input.accountName,
         accountNumber: input.accountNumber,

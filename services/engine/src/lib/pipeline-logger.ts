@@ -33,7 +33,7 @@ export function pipelineLogger(opts: PipelineLoggerOptions = {}) {
       try {
         const mod = await import("@trigger.dev/sdk").catch(() => null);
         if (mod?.logger) {
-          (mod.logger as Record<string, (m: string, f?: LogFields) => void>)[level](
+          (mod.logger as unknown as Record<string, (m: string, f?: LogFields) => void>)[level](
             tagged,
             fields ?? {}
           );

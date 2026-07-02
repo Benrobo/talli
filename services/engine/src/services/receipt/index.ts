@@ -19,9 +19,9 @@ function when(date: Date): string {
 }
 
 class ReceiptService {
-  async buildByReference(reference: string, workspaceId?: string): Promise<ReceiptData> {
+  async buildByReference(reference: string, userId?: string): Promise<ReceiptData> {
     const transfer = await prisma.transfer.findUnique({ where: { merchantTxRef: reference } });
-    if (transfer && (!workspaceId || transfer.workspaceId === workspaceId)) {
+    if (transfer && (!userId || transfer.userId === userId)) {
       return {
         amount: money(transfer.amount),
         purpose: "Money sent",
@@ -70,35 +70,35 @@ class ReceiptService {
     throw new NotFoundException("Receipt not found");
   }
 
-  async renderByReference(reference: string, workspaceId?: string): Promise<Buffer> {
-    const data = await this.buildByReference(reference, workspaceId);
+  async renderByReference(reference: string, userId?: string): Promise<Buffer> {
+    const data = await this.buildByReference(reference, userId);
     return renderReceipt(data);
   }
 
-  async recentList(workspaceId: string, ownerUserId: string, limit = 8): Promise<ReceiptListItem[]> {
-    const wallet = await prisma.wallet.findUnique({ where: { userId: ownerUserId }, select: { id: true } });
-    const collections = await prisma.collection.findMany({ where: { workspaceId }, select: { id: true } });
+  async recentList(userId: string, limit = 8): Promise<ReceiptListItem[]> {
+    const collections = await prisma.collection.findMany({
+      where: { ownerUserId: userId },
+      select: { id: true },
+    });
     const collectionIds = collections.map((c) => c.id);
 
     const transfers = await prisma.transfer.findMany({
-      where: { workspaceId, status: "sent" },
+      where: { userId, status: "sent" },
       orderBy: { createdAt: "desc" },
       take: limit,
       select: { merchantTxRef: true, amount: true, accountName: true, createdAt: true },
     });
 
     const paymentScopes = [
+      { userId },
       ...(collectionIds.length ? [{ collectionId: { in: collectionIds } }] : []),
-      ...(wallet ? [{ walletId: wallet.id }] : []),
     ];
-    const payments = paymentScopes.length
-      ? await prisma.pendingPayment.findMany({
-          where: { status: "completed", OR: paymentScopes },
-          orderBy: { completedAt: "desc" },
-          take: limit,
-          select: { orderRefId: true, amount: true, purpose: true, collectionId: true, completedAt: true, createdAt: true },
-        })
-      : [];
+    const payments = await prisma.pendingPayment.findMany({
+      where: { status: "completed", OR: paymentScopes },
+      orderBy: { completedAt: "desc" },
+      take: limit,
+      select: { orderRefId: true, amount: true, purpose: true, collectionId: true, completedAt: true, createdAt: true },
+    });
 
     const titles = new Map<string, string>();
     const payCollectionIds = payments.map((p) => p.collectionId).filter((id): id is string => !!id);
@@ -131,27 +131,27 @@ class ReceiptService {
     return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
   }
 
-  async latestReference(workspaceId: string, ownerUserId: string): Promise<string | null> {
-    const wallet = await prisma.wallet.findUnique({ where: { userId: ownerUserId }, select: { id: true } });
-    const collections = await prisma.collection.findMany({ where: { workspaceId }, select: { id: true } });
+  async latestReference(userId: string): Promise<string | null> {
+    const collections = await prisma.collection.findMany({
+      where: { ownerUserId: userId },
+      select: { id: true },
+    });
     const collectionIds = collections.map((c) => c.id);
 
     const transfer = await prisma.transfer.findFirst({
-      where: { workspaceId, status: "sent" },
+      where: { userId, status: "sent" },
       orderBy: { createdAt: "desc" },
       select: { merchantTxRef: true, createdAt: true },
     });
     const paymentScopes = [
+      { userId },
       ...(collectionIds.length ? [{ collectionId: { in: collectionIds } }] : []),
-      ...(wallet ? [{ walletId: wallet.id }] : []),
     ];
-    const payment = paymentScopes.length
-      ? await prisma.pendingPayment.findFirst({
-          where: { status: "completed", OR: paymentScopes },
-          orderBy: { completedAt: "desc" },
-          select: { orderRefId: true, completedAt: true },
-        })
-      : null;
+    const payment = await prisma.pendingPayment.findFirst({
+      where: { status: "completed", OR: paymentScopes },
+      orderBy: { completedAt: "desc" },
+      select: { orderRefId: true, completedAt: true },
+    });
 
     if (!transfer && !payment) return null;
     if (!transfer) return payment!.orderRefId;

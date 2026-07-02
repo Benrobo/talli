@@ -63,7 +63,6 @@ class ChatLinkService {
    * can't deep-link into a group.
    */
   async issueCode(
-    workspaceId: string,
     createdByUserId: string,
     platform: ChatPlatform,
     purpose: ChatLinkPurpose
@@ -73,7 +72,6 @@ class ChatLinkService {
 
     await prisma.chatLinkCode.create({
       data: {
-        workspaceId,
         createdByUserId,
         codeHash: await sha256(code),
         platform,
@@ -114,13 +112,13 @@ class ChatLinkService {
           platformChatId: params.platformChatId,
         },
       },
-      include: { workspace: { select: { name: true } } },
+      include: { user: { select: { name: true, email: true } } },
     });
     if (existing && existing.status === "active") {
       return {
         ok: false,
         reason: "already_linked",
-        workspaceName: existing.workspace?.name ?? "another workspace",
+        workspaceName: this.ownerLabel(existing.user),
       };
     }
 
@@ -150,7 +148,7 @@ class ChatLinkService {
           },
         },
         create: {
-          workspaceId: record.workspaceId,
+          userId: record.createdByUserId,
           platform: params.platform,
           chatType: record.purpose === "group_link" ? "group" : "private",
           platformChatId: params.platformChatId,
@@ -162,7 +160,7 @@ class ChatLinkService {
           status: "active",
         },
         update: {
-          workspaceId: record.workspaceId,
+          userId: record.createdByUserId,
           platformUserId: params.platformUserId,
           title: params.title,
           connectedByPlatformUserId: connectorIdentity.id,
@@ -180,25 +178,25 @@ class ChatLinkService {
       return chat;
     });
 
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: record.workspaceId },
-      select: { name: true },
+    const owner = await prisma.user.findUnique({
+      where: { id: record.createdByUserId },
+      select: { name: true, email: true },
     });
 
     return {
       ok: true,
       linkedChat,
       info: {
-        workspaceName: workspace?.name ?? "your workspace",
+        workspaceName: this.ownerLabel(owner),
         connectedBy: platformUserService.formatName(connectorIdentity),
       },
     };
   }
 
-  /** Lists the chats connected to a workspace, newest first, for the dashboard. */
-  async listConnectedChats(workspaceId: string): Promise<ConnectedChatView[]> {
+  /** Lists the chats connected to a user's account, newest first, for the dashboard. */
+  async listConnectedChats(userId: string): Promise<ConnectedChatView[]> {
     const chats = await prisma.linkedChat.findMany({
-      where: { workspaceId },
+      where: { userId },
       orderBy: { createdAt: "desc" },
       include: { connectedBy: { select: { firstName: true, username: true } } },
     });
@@ -225,7 +223,7 @@ class ChatLinkService {
     });
   }
 
-  /** Connection details for a chat (workspace, connector), used by `/info`. */
+  /** Connection details for a chat (owner, connector), used by `/info`. */
   async getChatStatus(
     platform: ChatPlatform,
     platformChatId: string
@@ -233,7 +231,7 @@ class ChatLinkService {
     const chat = await prisma.linkedChat.findFirst({
       where: { platform, platformChatId, status: "active" },
       include: {
-        workspace: { select: { name: true } },
+        user: { select: { name: true, email: true } },
         connectedBy: { select: { firstName: true, username: true } },
       },
     });
@@ -241,7 +239,7 @@ class ChatLinkService {
 
     return {
       connected: true,
-      workspaceName: chat.workspace?.name ?? "your workspace",
+      workspaceName: this.ownerLabel(chat.user),
       connectedBy: platformUserService.formatName(chat.connectedBy),
     };
   }
@@ -259,12 +257,12 @@ class ChatLinkService {
   }
 
   /**
-   * Disconnects a connected chat by id, scoped to the workspace so a member can
-   * only unlink their own workspace's chats. Used by the dashboard endpoint.
+   * Disconnects a connected chat by id, scoped to the user so a user can only
+   * unlink their own account's chats. Used by the dashboard endpoint.
    */
-  async disconnectById(workspaceId: string, linkedChatId: string): Promise<void> {
+  async disconnectById(userId: string, linkedChatId: string): Promise<void> {
     const chat = await prisma.linkedChat.findFirst({
-      where: { id: linkedChatId, workspaceId },
+      where: { id: linkedChatId, userId },
     });
     if (!chat) throw new NotFoundException("Connected chat not found");
 
@@ -272,6 +270,10 @@ class ChatLinkService {
       where: { id: linkedChatId },
       data: { status: "disabled" },
     });
+  }
+
+  private ownerLabel(user: { name: string | null; email: string } | null): string {
+    return user?.name ?? user?.email ?? "your account";
   }
 
   private buildDeepLink(platform: ChatPlatform, code: string): string {

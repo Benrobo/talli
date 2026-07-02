@@ -4,7 +4,7 @@ import prisma from "../prisma/index.js";
 import type { Intent } from "../schemas/intent.schema.js";
 
 export interface CommandContext {
-  workspaceId: string;
+  userId: string;
   linkedChatId: string;
   platform: ChatPlatform;
   senderPlatformId: string;
@@ -27,7 +27,7 @@ class BotCommandService {
   ): Promise<BotCommand> {
     return prisma.botCommand.create({
       data: {
-        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
         linkedChatId: ctx.linkedChatId,
         platform: ctx.platform,
         senderPlatformId: ctx.senderPlatformId,
@@ -49,7 +49,7 @@ class BotCommandService {
   ): Promise<BotCommand> {
     return prisma.botCommand.create({
       data: {
-        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
         linkedChatId: ctx.linkedChatId,
         platform: ctx.platform,
         senderPlatformId: ctx.senderPlatformId,
@@ -76,7 +76,7 @@ class BotCommandService {
   ): Promise<BotCommand> {
     return prisma.botCommand.create({
       data: {
-        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
         linkedChatId: ctx.linkedChatId,
         platform: ctx.platform,
         senderPlatformId: ctx.senderPlatformId,

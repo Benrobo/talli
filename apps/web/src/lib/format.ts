@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 const NAIRA = "\u20A6";
 
 /** Render a Naira amount as a grouped string, e.g. 3000 -> "₦3,000". */
@@ -42,4 +44,9 @@ export function formatDate(value: Date | string | number, withTime = false): str
     ? { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
     : { month: "short", day: "numeric" };
   return date.toLocaleString("en-NG", opts);
+}
+
+/** Transaction timestamp with month, day, time and AM/PM, e.g. "Jul 2, 12:25 AM". */
+export function formatTxDate(value: Date | string | number): string {
+  return dayjs(value).format("MMM D, h:mm A");
 }

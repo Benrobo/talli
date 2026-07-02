@@ -6,28 +6,13 @@ enum SavingsJarStatus {
   withdrawn
 }
 
-enum SavingsTransactionType {
-  deposit
-  withdrawal
-  adjustment
-}
-
-enum SavingsTransactionStatus {
-  pending
-  completed
-  failed
-}
-
-/// A personal savings goal funded from the user's wallet. `currentAmount` is the
-/// running total toward `targetAmount`; an optional `lockUntil` holds funds until
-/// a date. Saving to a jar debits the wallet and credits the jar.
 model SavingsJar {
   id            String           @id @default(cuid())
-  workspaceId   String
-  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   ownerUserId   String
   owner         User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   name          String
+  icon          String           @default("piggy")
+  accentColor   String           @default("#6d4ae6")
   targetAmount  Int?
   currentAmount Int              @default(0)
   currency      String           @default("NGN")
@@ -37,30 +22,9 @@ model SavingsJar {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  payments     Payment[]
-  transactions SavingsTransaction[]
+  payments Payment[]
 
-  @@index([workspaceId])
   @@index([ownerUserId])
   @@index([status])
   @@map("savings_jars")
-}
-
-/// One deposit into (or withdrawal from) a savings jar — the jar's ledger,
-/// mirroring the matching wallet debit/credit.
-model SavingsTransaction {
-  id           String                   @id @default(cuid())
-  savingsJarId String
-  savingsJar   SavingsJar               @relation(fields: [savingsJarId], references: [id], onDelete: Cascade)
-  paymentId    String?
-  payment      Payment?                 @relation(fields: [paymentId], references: [id], onDelete: SetNull)
-  amount       Int
-  type         SavingsTransactionType
-  status       SavingsTransactionStatus @default(pending)
-
-  createdAt DateTime @default(now())
-
-  @@index([savingsJarId])
-  @@index([paymentId])
-  @@map("savings_transactions")
 }

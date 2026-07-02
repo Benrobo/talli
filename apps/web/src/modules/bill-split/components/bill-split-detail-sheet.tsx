@@ -11,9 +11,11 @@ import {
   Copy01Icon,
   Invoice01Icon,
   Share01Icon,
-  Tick02Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
-import { Tick02Icon as SolidTick02Icon } from "@benrobo/iconary/core/solid-rounded";
+import {
+  Clock01Icon as SolidClock01Icon,
+  Tick02Icon as SolidTick02Icon,
+} from "@benrobo/iconary/core/solid-rounded";
 
 const STATUS: Record<
   BillSplitStatus,
@@ -88,8 +90,8 @@ export function BillSplitDetailSheet({
               <Icon icon={Invoice01Icon} size={21} />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="truncate font-display text-[18px] font-bold tracking-[-0.02em] text-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="min-w-0 truncate font-display text-[18px] font-bold tracking-[-0.02em] text-foreground">
                   {query.data.title}
                 </h3>
                 <StatusPill status={STATUS[query.data.status].status} dot>
@@ -146,7 +148,7 @@ export function BillSplitDetailSheet({
               variant="secondary"
               size="sm"
               block
-              leadingIcon={<Icon icon={copied ? Tick02Icon : Copy01Icon} size={14} />}
+              leadingIcon={<Icon icon={copied ? SolidTick02Icon : Copy01Icon} size={14} />}
               onClick={copyLink}
             >
               {copied ? "Link copied" : "Copy link"}
@@ -183,7 +185,7 @@ export function BillSplitDetailSheet({
                       }
                     >
                       <Icon
-                        icon={paid ? SolidTick02Icon : Clock01Icon}
+                        icon={paid ? SolidTick02Icon : SolidClock01Icon}
                         size={paid ? 15 : 14}
                         strokeWidth={paid ? 3 : undefined}
                       />
@@ -237,7 +239,7 @@ function DetailUnavailable({ onClose }: { onClose: () => void }) {
         This split isn&apos;t available
       </h3>
       <p className="mt-2 max-w-[300px] text-[12.5px] leading-relaxed text-content-muted">
-        It may have been removed, or it no longer belongs to this workspace.
+        It may have been removed, or it no longer belongs to your account.
       </p>
       <Button variant="secondary" size="sm" className="mt-5" onClick={onClose}>
         Back to bill splits

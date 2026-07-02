@@ -1,9 +1,7 @@
 model AuditLog {
-  id              String    @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id              String  @id @default(cuid())
   actorUserId     String?
-  actor           User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actor           User?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
   actorPlatformId String?
   action          String
   entityType      String
@@ -12,8 +10,8 @@ model AuditLog {
 
   createdAt DateTime @default(now())
 
-  @@index([workspaceId])
-  @@index([workspaceId, createdAt])
+  @@index([actorUserId])
+  @@index([actorUserId, createdAt])
   @@index([entityType, entityId])
   @@map("audit_logs")
 }

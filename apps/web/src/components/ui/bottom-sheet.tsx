@@ -60,7 +60,7 @@ export function BottomSheet({
       {open ? (
         <div
           className={cn(
-            "pointer-events-none inset-x-0 bottom-0 z-50 flex justify-center px-4",
+            "pointer-events-none inset-x-0 bottom-0 z-50 flex justify-center px-0 sm:px-4",
             isContained ? "absolute" : "fixed"
           )}
         >
@@ -85,7 +85,7 @@ export function BottomSheet({
               height: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
             }}
             className={cn(
-              "pointer-events-auto relative h-auto max-h-[750px] w-full max-w-[500px] overflow-y-auto rounded-t-[22px] border border-b-0 border-hairline bg-card p-5 shadow-[0_-30px_90px_-34px_rgba(109,74,230,0.32),0_-10px_32px_-18px_rgba(124,91,240,0.22)]",
+              "pointer-events-auto relative h-auto max-h-[calc(100dvh-1rem)] w-dvw! max-w-none! overflow-y-auto rounded-t-[22px] border border-b-0 border-hairline bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-30px_90px_-34px_rgba(109,74,230,0.32),0_-10px_32px_-18px_rgba(124,91,240,0.22)] sm:w-full! sm:max-w-[500px]! sm:p-5",
               dragging && "select-none",
               className
             )}

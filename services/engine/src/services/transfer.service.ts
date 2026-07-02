@@ -6,7 +6,7 @@ import { nomba } from "../integrations/nomba/index.js";
 import type { Bank } from "../integrations/nomba/resources/transfers.js";
 import type { TransferStatus as NombaTransferStatus } from "../integrations/nomba/types.js";
 import { beneficiaryService } from "./beneficiary.service.js";
-import { walletService } from "./wallet.service.js";
+import { ledgerService } from "./ledger.service.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 import logger from "../lib/logger.js";
 
@@ -21,8 +21,7 @@ export interface ResolveRecipientResult {
 }
 
 export interface PayoutInput {
-  workspaceId: string;
-  ownerUserId: string;
+  userId: string;
   amount: number;
   accountNumber: string;
   bankName: string;
@@ -66,8 +65,8 @@ export interface SentLedgerSummary {
  */
 class TransferService {
   /** Resolves a chat alias to verified account details via the phone book. */
-  async resolveRecipient(workspaceId: string, alias: string): Promise<ResolveRecipientResult> {
-    const saved = await beneficiaryService.findByAlias(workspaceId, alias);
+  async resolveRecipient(userId: string, alias: string): Promise<ResolveRecipientResult> {
+    const saved = await beneficiaryService.findByAlias(userId, alias);
     if (!saved) return { found: false };
     return {
       found: true,
@@ -154,10 +153,10 @@ class TransferService {
       );
     }
 
-    const wallet = await walletService.ensureWallet(input.ownerUserId);
-    if (wallet.balance < input.amount) {
+    const balance = await ledgerService.getBalance(input.userId);
+    if (balance < input.amount) {
       throw new BadRequestException(
-        `Insufficient balance: have ₦${wallet.balance}, need ₦${input.amount}.`
+        `Insufficient balance: have ₦${balance}, need ₦${input.amount}.`
       );
     }
 
@@ -166,13 +165,15 @@ class TransferService {
       amount: input.amount,
       to: `${verified.accountName} · ${verified.accountNumber} · ${verified.bankName}`,
       bankCode: verified.bankCode,
-      ws: input.workspaceId,
+      user: input.userId,
     });
 
-    await walletService.debit(wallet.id, input.amount, "send", merchantTxRef);
+    await ledgerService.debit(input.userId, "transfer_out", input.amount, {
+      referenceId: merchantTxRef,
+    });
     console.log(`📉 [payout] wallet debited ref=${merchantTxRef}`, {
       amount: input.amount,
-      balanceAfter: wallet.balance - input.amount,
+      balanceAfter: balance - input.amount,
     });
 
     const base = {
@@ -213,13 +214,15 @@ class TransferService {
     const status = this.mapStatus(nombaStatus, !!failureReason);
 
     if (status === "failed") {
-      await walletService.credit(wallet.id, input.amount, "refund", `${merchantTxRef}_refund`);
+      await ledgerService.credit(input.userId, "refund", input.amount, {
+        referenceId: `${merchantTxRef}_refund`,
+      });
       console.log(`↩️ [payout] refunded wallet (send failed) ref=${merchantTxRef}`, {
         amount: input.amount,
       });
     } else if (input.alias) {
       await beneficiaryService.save({
-        workspaceId: input.workspaceId,
+        userId: input.userId,
         alias: input.alias,
         accountName: verified.accountName,
         accountNumber: verified.accountNumber,
@@ -231,7 +234,7 @@ class TransferService {
 
     await prisma.transfer.create({
       data: {
-        workspaceId: input.workspaceId,
+        userId: input.userId,
         merchantTxRef,
         nombaTxId,
         walletRef: merchantTxRef,
@@ -256,7 +259,7 @@ class TransferService {
       amount: input.amount,
     });
 
-    return { ...base, status, walletBalance: await walletService.getBalance(input.ownerUserId) };
+    return { ...base, status, walletBalance: await ledgerService.getBalance(input.userId) };
   }
 
   /**
@@ -313,12 +316,9 @@ class TransferService {
     }
 
     if (status === "REFUND" || status === "PAYMENT_FAILED") {
-      const { ownerUserId } = await prisma.workspace.findUniqueOrThrow({
-        where: { id: transfer.workspaceId },
-        select: { ownerUserId: true },
+      await ledgerService.credit(transfer.userId, "refund", transfer.amount, {
+        referenceId: `${transfer.walletRef}_refund`,
       });
-      const wallet = await walletService.ensureWallet(ownerUserId);
-      await walletService.credit(wallet.id, transfer.amount, "refund", `${transfer.walletRef}_refund`);
       console.log(`↩️ [transfer] settled REFUND, wallet credited back ref=${transfer.merchantTxRef}`, {
         amount: transfer.amount,
         to: transfer.accountName,
@@ -344,10 +344,10 @@ class TransferService {
     return null;
   }
 
-  /** Outbound transfer history for a workspace — the receipt source. */
-  async history(workspaceId: string, limit = 50): Promise<Transfer[]> {
+  /** Outbound transfer history for a user — the receipt source. */
+  async history(userId: string, limit = 50): Promise<Transfer[]> {
     return prisma.transfer.findMany({
-      where: { workspaceId },
+      where: { userId },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
@@ -358,7 +358,7 @@ class TransferService {
    * transfers only, newest first, with roll-up stats for the header cards.
    */
   async listSentLedger(
-    workspaceId: string,
+    userId: string,
     options: { page: number; pageSize: number }
   ): Promise<{
     payments: SentLedgerRow[];
@@ -369,7 +369,7 @@ class TransferService {
   }> {
     const page = Math.max(1, options.page);
     const pageSize = Math.min(100, Math.max(1, options.pageSize));
-    const where = { workspaceId, status: "sent" as const };
+    const where = { userId, status: "sent" as const };
     const startOfMonth = dayjs().startOf("month").toDate();
 
     const [transfers, total, sentThisMonth, allRecipients] = await Promise.all([
