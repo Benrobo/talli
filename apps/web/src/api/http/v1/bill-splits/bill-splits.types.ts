@@ -25,7 +25,12 @@ export interface BillSplitSummary {
   title: string;
   token: string;
   status: string;
+  currency: string;
   total: number;
+  itemCount: number;
+  paidItemCount: number;
+  shareUrl: string;
+  expiresAt: string | null;
   createdAt: string;
 }
 

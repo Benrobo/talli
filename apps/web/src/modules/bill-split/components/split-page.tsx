@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   BottomSheet,
   Button,
@@ -19,13 +18,12 @@ import {
   PlusSignIcon,
   ReceiptDollarIcon,
 } from "@benrobo/iconary/core/duotone-rounded";
+import { useBillSplits } from "@/api/http/v1/bill-splits/bill-splits.hooks";
+import type { BillSplitSummary } from "@/api/http/v1/bill-splits/bill-splits.types";
 import { BillUploadWidget } from "@/modules/bill-split/components/bill-upload-widget";
 import { BillSplitDetailSheet } from "@/modules/bill-split/components/bill-split-detail-sheet";
-import {
-  billSplitApi,
-  type BillSplitStatus,
-  type BillSplitSummary,
-} from "@/modules/bill-split/api";
+
+type BillSplitStatus = BillSplitSummary["status"];
 
 const STATUS: Record<
   BillSplitStatus,
@@ -36,6 +34,10 @@ const STATUS: Record<
   expired: { status: "neutral", label: "Expired" },
   cancelled: { status: "danger", label: "Cancelled" },
 };
+
+function splitStatusBadge(status: string) {
+  return STATUS[status as BillSplitStatus] ?? STATUS.active;
+}
 
 const naira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
@@ -51,11 +53,8 @@ function ageLabel(createdAt: string): string {
 export function SplitPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedSplitId, setSelectedSplitId] = useState<string | null>(null);
-  const query = useQuery({
-    queryKey: ["bill-splits"],
-    queryFn: billSplitApi.list,
-  });
-  const splits = query.data ?? [];
+  const query = useBillSplits();
+  const splits = query.data?.data.billSplits ?? [];
 
   return (
     <div>
@@ -72,7 +71,7 @@ export function SplitPage() {
         }
       />
 
-      {query.isLoading ? <SplitGridLoading /> : null}
+      {query.isPending ? <SplitGridLoading /> : null}
 
       {query.isError ? (
         <EmptyState
@@ -133,7 +132,7 @@ export function SplitPage() {
 }
 
 function SplitCard({ split, onOpen }: { split: BillSplitSummary; onOpen: () => void }) {
-  const badge = STATUS[split.status];
+  const badge = splitStatusBadge(split.status);
 
   return (
     <Pressable className="h-full">
