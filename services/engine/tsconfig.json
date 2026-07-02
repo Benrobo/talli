@@ -10,5 +10,5 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "exclude": ["prisma.config.ts", "trigger.config.ts"]
+  "exclude": ["prisma.config.ts"]
 }

@@ -1,0 +1,8 @@
+dist/
+.turbo/
+
+# Compiled output of root config files (prisma.config.ts etc.) — regenerated, never committed
+*.config.js
+*.config.js.map
+*.config.d.ts
+*.config.d.ts.map

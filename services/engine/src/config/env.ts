@@ -28,9 +28,6 @@ const envSchema = z.object({
 
   OPENROUTER_API_KEY: z.string().default(""),
 
-  TRIGGER_SECRET_KEY: z.string().default(""),
-  TRIGGER_PROJECT_ID: z.string().default(""),
-
   FEATURE_FLAGS: z.string().default(""),
 
   NOMBA_ENV: z.enum(["test", "live"]).default("live"),
