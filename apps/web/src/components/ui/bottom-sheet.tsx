@@ -79,7 +79,7 @@ export function BottomSheet({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onPointerDown={() => onOpenChange(false)}
-            className="pointer-events-auto fixed inset-0 bg-foreground/40 backdrop-blur-[2px] sm:hidden"
+            className="pointer-events-auto fixed z-50 inset-0 bg-foreground/40 backdrop-blur-[2px] sm:hidden"
           />
           <motion.section
             ref={sheetRef}
