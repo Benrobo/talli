@@ -4,13 +4,30 @@ import {
   createCollectionSchema,
   addMemberSchema,
   updateCollectionStatusSchema,
+  updateCollectionSchema,
+  collectionPayCheckoutSchema,
 } from "../schemas/collection.schema.js";
 import useCatchErrors from "../lib/use-catch-errors.js";
 import { validateSchema } from "../middleware/validate.js";
 import { isAuthenticated } from "../middleware/auth.js";
+import { rateLimiter } from "../lib/rate-limiter.js";
 
 const router = new Hono();
 const c = collectionController;
+
+router.get("/collections/pay/:reference", useCatchErrors(c.getPayView.bind(c)));
+
+router.post(
+  "/collections/pay/:reference/checkout",
+  rateLimiter.rateLimit({
+    windowMs: 60_000,
+    max: 10,
+    keyPrefix: "collection:checkout",
+    bodyField: "payerName",
+  }),
+  validateSchema(collectionPayCheckoutSchema),
+  useCatchErrors(c.checkoutPay.bind(c))
+);
 
 router.post(
   "/collections",
@@ -37,5 +54,13 @@ router.patch(
   validateSchema(updateCollectionStatusSchema),
   useCatchErrors(isAuthenticated(c.updateStatus.bind(c)))
 );
+
+router.put(
+  "/collections/:id",
+  validateSchema(updateCollectionSchema),
+  useCatchErrors(isAuthenticated(c.update.bind(c)))
+);
+
+router.delete("/collections/:id", useCatchErrors(isAuthenticated(c.remove.bind(c))));
 
 export default router;

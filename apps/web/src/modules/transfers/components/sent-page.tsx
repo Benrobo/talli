@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Avatar,
   DataTable,
@@ -5,6 +6,11 @@ import {
   FadeIn,
   IconChip,
   PageHeader,
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
   StatCard,
   type Column,
 } from "@/components/ui";
@@ -16,10 +22,12 @@ import {
   Sent02Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { formatNaira } from "@/lib/format";
-import { transfers, transfersSummary } from "@/data/mock/transfers";
-import type { Transfer } from "@/modules/transfers/types";
+import { usePayments } from "@/api/http/v1/payments/payments.hooks";
+import type { SentPayment } from "@/api/http/v1/payments/payments.types";
 
-const columns: Column<Transfer>[] = [
+const PAGE_SIZE = 10;
+
+const columns: Column<SentPayment>[] = [
   {
     key: "recipient",
     header: "Recipient",
@@ -61,7 +69,31 @@ const columns: Column<Transfer>[] = [
 ];
 
 export function SentPage() {
-  const { sentThisMonthMinor, monthLabel, transferCount, recipientCount } = transfersSummary;
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isError } = usePayments({ page, pageSize: PAGE_SIZE });
+
+  const payments = data?.data.payments ?? [];
+  const summary = data?.data.summary;
+  const pagination = data?.data.pagination;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-[13.5px] text-content-muted">
+        Loading transfers…
+      </div>
+    );
+  }
+
+  if (isError || !summary || !pagination) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-[13.5px] text-content-muted">
+        Couldn&apos;t load transfers. Try again.
+      </div>
+    );
+  }
+
+  const transferCount = summary.transferCount;
+  const recipientCount = summary.recipientCount;
 
   return (
     <div>
@@ -74,8 +106,8 @@ export function SentPage() {
       <FadeIn delay={0.05} className="mb-4 grid grid-cols-3 gap-3.5">
         <StatCard
           tone="filled"
-          label={`Sent in ${monthLabel}`}
-          value={formatNaira(sentThisMonthMinor)}
+          label={`Sent in ${summary.monthLabel}`}
+          value={formatNaira(summary.sentThisMonthMinor)}
           icon={Sent02Icon}
           sub="this month"
         />
@@ -94,10 +126,10 @@ export function SentPage() {
       </FadeIn>
 
       <FadeIn delay={0.1} className="mb-2.5">
-        <span className="text-[13px] font-semibold text-foreground">Transfer ledger</span>
+        <span className="text-[13.5px] font-semibold text-foreground">Transfer ledger</span>
       </FadeIn>
 
-      {transfers.length === 0 ? (
+      {payments.length === 0 ? (
         <FadeIn delay={0.12}>
           <EmptyState
             icon={ArrowUpRight01Icon}
@@ -107,9 +139,45 @@ export function SentPage() {
         </FadeIn>
       ) : (
         <FadeIn delay={0.12}>
-          <DataTable columns={columns} rows={transfers} rowKey={(t) => t.id} />
+          <DataTable columns={columns} rows={payments} rowKey={(t) => t.id} />
         </FadeIn>
       )}
+
+      {pagination.totalPages > 1 ? (
+        <FadeIn delay={0.14} className="mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((current) => Math.max(1, current - 1));
+                  }}
+                  aria-disabled={page <= 1}
+                  className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <span className="tabular px-3 text-[12.5px] text-content-muted">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((current) => Math.min(pagination.totalPages, current + 1));
+                  }}
+                  aria-disabled={page >= pagination.totalPages}
+                  className={page >= pagination.totalPages ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </FadeIn>
+      ) : null}
 
       <FadeIn delay={0.16}>
         <div className="mt-3.5 flex items-center gap-3 rounded-[16px] border border-hairline bg-card p-4 shadow-card">

@@ -1,6 +1,10 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const nodeEnv = process.env.NODE_ENV ?? "development";
+const DEFAULT_ACCESS_TOKEN_TTL =
+  nodeEnv === "development" ? 60 * 60 * 24 : Number(process.env.JWT_ACCESS_TOKEN_TTL );
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(7291),
@@ -9,7 +13,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
 
   JWT_SECRET: z.string().min(16),
-  JWT_ACCESS_TOKEN_TTL: z.coerce.number().default(60 * 15),
+  JWT_ACCESS_TOKEN_TTL: z.coerce.number().default(DEFAULT_ACCESS_TOKEN_TTL),
   JWT_REFRESH_TOKEN_TTL: z.coerce.number().default(60 * 60 * 24 * 30),
   COOKIE_DOMAIN: z.string().optional(),
 
@@ -73,7 +77,13 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data;
+const ONE_DAY_SECONDS = 60 * 60 * 24;
+
+export const env = {
+  ...parsed.data,
+  JWT_ACCESS_TOKEN_TTL:
+    parsed.data.NODE_ENV === "development" ? ONE_DAY_SECONDS : parsed.data.JWT_ACCESS_TOKEN_TTL,
+};
 export default env;
 
 export type Env = z.infer<typeof envSchema>;

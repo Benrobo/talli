@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import toast from "react-hot-toast";
 import {
   Button,
   Dialog,
@@ -11,6 +12,7 @@ import {
   Input,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { useCreateCollection } from "@/api/http/v1/collections/collections.hooks";
 
 type Mode = "per_person" | "open";
 
@@ -19,6 +21,7 @@ interface NewCollectionDialogProps {
 }
 
 export function NewCollectionDialog({ trigger }: NewCollectionDialogProps) {
+  const createCollection = useCreateCollection();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [mode, setMode] = useState<Mode>("per_person");
@@ -30,6 +33,30 @@ export function NewCollectionDialog({ trigger }: NewCollectionDialogProps) {
     setMode("per_person");
     setAmount("");
     setDue("");
+  };
+
+  const handleCreate = async () => {
+    const trimmed = title.trim();
+    const numericAmount = Number(amount);
+    if (!trimmed || !numericAmount || Number.isNaN(numericAmount)) return;
+
+    const amountMinor = numericAmount * 100;
+
+    try {
+      await createCollection.mutateAsync({
+        title: trimmed,
+        purpose: "",
+        collectionType: mode === "per_person" ? "fixed_per_person" : "open_contribution",
+        amountPerMember: mode === "per_person" ? amountMinor : undefined,
+        targetAmount: mode === "open" ? amountMinor : undefined,
+        deadline: due ? new Date(due) : undefined,
+      });
+      toast.success("Collection created");
+      setOpen(false);
+      reset();
+    } catch {
+      toast.error("Couldn't create collection. Try again.");
+    }
   };
 
   return (
@@ -90,11 +117,11 @@ export function NewCollectionDialog({ trigger }: NewCollectionDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)}>
+          <Button variant="secondary" onClick={() => setOpen(false)} disabled={createCollection.isPending}>
             Cancel
           </Button>
-          <Button disabled={!title.trim() || !amount} onClick={() => setOpen(false)}>
-            Create collection
+          <Button disabled={!title.trim() || !amount || createCollection.isPending} onClick={handleCreate}>
+            {createCollection.isPending ? "Creating…" : "Create collection"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,5 @@
 import type { Transfer, TransferStatus as TransferRowStatus } from "@prisma/client";
+import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import { randomToken } from "../lib/utils.js";
 import { nomba } from "../integrations/nomba/index.js";
@@ -39,6 +40,22 @@ export interface PayoutResult {
   amount: number;
   transferRef: string;
   walletBalance: number;
+}
+
+export interface SentLedgerRow {
+  id: string;
+  recipient: string;
+  meta: string;
+  typed: string;
+  date: string;
+  amountMinor: number;
+}
+
+export interface SentLedgerSummary {
+  sentThisMonthMinor: number;
+  monthLabel: string;
+  transferCount: number;
+  recipientCount: number;
 }
 
 /**
@@ -334,6 +351,82 @@ class TransferService {
       orderBy: { createdAt: "desc" },
       take: limit,
     });
+  }
+
+  /**
+   * Paginated outbound send ledger for the money-sent screen. Reads successful
+   * transfers only, newest first, with roll-up stats for the header cards.
+   */
+  async listSentLedger(
+    workspaceId: string,
+    options: { page: number; pageSize: number }
+  ): Promise<{
+    payments: SentLedgerRow[];
+    summary: SentLedgerSummary;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const page = Math.max(1, options.page);
+    const pageSize = Math.min(100, Math.max(1, options.pageSize));
+    const where = { workspaceId, status: "sent" as const };
+    const startOfMonth = dayjs().startOf("month").toDate();
+
+    const [transfers, total, sentThisMonth, allRecipients] = await Promise.all([
+      prisma.transfer.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.transfer.count({ where }),
+      prisma.transfer.aggregate({
+        where: { ...where, createdAt: { gte: startOfMonth } },
+        _sum: { amount: true },
+      }),
+      prisma.transfer.findMany({
+        where,
+        select: { accountNumber: true },
+      }),
+    ]);
+
+    return {
+      payments: transfers.map((transfer) => this.toSentLedgerRow(transfer)),
+      summary: {
+        sentThisMonthMinor: sentThisMonth._sum.amount ?? 0,
+        monthLabel: dayjs().format("MMMM"),
+        transferCount: total,
+        recipientCount: new Set(allRecipients.map((row) => row.accountNumber)).size,
+      },
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  private toSentLedgerRow(transfer: Transfer): SentLedgerRow {
+    const bank = transfer.bankName ?? "Bank";
+    const note = transfer.narration?.trim() || "transfer";
+    return {
+      id: transfer.id,
+      recipient: this.shortRecipientName(transfer.accountName),
+      meta: `${bank} · ${note}`,
+      typed: transfer.narration?.trim() ? `"${transfer.narration.trim()}"` : "—",
+      date: this.formatLedgerDate(transfer.createdAt),
+      amountMinor: transfer.amount,
+    };
+  }
+
+  private shortRecipientName(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) return parts[0] ?? name;
+    return `${parts[0]} ${parts[parts.length - 1]![0]}.`;
+  }
+
+  private formatLedgerDate(value: Date): string {
+    const date = dayjs(value);
+    if (date.isSame(dayjs(), "day")) return "Today";
+    return date.format("MMM D");
   }
 }
 

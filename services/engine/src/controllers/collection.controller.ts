@@ -3,11 +3,14 @@ import type { CollectionMemberStatus } from "@prisma/client";
 import sendResponse from "../lib/send-response.js";
 import { BadRequestException } from "../lib/exception.js";
 import { collectionService } from "../services/collection.service.js";
+import { paymentService } from "../services/payment.service.js";
 import { workspaceService } from "../services/workspace.service.js";
 import type {
   CreateCollectionInput,
   AddMemberInput,
   UpdateCollectionStatusInput,
+  UpdateCollectionInput,
+  CollectionPayCheckoutInput,
 } from "../schemas/collection.schema.js";
 
 class CollectionController {
@@ -94,6 +97,38 @@ class CollectionController {
     const { status } = ctx.get("validatedData") as UpdateCollectionStatusInput;
     const collection = await collectionService.updateStatus(workspaceId, ctx.req.param("id"), status);
     return sendResponse.success(ctx, "Collection updated", 200, collection);
+  }
+
+  async update(ctx: Context) {
+    const workspaceId = await this.workspaceId(ctx);
+    const collectionId = ctx.req.param("id");
+    if (!collectionId) throw new BadRequestException("Collection id is required");
+    const input = ctx.get("validatedData") as UpdateCollectionInput;
+    const collection = await collectionService.update(workspaceId, collectionId, input);
+    return sendResponse.success(ctx, "Collection updated", 200, collection);
+  }
+
+  async remove(ctx: Context) {
+    const workspaceId = await this.workspaceId(ctx);
+    const collectionId = ctx.req.param("id");
+    if (!collectionId) throw new BadRequestException("Collection id is required");
+    await collectionService.remove(workspaceId, collectionId);
+    return sendResponse.success(ctx, "Collection deleted", 200, null);
+  }
+
+  async getPayView(ctx: Context) {
+    const reference = ctx.req.param("reference");
+    if (!reference) throw new BadRequestException("Collection reference is required");
+    const view = await collectionService.getPayView(reference);
+    return sendResponse.success(ctx, "Collection pay view fetched", 200, view);
+  }
+
+  async checkoutPay(ctx: Context) {
+    const reference = ctx.req.param("reference");
+    if (!reference) throw new BadRequestException("Collection reference is required");
+    const input = ctx.get("validatedData") as CollectionPayCheckoutInput;
+    const result = await paymentService.checkoutCollectionPay(reference, input);
+    return sendResponse.success(ctx, "Checkout created", 201, result);
   }
 }
 
