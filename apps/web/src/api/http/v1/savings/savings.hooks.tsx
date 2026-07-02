@@ -4,6 +4,8 @@ import { SAVINGS_API } from "./savings.api";
 import type {
   CreateSavingsJarPayload,
   CreateSavingsJarResponse,
+  DepositToSavingsJarPayload,
+  DepositToSavingsJarResponse,
   GetSavingsJarResponse,
   ListSavingsJarsResponse,
 } from "./savings.types";
@@ -36,6 +38,18 @@ export const useCreateSavingsJar = () => {
     mutationFn: SAVINGS_API.CREATE,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all });
+    },
+  });
+};
+
+export const useDepositToSavingsJar = (id: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<DepositToSavingsJarResponse, AxiosError, DepositToSavingsJarPayload>({
+    mutationFn: (payload) => SAVINGS_API.DEPOSIT(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(id) });
     },
   });
 };

@@ -374,6 +374,22 @@
               "path": ["savings", "{{savingsJarId}}"]
             }
           }
+        },
+        {
+          "name": "Deposit to savings jar",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/savings/{{savingsJarId}}/deposits",
+              "host": ["{{baseUrl}}"],
+              "path": ["savings", "{{savingsJarId}}", "deposits"]
+            }
+          }
         }
       ]
     },

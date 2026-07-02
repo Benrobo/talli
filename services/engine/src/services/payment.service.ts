@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import type { PendingPayment, PendingPaymentPurpose, Payment } from "@prisma/client";
 import prisma from "../prisma/index.js";
 import env from "../config/env.js";
 import { randomToken } from "../lib/utils.js";
@@ -8,6 +7,7 @@ import { telegram } from "../integrations/telegram/bot.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
 import { walletService } from "./wallet.service.js";
 import { collectionService } from "./collection.service.js";
+import { savingsService } from "./savings.service.js";
 import { billSplitService } from "./bill-split.service.js";
 import { mailService } from "./mail.service.js";
 import { receiptService } from "./receipt/index.js";
@@ -15,7 +15,15 @@ import { emitToBill } from "../socket/server.js";
 import logger from "../lib/logger.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
-export type PendingPurpose = PendingPaymentPurpose;
+type PendingPayment = NonNullable<Awaited<ReturnType<typeof prisma.pendingPayment.findUnique>>>;
+type Payment = NonNullable<Awaited<ReturnType<typeof prisma.payment.findFirst>>>;
+type TxClient = Parameters<typeof prisma.$transaction>[0] extends (
+  tx: infer T
+) => Promise<unknown>
+  ? T
+  : never;
+
+export type PendingPurpose = "topup" | "collection";
 
 export interface CreatePendingInput {
   purpose: PendingPurpose;
@@ -48,6 +56,29 @@ const MAX_POLL_ATTEMPTS = 90;
  * one Payment.
  */
 class PaymentService {
+  async createSavingsFunding(
+    workspaceId: string,
+    userId: string,
+    jarId: string,
+    amount: number
+  ): Promise<CreatedPending> {
+    if (amount <= 0) throw new BadRequestException("Amount must be greater than zero");
+
+    const jar = await prisma.savingsJar.findFirst({
+      where: { id: jarId, workspaceId, ownerUserId: userId },
+      select: { id: true },
+    });
+    if (!jar) throw new NotFoundException("Savings jar not found");
+
+    const wallet = await walletService.ensureWallet(userId);
+    return this.create({
+      purpose: "topup",
+      amount,
+      walletId: wallet.id,
+      collectionId: jar.id,
+    });
+  }
+
   async create(input: CreatePendingInput): Promise<CreatedPending> {
     const order = await nomba.checkout.createOrder({
       orderReference: `talli_${input.purpose}_${randomToken(10)}`,
@@ -138,9 +169,13 @@ class PaymentService {
 
   private async settle(pending: PendingPayment, amount: number): Promise<void> {
     if (pending.purpose === "topup" && pending.walletId) {
+      if (pending.collectionId) {
+        const funded = await this.settleSavingsFunding(pending, amount);
+        if (funded) return;
+      }
       await walletService.credit(pending.walletId, amount, "topup", pending.orderRefId);
     } else if (pending.purpose === "collection" && pending.collectionMemberId) {
-      const claim = await prisma.$transaction(async (tx) => {
+      const claim = await prisma.$transaction(async (tx: TxClient) => {
         const claimed = await tx.pendingPayment.updateMany({
           where: { id: pending.id, status: "pending" },
           data: { status: "completed", completedAt: new Date() },
@@ -170,12 +205,51 @@ class PaymentService {
     });
   }
 
+  private async settleSavingsFunding(pending: PendingPayment, amount: number): Promise<boolean> {
+    if (!pending.collectionId) return false;
+
+    const claim = await prisma.pendingPayment.updateMany({
+      where: { id: pending.id, status: "pending" },
+      data: { status: "completed", completedAt: new Date() },
+    });
+    if (claim.count === 0) return true;
+
+    const jar = await prisma.savingsJar.findUnique({
+      where: { id: pending.collectionId },
+      select: { id: true, workspaceId: true },
+    });
+    if (!jar) return false;
+
+    const existing = await prisma.payment.findFirst({
+      where: { providerOrderId: pending.orderRefId },
+      select: { id: true },
+    });
+
+    const payment =
+      existing ??
+      (await prisma.payment.create({
+        data: {
+          workspaceId: jar.workspaceId,
+          savingsJarId: jar.id,
+          amount,
+          provider: "nomba",
+          providerOrderId: pending.orderRefId,
+          status: "successful",
+          paidAt: pending.completedAt ?? new Date(),
+        },
+      }));
+
+    await savingsService.creditJar(jar.id, amount, payment.id);
+    return true;
+  }
+
   private async settleBillSplitIfAny(pending: PendingPayment, amount: number): Promise<boolean> {
     const settled = await billSplitService.settleByPendingPaymentId(pending.id);
     if (!settled) return false;
 
-    const { billSplit, selection, items, conflicted } = settled;
+    const { billSplit, selection, items } = settled;
     const labels = items.map((i) => i.label);
+    const conflicted = "conflicted" in settled ? Boolean(settled.conflicted) : false;
 
     if (conflicted) {
       logger.warn(

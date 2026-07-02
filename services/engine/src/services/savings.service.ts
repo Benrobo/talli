@@ -1,5 +1,5 @@
 import prisma from "../prisma/index.js";
-import { NotFoundException } from "../lib/exception.js";
+import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
 type TxClient = Parameters<typeof prisma.$transaction>[0] extends (
   tx: infer T
@@ -55,6 +55,17 @@ class SavingsService {
     return jar;
   }
 
+  async getWithDeposits(workspaceId: string, jarId: string, userId?: string) {
+    const jar = await this.get(workspaceId, jarId, userId);
+    const deposits = await prisma.savingsTransaction.findMany({
+      where: { savingsJarId: jar.id, type: "deposit", status: "completed" },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { amount: true, createdAt: true },
+    });
+    return { jar, deposits };
+  }
+
   /** Credits a jar from a settled funding payment. Atomic; records the deposit. */
   async creditJar(jarId: string, amount: number, paymentId?: string) {
     return prisma.$transaction(async (tx: TxClient) => {
@@ -69,6 +80,46 @@ class SavingsService {
         where: { id: jarId },
         data: { currentAmount: { increment: amount } },
       });
+    });
+  }
+
+  async depositFromWallet(workspaceId: string, userId: string, jarId: string, amount: number) {
+    if (amount <= 0) throw new BadRequestException("Amount must be greater than zero");
+
+    return prisma.$transaction(async (tx: TxClient) => {
+      const jar = await tx.savingsJar.findFirst({
+        where: { id: jarId, workspaceId, ownerUserId: userId },
+      });
+      if (!jar) throw new NotFoundException("Savings jar not found");
+
+      const wallet = await tx.wallet.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
+      });
+      if (wallet.balance < amount) throw new BadRequestException("Insufficient balance");
+
+      const nextBalance = wallet.balance - amount;
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: "debit",
+          amount,
+          reason: "savings_deposit",
+          balanceAfter: nextBalance,
+        },
+      });
+      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: nextBalance } });
+
+      await tx.savingsTransaction.create({
+        data: { savingsJarId: jar.id, amount, type: "deposit", status: "completed" },
+      });
+      const updatedJar = await tx.savingsJar.update({
+        where: { id: jar.id },
+        data: { currentAmount: { increment: amount } },
+      });
+
+      return { jar: updatedJar, walletBalance: nextBalance };
     });
   }
 }
