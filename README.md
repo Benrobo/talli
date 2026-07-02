@@ -1,3 +1,4 @@
+![talli-home.png](talli-home.png)
 # Talli
 
 AI treasurer and savings assistant for Telegram. Collect money, track payments,
