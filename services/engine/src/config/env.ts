@@ -21,22 +21,10 @@ const envSchema = z.object({
   CLIENT_URL: z.string().url().default("http://localhost:7193"),
   PUBLIC_API_URL: z.string().url().optional(),
 
-  GOOGLE_CLIENT_ID: z.string().default(""),
-  GOOGLE_CLIENT_SECRET: z.string().default(""),
-  GOOGLE_REDIRECT_URI: z
-    .string()
-    .default("http://localhost:7291/api/auth/google/callback"),
-
-  MAIL_FROM: z.string().default("mail@elorah.app"),
+  MAIL_FROM: z.string().default("mail@talli.app"),
 
   CLOUDFLARE_API_TOKEN: z.string().default(""),
   CLOUDFLARE_ACCOUNT_ID: z.string().default(""),
-
-  R2_ACCESS_KEY_ID: z.string().default(""),
-  R2_SECRET_ACCESS_KEY: z.string().default(""),
-  R2_BUCKET: z.string().default(""),
-  R2_ENDPOINT: z.string().default(""),
-  R2_PUBLIC_URL: z.string().default(""),
 
   OPENROUTER_API_KEY: z.string().default(""),
 
@@ -60,11 +48,6 @@ const envSchema = z.object({
   TELEGRAM_INFO_BANNER_URL: z
     .string()
     .default("https://res.cloudinary.com/dmi4vivcw/image/upload/v1782595988/talli-img-banner.png"),
-
-  WHATSAPP_ACCESS_TOKEN: z.string().default(""),
-  WHATSAPP_PHONE_NUMBER_ID: z.string().default(""),
-  WHATSAPP_VERIFY_TOKEN: z.string().default(""),
-  WHATSAPP_APP_SECRET: z.string().default(""),
 
   CHAT_LINK_CODE_TTL_MINUTES: z.coerce.number().default(15),
   PAYMENT_PAGE_BASE_URL: z.string().url().optional(),

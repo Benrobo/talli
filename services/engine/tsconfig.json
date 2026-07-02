@@ -9,6 +9,6 @@
     "jsxImportSource": "hono/jsx",
     "noEmit": false
   },
-  "include": ["src/**/*", "scripts/inspect-topup.ts", "scripts/test-va-transactions.ts", "scripts/check-webhooks.ts"],
+  "include": ["src/**/*"],
   "exclude": ["prisma.config.ts", "trigger.config.ts"]
 }

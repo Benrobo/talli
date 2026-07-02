@@ -31,8 +31,6 @@ export const CORS_ORIGINS = [
 export const PUBLIC_ROUTES = [
   "/health",
   "/api/health",
-  "/api/auth/google",
-  "/api/auth/google/callback",
 ];
 
 /** Secure auth cookies when the web app is served over HTTPS (portless). */

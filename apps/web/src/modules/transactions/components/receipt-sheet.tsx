@@ -10,6 +10,7 @@ import type { TransactionRecord } from "@/api/http/v1/transactions/transactions.
 import {
   KIND_META,
   statusMeta,
+  transactionTitle,
   type ChipTone,
   type StatusVariant,
 } from "../transaction-meta";
@@ -104,7 +105,7 @@ export function ReceiptSheet({
             </span>
           </motion.div>
 
-          <div className="text-[13px] font-medium text-content-muted">{kind.label}</div>
+          <div className="text-[13px] font-medium text-content-muted">{transactionTitle(transaction)}</div>
           <div className="tabular font-display text-[34px] font-extrabold leading-none tracking-[-0.03em]">
             {credit ? "+" : "−"}
             {formatNaira(transaction.amount)}

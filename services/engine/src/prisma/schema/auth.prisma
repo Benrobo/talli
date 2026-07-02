@@ -38,7 +38,6 @@ model User {
   payments              Payment[]          @relation("PaymentOwner")
   paymentsAsPayer       Payment[]          @relation("PaymentPayer")
   virtualAccount        VirtualAccount?
-  auditLogs             AuditLog[]
 
   @@map("users")
 }

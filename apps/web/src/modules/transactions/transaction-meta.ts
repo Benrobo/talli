@@ -15,6 +15,7 @@ import type {
   TransactionKind,
   TransactionRecord,
 } from "@/api/http/v1/transactions/transactions.types";
+import { formatNairaShort } from "@/lib/format";
 
 export type ChipTone = "emerald" | "iris" | "amber" | "rose" | "neutral";
 
@@ -57,4 +58,39 @@ export function rowSubtitle(row: TransactionRecord): string {
   if (row.savingsJarId) return "Savings jar";
   if (row.transferId) return "Bank transfer";
   return row.direction === "credit" ? "Money in" : "Money out";
+}
+
+/**
+ * A descriptive, human title for a transaction — what it's actually about, not just
+ * the kind. e.g. "Sent ₦5k to Samuel", "Topped up ₦2,000", "Withdrew ₦10k".
+ */
+export function transactionTitle(row: TransactionRecord): string {
+  const amount = formatNairaShort(row.amount);
+  switch (row.kind) {
+    case "transfer_out": {
+      const to = row.recipient?.accountName;
+      return to ? `Sent ${amount} to ${titleCaseName(to)}` : `Sent ${amount}`;
+    }
+    case "wallet_topup":
+      return `Topped up ${amount}`;
+    case "savings_deposit":
+      return `Saved ${amount}`;
+    case "savings_withdrawal":
+      return `Withdrew ${amount} from savings`;
+    case "collection_payment":
+      return `Collected ${amount}`;
+    case "refund":
+      return `Refund of ${amount}`;
+  }
+}
+
+/** Bank account names come UPPERCASE — soften to Title Case for a friendly title. */
+function titleCaseName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed !== trimmed.toUpperCase()) return trimmed;
+  return trimmed
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }

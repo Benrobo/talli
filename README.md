@@ -1,13 +1,12 @@
 # Talli
 
-AI treasurer and savings assistant for WhatsApp and Telegram. Collect money,
-track payments, run savings jars, and manage group contributions from chat.
+AI treasurer and savings assistant for Telegram. Collect money, track payments,
+run savings jars, send payouts, and manage group contributions from chat.
 
-**Hackathon stack:** Bun + Turborepo · Hono engine · Vite SPA · Prisma +
-Postgres · Nomba Checkout · Telegram / WhatsApp bots.
+**Stack:** Bun + Turborepo · Hono engine · Vite SPA · Prisma + Postgres ·
+Nomba · Telegram bot. (WhatsApp is planned — see the PRD.)
 
-Full product spec: [`docs/talli-prd.md`](docs/talli-prd.md)  
-Task tracker: [`docs/todos.md`](docs/todos.md)
+Full product spec: [`docs/talli-prd.md`](docs/talli-prd.md) · [`docs/talli-prd-v2.md`](docs/talli-prd-v2.md)
 
 ## Prerequisites
 
@@ -48,7 +47,6 @@ sudo portless proxy start --https
 |---|---|
 | Web app | **https://talli.localhost** (portless) |
 | Engine API | http://localhost:7291 |
-| Marketing | http://localhost:7195 |
 
 Web dev runs through [portless](https://www.npmjs.com/package/portless) — same
 pattern as mood-world. Set `WEB_APP_URL=https://talli.localhost` in
@@ -61,7 +59,7 @@ Bypass portless: `bun dev:web:no-proxy` → http://localhost:7193
 
 ### Cloudflare tunnel (engine / webhooks only)
 
-Only the engine is tunneled for Nomba, Telegram, and WhatsApp webhooks:
+Only the engine is tunneled for Nomba and Telegram webhooks:
 
 | Hostname | Local target |
 |---|---|
@@ -82,7 +80,6 @@ PUBLIC_API_URL=https://p7291.benlabtest.space
 |---|---|
 | Nomba | [`docs/nomba-test-credentials.md`](docs/nomba-test-credentials.md) · [Nomba API](https://developer.nomba.com) |
 | Telegram | Create bot via [@BotFather](https://t.me/BotFather) |
-| WhatsApp | Meta Business Cloud API (private chat only for MVP) |
 
 ## Scripts
 

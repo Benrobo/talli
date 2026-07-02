@@ -24,7 +24,7 @@ import { TippyTooltip } from "@/components/ui/tippy-tooltip";
 import { SentSkeleton } from "@/components/skeleton-loaders";
 import { useTransactions } from "@/api/http/v1/transactions/transactions.hooks";
 import type { TransactionRecord } from "@/api/http/v1/transactions/transactions.types";
-import { KIND_META, rowSubtitle, statusMeta } from "../transaction-meta";
+import { rowSubtitle, statusMeta, transactionTitle } from "../transaction-meta";
 import { computeDateBounds } from "./transactions-filters";
 import { TransactionsFilterBar, type FilterState } from "./transactions-filter-bar";
 import { TransactionIcon } from "./transaction-icon";
@@ -88,7 +88,7 @@ export function TransactionsPage() {
           <div className="flex items-center gap-3">
             <TransactionIcon kind={row.kind} />
             <div>
-              <div className="text-[13.5px] font-medium text-foreground">{KIND_META[row.kind].label}</div>
+              <div className="text-[13.5px] font-medium text-foreground">{transactionTitle(row)}</div>
               <div className="text-[11px] text-content-faint">{rowSubtitle(row)}</div>
             </div>
           </div>

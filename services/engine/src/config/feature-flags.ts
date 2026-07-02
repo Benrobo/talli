@@ -4,12 +4,8 @@ export type FeatureFlag =
   | "auth"
   | "users"
   | "ai"
-  | "media"
-  | "notifications"
   | "socket"
-  | "workspaces"
   | "telegram"
-  | "whatsapp"
   | "collections"
   | "savings"
   | "nomba"
@@ -24,12 +20,8 @@ const DEFAULT_FLAGS: Record<FeatureFlag, FeatureFlagConfig> = {
   auth: { enabled: true, label: "Authentication" },
   users: { enabled: true, label: "User profiles" },
   ai: { enabled: true, label: "AI generation" },
-  media: { enabled: false, label: "Media uploads" },
-  notifications: { enabled: true, label: "Notifications" },
   socket: { enabled: false, label: "Realtime socket" },
-  workspaces: { enabled: true, label: "Workspaces" },
   telegram: { enabled: true, label: "Telegram bot" },
-  whatsapp: { enabled: true, label: "WhatsApp bot" },
   collections: { enabled: true, label: "Collections" },
   savings: { enabled: true, label: "Savings jars" },
   nomba: { enabled: true, label: "Nomba payments" },
