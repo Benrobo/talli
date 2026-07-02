@@ -26,10 +26,13 @@ function JarDetailRoute() {
         name: source.jar.name,
         savedMinor: source.jar.currentAmount,
         targetMinor: source.jar.targetAmount ?? source.jar.currentAmount,
+        targetAmountMinor: source.jar.targetAmount,
+        lockUntil: source.jar.lockUntil,
         status: source.jar.status === "locked" ? "locked" : "active",
         lockText: source.jar.lockUntil
           ? `unlocks ${new Date(source.jar.lockUntil).toLocaleDateString("en-NG")}`
           : "no lock",
+        canEditAmounts: source.jar.currentAmount === 0,
         deposits: source.deposits.map((deposit) => ({
           amountMinor: deposit.amount,
           when: new Date(deposit.createdAt).toLocaleString("en-NG"),

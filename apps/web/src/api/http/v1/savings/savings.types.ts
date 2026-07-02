@@ -11,8 +11,15 @@ export const depositToSavingsJarSchema = z.object({
   amount: z.number().int().positive("Amount must be greater than zero"),
 });
 
+export const updateSavingsJarSchema = z.object({
+  name: z.string().trim().min(1, "Jar name is required").max(80),
+  targetAmount: z.number().int().positive().optional(),
+  lockUntil: z.union([z.coerce.date(), z.null()]).optional(),
+});
+
 export type CreateSavingsJarPayload = z.infer<typeof createSavingsJarSchema>;
 export type DepositToSavingsJarPayload = z.infer<typeof depositToSavingsJarSchema>;
+export type UpdateSavingsJarPayload = z.infer<typeof updateSavingsJarSchema>;
 
 export interface SavingsJarRecord {
   id: string;
@@ -34,6 +41,8 @@ export type GetSavingsJarResponse = ApiSuccess<{
   deposits: { amount: number; createdAt: string }[];
 }>;
 export type CreateSavingsJarResponse = ApiSuccess<SavingsJarRecord>;
+export type UpdateSavingsJarResponse = ApiSuccess<SavingsJarRecord>;
+export type DeleteSavingsJarResponse = ApiSuccess<null>;
 export type DepositToSavingsJarResponse = ApiSuccess<{
   orderRefId: string;
   flashAccountNumber: string;

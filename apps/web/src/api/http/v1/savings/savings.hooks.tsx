@@ -8,6 +8,8 @@ import type {
   DepositToSavingsJarResponse,
   GetSavingsJarResponse,
   ListSavingsJarsResponse,
+  UpdateSavingsJarPayload,
+  UpdateSavingsJarResponse,
 } from "./savings.types";
 
 export const savingsQueryKeys = {
@@ -50,6 +52,31 @@ export const useDepositToSavingsJar = (id: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(id) });
+    },
+  });
+};
+
+export const useUpdateSavingsJar = (id: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateSavingsJarResponse, AxiosError, UpdateSavingsJarPayload>({
+    mutationFn: (payload) => SAVINGS_API.UPDATE(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.detail(id) });
+    },
+  });
+};
+
+export const useDeleteSavingsJar = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, AxiosError, string>({
+    mutationFn: async (id) => {
+      await SAVINGS_API.DELETE(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: savingsQueryKeys.all });
     },
   });
 };
