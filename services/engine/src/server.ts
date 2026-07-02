@@ -10,6 +10,7 @@ import collectionRoute from "./routes/collection.route.js";
 import savingsRoute from "./routes/savings.route.js";
 import walletRoute from "./routes/wallet.route.js";
 import transferRoute from "./routes/transfer.route.js";
+import paymentsRoute from "./routes/payments.route.js";
 import receiptRoute from "./routes/receipt.route.js";
 import webhookRoute from "./routes/webhook.route.js";
 import billSplitRoute from "./routes/bill-split.route.js";
@@ -19,7 +20,7 @@ import type { ServerType } from "@hono/node-server";
 
 const app = new App();
 
-app.initializeRoutes([healthRoute, authRoute, userRoute, workspaceRoute, chatRoute, collectionRoute, savingsRoute, walletRoute, transferRoute, receiptRoute, webhookRoute, billSplitRoute]);
+app.initializeRoutes([healthRoute, authRoute, userRoute, workspaceRoute, chatRoute, collectionRoute, savingsRoute, walletRoute, transferRoute, paymentsRoute, receiptRoute, webhookRoute, billSplitRoute]);
 
 async function bootstrap() {
   const server = app.start();

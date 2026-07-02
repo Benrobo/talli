@@ -238,7 +238,7 @@ function subLine(collection: CollectionRecord): string {
 
   switch (viewStatus) {
     case "live":
-      return `${formatNaira(amountPerMember)} / person${due ? ` · due ${due}` : ""}`;
+      return collection.collectionType === "fixed_per_person" ? `${formatNaira(amountPerMember)} / person${due ? ` · due ${due}` : ""}` : `Open contribution · ${formatNaira(targetAmount)} target`;
     case "closed":
       return `Open contribution · ${formatNaira(targetAmount)} target`;
     case "draft":
