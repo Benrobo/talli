@@ -52,17 +52,19 @@ class ReceiptFontManager {
   private loading: Promise<ReceiptFont[]> | null = null;
 
   async getFonts(): Promise<ReceiptFont[]> {
-    if (this.cache) return this.cache;
+    if (this.cache && this.cache.length) return this.cache;
     if (this.loading) return this.loading;
 
     this.loading = this.load();
     try {
-      this.cache = await this.loading;
-      return this.cache;
+      const fonts = await this.loading;
+      if (fonts.length) this.cache = fonts;
+      return fonts;
     } catch (err) {
       logger.error(`[receipt/fonts] load failed: ${(err as Error).message}`);
-      this.loading = null;
       return [];
+    } finally {
+      this.loading = null;
     }
   }
 
@@ -79,7 +81,7 @@ class ReceiptFontManager {
     }
 
     const fetched = await this.fetchAll();
-    if (fetched.length) await this.saveToDisk(fetched);
+    if (fetched.length === FONTS.length) await this.saveToDisk(fetched);
     return fetched;
   }
 

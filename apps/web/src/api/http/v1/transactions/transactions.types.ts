@@ -5,6 +5,7 @@ export type TransactionKind =
   | "collection_payment"
   | "savings_deposit"
   | "savings_withdrawal"
+  | "collection_withdrawal"
   | "transfer_out"
   | "refund";
 

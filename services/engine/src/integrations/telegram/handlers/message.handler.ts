@@ -34,6 +34,11 @@ export async function handleMessage(ctx: TalliContext): Promise<void> {
   const text = ctx.message?.text?.replace(MENTION, "").trim();
   if (!text) return;
 
+  console.log(`🔍 [telegram] msg chat=${chatId}: ${JSON.stringify({
+    message: ctx.message,
+    me: ctx.me
+  }, null, 2)}`)
+
   const isGroup = isGroupChat(ctx);
   const mentioned = !!ctx.message?.text?.match(MENTION);
   const replyToBot = isReplyToBot(ctx);
@@ -107,13 +112,16 @@ async function render(ctx: TalliContext, result: DispatchResult, isGroup: boolea
   }
 
   if (result.photo) {
+    const text = result.text?.trim();
+    const caption = text && text.length <= 1024 ? text : result.photo.caption;
     const sent = await telegram.sendPhoto(
       String(ctx.chat!.id),
       result.photo.image,
-      result.photo.caption ?? result.text
+      caption,
+      result.keyboard
     );
     if (sent) return;
-    await safeReply(ctx, messages.receiptPhotoBlocked);
+    await safeReply(ctx, messages.receiptPhotoBlocked, result.keyboard);
     return;
   }
 

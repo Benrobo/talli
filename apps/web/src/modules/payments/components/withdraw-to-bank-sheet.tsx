@@ -18,6 +18,7 @@ import {
   Clock01Icon,
   MoneySend01Icon,
   Search01Icon,
+  Wallet01Icon,
 } from "@benrobo/iconary/core/duotone-rounded";
 import { Cancel01Icon, Tick02Icon } from "@benrobo/iconary/core/solid-rounded";
 import { formatNaira } from "@/lib/format";
@@ -33,9 +34,10 @@ export interface WithdrawResult {
   amount: number;
   accountName: string;
   bankName: string;
+  toWallet?: boolean;
 }
 
-type View = "amount" | "destination" | "result";
+type View = "amount" | "choice" | "confirm-wallet" | "destination" | "result";
 
 export function WithdrawToBankSheet({
   open,
@@ -44,6 +46,7 @@ export function WithdrawToBankSheet({
   available,
   submitting,
   onSubmit,
+  onWithdrawToWallet,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,6 +58,7 @@ export function WithdrawToBankSheet({
     accountNumber: string;
     bankName: string;
   }) => Promise<WithdrawResult>;
+  onWithdrawToWallet?: (amount: number) => Promise<WithdrawResult>;
 }) {
   const [view, setView] = useState<View>("amount");
   const [amountInput, setAmountInput] = useState("");
@@ -114,6 +118,18 @@ export function WithdrawToBankSheet({
     }
   }
 
+  async function submitToWallet() {
+    if (!onWithdrawToWallet) return;
+    setError(null);
+    try {
+      const res = await onWithdrawToWallet(amount);
+      setResult(res);
+      setView("result");
+    } catch {
+      setError("Couldn't move it to your wallet. Try again.");
+    }
+  }
+
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={title} className="max-w-[440px] pb-7">
       <AnimatePresence mode="wait" initial={false}>
@@ -149,9 +165,111 @@ export function WithdrawToBankSheet({
               className="mt-5"
               disabled={!amountValid}
               trailingIcon={<Icon icon={ArrowRight01Icon} size={17} />}
-              onClick={() => setView("destination")}
+              onClick={() => setView(onWithdrawToWallet ? "choice" : "destination")}
             >
               Continue
+            </Button>
+          </motion.div>
+        ) : view === "choice" ? (
+          <motion.div
+            key="choice"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="pt-1"
+          >
+            <button
+              type="button"
+              onClick={() => setView("amount")}
+              className="t-press mb-4 inline-flex items-center gap-1.5 rounded-full bg-inset/70 px-3 py-1.5 text-[12.5px] font-semibold text-foreground hover:bg-inset"
+            >
+              <Icon icon={ArrowLeft01Icon} size={14} />
+              {formatNaira(amount)}
+            </button>
+
+            <div className="mb-5 text-center">
+              <div className="font-display text-[18px] font-bold tracking-[-0.02em]">Where to?</div>
+              <p className="mt-1 text-[12.5px] text-content-muted">Move it to your wallet or send to a bank.</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setView("confirm-wallet");
+              }}
+              className="t-press mb-3 flex w-full items-center gap-3 rounded-[16px] border border-iris/30 bg-iris-soft/60 px-4 py-4 text-left disabled:opacity-60"
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-iris text-white">
+                <Icon icon={Wallet01Icon} size={20} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14.5px] font-bold text-foreground">To my Talli wallet</span>
+                <span className="block text-[12px] text-content-muted">Instant · no fee · spend it anytime</span>
+              </span>
+              <Icon icon={ArrowRight01Icon} size={16} className="shrink-0 text-iris-deep" />
+            </button>
+
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => setView("destination")}
+              className="t-press flex w-full items-center gap-3 rounded-[16px] border border-hairline bg-card px-4 py-4 text-left disabled:opacity-60"
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-inset text-foreground">
+                <Icon icon={BankIcon} size={20} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14.5px] font-bold text-foreground">To a bank account</span>
+                <span className="block text-[12px] text-content-muted">Send to any Nigerian bank</span>
+              </span>
+              <Icon icon={ArrowRight01Icon} size={16} className="shrink-0 text-content-faint" />
+            </button>
+          </motion.div>
+        ) : view === "confirm-wallet" ? (
+          <motion.div
+            key="confirm-wallet"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="pt-1"
+          >
+            <button
+              type="button"
+              onClick={() => setView("choice")}
+              className="t-press mb-4 inline-flex items-center gap-1.5 rounded-full bg-inset/70 px-3 py-1.5 text-[12.5px] font-semibold text-foreground hover:bg-inset"
+            >
+              <Icon icon={ArrowLeft01Icon} size={14} />
+              Back
+            </button>
+
+            <div className="mb-6 flex flex-col items-center text-center">
+              <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-iris-soft text-iris-deep">
+                <Icon icon={Wallet01Icon} size={23} />
+              </span>
+              <div className="text-[12.5px] text-content-muted">Move to your Talli wallet</div>
+              <div className="font-display tabular mt-1 text-[30px] font-extrabold leading-tight tracking-[-0.03em]">
+                {formatNaira(amount)}
+              </div>
+              <p className="mt-2 max-w-[290px] text-[12.5px] text-content-muted">
+                This lands in your wallet instantly and free. You can spend or send it anytime.
+              </p>
+            </div>
+
+            {error ? (
+              <p className="mb-3 px-1 text-center text-[12.5px] text-rose-deep">{error}</p>
+            ) : null}
+
+            <Button
+              block
+              size="lg"
+              loading={submitting}
+              leadingIcon={<Icon icon={Wallet01Icon} size={17} />}
+              onClick={submitToWallet}
+            >
+              {`Move ${formatNaira(amount)} to wallet`}
             </Button>
           </motion.div>
         ) : view === "destination" ? (
@@ -165,7 +283,7 @@ export function WithdrawToBankSheet({
           >
             <button
               type="button"
-              onClick={() => setView("amount")}
+              onClick={() => setView(onWithdrawToWallet ? "choice" : "amount")}
               className="t-press mb-4 inline-flex items-center gap-1.5 rounded-full bg-inset/70 px-3 py-1.5 text-[12.5px] font-semibold text-foreground hover:bg-inset"
             >
               <Icon icon={ArrowLeft01Icon} size={14} />
@@ -370,7 +488,9 @@ function ResultView({ result, onDone }: { result: WithdrawResult; onDone: () => 
       >
         <Icon icon={meta.icon} size={30} />
       </motion.span>
-      <div className="font-display text-[20px] font-bold tracking-[-0.02em]">{meta.title}</div>
+      <div className="font-display text-[20px] font-bold tracking-[-0.02em]">
+        {typeof meta.title === "function" ? meta.title(result) : meta.title}
+      </div>
       <p className="mt-1.5 max-w-[300px] text-[13px] text-content-muted">{meta.line(result)}</p>
       <Button block size="lg" className="mt-6" onClick={onDone}>
         Done
@@ -381,13 +501,16 @@ function ResultView({ result, onDone }: { result: WithdrawResult; onDone: () => 
 
 const RESULT_META: Record<
   WithdrawStatus,
-  { icon: typeof Tick02Icon; bg: string; title: string; line: (r: WithdrawResult) => string }
+  { icon: typeof Tick02Icon; bg: string; title: string | ((r: WithdrawResult) => string); line: (r: WithdrawResult) => string }
 > = {
   sent: {
     icon: Tick02Icon,
     bg: "bg-emerald",
-    title: "Withdrawal sent",
-    line: (r) => `${formatNaira(r.amount)} is on its way to ${r.accountName}.`,
+    title: (r) => (r.toWallet ? "Moved to your wallet" : "Withdrawal sent"),
+    line: (r) =>
+      r.toWallet
+        ? `${formatNaira(r.amount)} landed in your Talli wallet. Spend it whenever.`
+        : `${formatNaira(r.amount)} is on its way to ${r.accountName}.`,
   },
   pending: {
     icon: Clock01Icon,

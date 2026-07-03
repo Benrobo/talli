@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { BottomSheet, Button } from "@/components/ui";
 import { Icon } from "@benrobo/iconary/react";
-import { Download01Icon } from "@benrobo/iconary/core/duotone-rounded";
-import { cn } from "@/lib/utils";
+import { Copy01Icon, Download01Icon} from "@benrobo/iconary/core/duotone-rounded";
+import { Tick02Icon, Tick04Icon } from "@benrobo/iconary/core/solid-rounded";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { formatNaira, formatTxDate } from "@/lib/format";
 import { RECEIPTS_API } from "@/api/http/v1/receipts/receipts.api";
 import type { TransactionRecord } from "@/api/http/v1/transactions/transactions.types";
 import {
-  KIND_META,
+  kindMeta,
   statusMeta,
   transactionTitle,
   type ChipTone,
   type StatusVariant,
 } from "../transaction-meta";
+import { Hint } from "@/components/hint";
+import { shortenText } from "@/lib/utils";
 
 const KIND_HERO: Record<ChipTone, string> = {
   iris: "bg-iris-soft text-iris-deep",
@@ -40,6 +43,15 @@ export function ReceiptSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const [downloading, setDownloading] = useState(false);
+  const [referenceCopied, setReferenceCopied] = useState(false);
+
+  useEffect(() => {
+    if (referenceCopied) {
+      setTimeout(() => {
+        setReferenceCopied(false);
+      }, 1000);
+    }
+  }, [referenceCopied]);
 
   async function downloadReceipt() {
     if (!transaction) return;
@@ -59,6 +71,12 @@ export function ReceiptSheet({
     }
   }
 
+  function copyReference() {
+    if (!transaction) return;
+    copyToClipboard(transaction.reference);
+    setReferenceCopied(true);
+  }
+
   if (!transaction) {
     return (
       <BottomSheet open={open} onOpenChange={onOpenChange} title="Receipt" className="max-w-[440px] pb-7">
@@ -67,7 +85,7 @@ export function ReceiptSheet({
     );
   }
 
-  const kind = KIND_META[transaction.kind];
+  const kind = kindMeta(transaction.kind);
   const status = statusMeta(transaction.status);
   const credit = transaction.direction === "credit";
 
@@ -150,9 +168,16 @@ export function ReceiptSheet({
           <div className="my-3 h-px bg-hairline-soft" />
           <div className="flex items-center justify-between gap-3">
             <span className="text-[12px] text-content-muted">Reference</span>
-            <span className="tabular font-mono text-[12.5px] font-semibold text-foreground">
-              {transaction.reference}
-            </span>
+            <div className="w-auto flex flex-row items-center justify-start gap-2">
+              <span className="tabular font-mono text-[12.5px] font-semibold text-foreground">
+                {shortenText(transaction.reference)}
+              </span>
+              <Hint label="Copy reference">
+                <Button variant="secondary" size="sm" leadingIcon={
+                  referenceCopied ? <Icon icon={Tick04Icon} className="text-emerald-500" strokeWidth={1} size={16} /> : <Icon icon={Copy01Icon} size={16} />
+                  } onClick={copyReference} />
+              </Hint>
+            </div>
           </div>
         </div>
 

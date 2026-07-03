@@ -7,24 +7,6 @@ import { CALLBACK_ACTION, encodeCallback } from "../types.js";
  * in a handler — so text and callback data stay consistent across flows.
  */
 
-/**
- * The pay button for a collection. A fixed collection shows the set amount and
- * taps straight to a flash account; an open pot (amount 0/undefined) shows
- * "Contribute" and taps into the ask-for-amount flow instead.
- */
-export function payButton(collectionId: string, amount: number): InlineKeyboard {
-  if (amount > 0) {
-    return new InlineKeyboard().text(
-      `Pay ${formatNaira(amount)}`,
-      encodeCallback(CALLBACK_ACTION.pay, collectionId)
-    );
-  }
-  return new InlineKeyboard().text(
-    "Contribute",
-    encodeCallback(CALLBACK_ACTION.contribute, collectionId)
-  );
-}
-
 export function receiptListKeyboard(
   items: { reference: string; amount: number; label: string }[]
 ): InlineKeyboard {
@@ -77,6 +59,33 @@ export function openDashboard(webAppUrl: string, label = "Open dashboard"): Inli
 export function openBillLink(url: string): InlineKeyboard | undefined {
   if (!isPublicUrl(url)) return undefined;
   return new InlineKeyboard().url("Open the bill", url);
+}
+
+/**
+ * The pay keyboard for a collection, chosen by mode. A fixed collection leads with
+ * the in-chat "Pay ₦X" tap (which ties the payer to their chat identity) and adds a
+ * secondary "pay by link" button. An open pot is link-first: a single URL button to
+ * the web pay page. URL buttons are dropped when the link isn't public (dev), so the
+ * message still sends and the tappable URL in the text carries it instead.
+ */
+export function collectionPayKeyboard(
+  collection: { id: string; amountPerMember: number | null },
+  payLink: string
+): InlineKeyboard | undefined {
+  const isFixed = collection.amountPerMember != null && collection.amountPerMember > 0;
+  const linkOk = isPublicUrl(payLink);
+
+  if (isFixed) {
+    const kb = new InlineKeyboard().text(
+      `Pay ${formatNaira(collection.amountPerMember!)}`,
+      encodeCallback(CALLBACK_ACTION.pay, collection.id)
+    );
+    if (linkOk) kb.row().url("🔗 Pay by link instead", payLink);
+    return kb;
+  }
+
+  if (linkOk) return new InlineKeyboard().url("💳 Contribute", payLink);
+  return undefined;
 }
 
 /**

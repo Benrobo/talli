@@ -30,9 +30,16 @@ export const KIND_META: Record<TransactionKind, KindMeta> = {
   collection_payment: { icon: Coins01Icon, tone: "iris", label: "Collection payment" },
   savings_deposit: { icon: MoneySavingJarIcon, tone: "amber", label: "Savings deposit" },
   savings_withdrawal: { icon: MoneySavingJarIcon, tone: "amber", label: "Savings withdrawal" },
+  collection_withdrawal: { icon: MoneyReceive01Icon, tone: "emerald", label: "Collection to wallet" },
   transfer_out: { icon: MoneySend01Icon, tone: "iris", label: "Money sent" },
   refund: { icon: RefreshIcon, tone: "rose", label: "Refund" },
 };
+
+const FALLBACK_KIND_META: KindMeta = { icon: Coins01Icon, tone: "neutral", label: "Transaction" };
+
+export function kindMeta(kind: TransactionKind): KindMeta {
+  return KIND_META[kind] ?? FALLBACK_KIND_META;
+}
 
 export type StatusVariant = "success" | "pending" | "danger" | "neutral";
 
@@ -77,10 +84,14 @@ export function transactionTitle(row: TransactionRecord): string {
       return `Saved ${amount}`;
     case "savings_withdrawal":
       return `Withdrew ${amount} from savings`;
+    case "collection_withdrawal":
+      return `Moved ${amount} to wallet`;
     case "collection_payment":
       return `Collected ${amount}`;
     case "refund":
       return `Refund of ${amount}`;
+    default:
+      return amount;
   }
 }
 

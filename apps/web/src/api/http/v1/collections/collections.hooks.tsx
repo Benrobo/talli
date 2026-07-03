@@ -26,6 +26,7 @@ import type {
   CollectionWithdrawableResponse,
   WithdrawCollectionPayload,
   WithdrawCollectionResponse,
+  WithdrawToWalletResponse,
 } from "./collections.types";
 
 export const collectionsQueryKeys = {
@@ -186,6 +187,21 @@ export const useWithdrawCollection = (collectionId: string) => {
 
   return useMutation<WithdrawCollectionResponse, AxiosError, WithdrawCollectionPayload>({
     mutationFn: (payload) => COLLECTIONS_API.WITHDRAW(collectionId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.detail(collectionId) });
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.withdrawable(collectionId) });
+      queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.list() });
+      queryClient.invalidateQueries({ queryKey: walletQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKeys.all() });
+    },
+  });
+};
+
+export const useWithdrawCollectionToWallet = (collectionId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WithdrawToWalletResponse, AxiosError, number>({
+    mutationFn: (amount) => COLLECTIONS_API.WITHDRAW_TO_WALLET(collectionId, amount),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.detail(collectionId) });
       queryClient.invalidateQueries({ queryKey: collectionsQueryKeys.withdrawable(collectionId) });

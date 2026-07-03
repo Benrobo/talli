@@ -183,6 +183,17 @@ class CollectionController {
           : "Withdrawal failed, funds restored";
     return sendResponse.success(ctx, message, 200, result);
   }
+
+  async withdrawToWallet(ctx: Context) {
+    const user = ctx.get("user") as AuthUser;
+    const id = ctx.req.param("id");
+    if (!id) throw new BadRequestException("Collection id is required");
+    const body = (await ctx.req.json().catch(() => ({}))) as { amount?: number };
+    if (!body.amount || body.amount <= 0) throw new BadRequestException("A valid amount is required");
+
+    const result = await collectionService.withdrawToWallet(user.id, id, body.amount);
+    return sendResponse.success(ctx, "Moved to your wallet", 200, result);
+  }
 }
 
 export const collectionController = new CollectionController();

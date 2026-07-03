@@ -66,6 +66,12 @@ router.post(
 );
 
 router.post(
+  "/collections/:id/withdraw-to-wallet",
+  rateLimiter.rateLimit({ windowMs: 60_000, max: 10, keyPrefix: "collection:withdraw-wallet" }),
+  useCatchErrors(isAuthenticated(c.withdrawToWallet.bind(c)))
+);
+
+router.post(
   "/collections/:id/members",
   validateSchema(addMemberSchema),
   useCatchErrors(isAuthenticated(c.addMember.bind(c)))

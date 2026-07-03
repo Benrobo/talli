@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineTool } from "../define-tool.js";
 import { balanceService } from "../../balance.service.js";
+import { collectionService } from "../../collection.service.js";
 
 export const getCollectionProgressTool = defineTool({
   name: "getCollectionProgress",
@@ -15,8 +16,10 @@ export const getCollectionProgressTool = defineTool({
       .describe("Optional: focus on one collection by title. Omit to list all active collections."),
   }),
   execute: async ({ collectionName }, ctx) => {
-    const overview = await balanceService.overview(ctx.userId);
-    const collections = overview.collections;
+    const collections =
+      ctx.scope === "group"
+        ? await collectionService.progressForChat(ctx.linkedChatId, ctx.userId)
+        : (await balanceService.overview(ctx.userId)).collections;
 
     if (collectionName) {
       const needle = collectionName.toLowerCase();

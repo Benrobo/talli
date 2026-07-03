@@ -193,3 +193,4 @@ export interface WithdrawCollectionData {
 
 export type CollectionWithdrawableResponse = ApiSuccess<{ available: number }>;
 export type WithdrawCollectionResponse = ApiSuccess<WithdrawCollectionData>;
+export type WithdrawToWalletResponse = ApiSuccess<{ amount: number; walletBalance: number }>;

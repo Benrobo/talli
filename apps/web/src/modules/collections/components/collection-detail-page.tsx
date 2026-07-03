@@ -31,6 +31,7 @@ import {
   useUpdateCollectionStatus,
   useCollectionWithdrawable,
   useWithdrawCollection,
+  useWithdrawCollectionToWallet,
 } from "@/api/http/v1/collections/collections.hooks";
 import { formatNaira, toPercent } from "@/lib/format";
 import { MemberRow } from "@/modules/collections/components/member-row";
@@ -51,11 +52,13 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
   const badge = STATUS[collection.status];
   const pct = toPercent(collection.collectedMinor, collection.targetMinor);
   const owing = Math.max(0, collection.targetMinor - collection.collectedMinor);
+  const hasWithdrawn = collection.withdrawnMinor > 0;
   const [copiedLink, setCopiedLink] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const updateStatus = useUpdateCollectionStatus(collection.slug);
   const withdrawable = useCollectionWithdrawable(collection.slug);
   const withdrawCollection = useWithdrawCollection(collection.slug);
+  const withdrawToWallet = useWithdrawCollectionToWallet(collection.slug);
   const available = withdrawable.data?.data.available ?? 0;
 
   const paying = collection.members.filter((m) => m.status === "paying").length;
@@ -200,8 +203,8 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
           </div>
           <StatCard
             tone="filled"
-            label="Collected so far"
-            value={formatNaira(collection.collectedMinor)}
+            label={hasWithdrawn ? "Available in pot" : "Collected so far"}
+            value={formatNaira(hasWithdrawn ? collection.availableMinor : collection.collectedMinor)}
             icon={Wallet01Icon}
           >
             {hasGoal ? (
@@ -217,9 +220,9 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
             ) : (
               <div className="mt-3 text-[11.5px] text-white/70">{goalCaption}</div>
             )}
-            {collection.withdrawnMinor > 0 ? (
+            {hasWithdrawn ? (
               <div className="tabular mt-2 text-[11.5px] font-medium text-white/85">
-                {formatNaira(collection.availableMinor)} available ·{" "}
+                {formatNaira(collection.collectedMinor)} collected ·{" "}
                 {formatNaira(collection.withdrawnMinor)} withdrawn
               </div>
             ) : null}
@@ -313,6 +316,16 @@ export function CollectionDetailPage({ collection }: { collection: Collection })
             amount: res.data.amount,
             accountName: res.data.accountName,
             bankName: res.data.bankName,
+          };
+        }}
+        onWithdrawToWallet={async (amount) => {
+          const res = await withdrawToWallet.mutateAsync(amount);
+          return {
+            status: "sent",
+            amount: res.data.amount,
+            accountName: "your Talli wallet",
+            bankName: "Talli",
+            toWallet: true,
           };
         }}
       />

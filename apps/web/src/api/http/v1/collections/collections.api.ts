@@ -22,6 +22,7 @@ import type {
   CollectionWithdrawableResponse,
   WithdrawCollectionPayload,
   WithdrawCollectionResponse,
+  WithdrawToWalletResponse,
 } from "./collections.types";
 
 export const COLLECTIONS_ENDPOINTS = {
@@ -32,6 +33,7 @@ export const COLLECTIONS_ENDPOINTS = {
   payments: (collectionId: string) => `/api/collections/${collectionId}/payments`,
   withdrawable: (collectionId: string) => `/api/collections/${collectionId}/withdrawable`,
   withdraw: (collectionId: string) => `/api/collections/${collectionId}/withdraw`,
+  withdrawToWallet: (collectionId: string) => `/api/collections/${collectionId}/withdraw-to-wallet`,
   payView: (reference: string) => `/api/collections/pay/${reference}`,
   payCheckout: (reference: string) => `/api/collections/pay/${reference}/checkout`,
   payCancel: (reference: string) => `/api/collections/pay/${reference}/cancel`,
@@ -118,4 +120,12 @@ export const COLLECTIONS_API = {
     payload: WithdrawCollectionPayload
   ): Promise<WithdrawCollectionResponse> =>
     apiClient.post(COLLECTIONS_ENDPOINTS.withdraw(collectionId), payload).then((res) => res.data),
+
+  WITHDRAW_TO_WALLET: async (
+    collectionId: string,
+    amount: number
+  ): Promise<WithdrawToWalletResponse> =>
+    apiClient
+      .post(COLLECTIONS_ENDPOINTS.withdrawToWallet(collectionId), { amount })
+      .then((res) => res.data),
 };

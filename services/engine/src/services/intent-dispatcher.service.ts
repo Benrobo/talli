@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import { messages } from "../integrations/telegram/ui/messages.js";
-import { confirmCancel, payButton, selectCollectionKeyboard, openBillLink } from "../integrations/telegram/ui/keyboards.js";
+import { confirmCancel, collectionPayKeyboard, selectCollectionKeyboard, openBillLink } from "../integrations/telegram/ui/keyboards.js";
 import type { InlineKeyboard } from "grammy";
 import { commandParserService } from "./command-parser.service.js";
 import { isAdminOnlyInGroup, type ChatScope } from "../constants/chat-capabilities.js";
@@ -584,11 +584,15 @@ class IntentDispatcherService {
       deadline: deadline?.isValid() ? deadline.toDate() : undefined,
       linkedChatId: ctx.linkedChatId,
     });
-    const keyboard =
-      collection.amountPerMember != null
-        ? payButton(collection.id, collection.amountPerMember)
-        : undefined;
-    return { text: messages.collectionCreated(collection.title), keyboard };
+    const payLink = collectionService.payLink(collection.id);
+    const keyboard = collectionPayKeyboard(
+      { id: collection.id, amountPerMember: collection.amountPerMember },
+      payLink
+    );
+    return {
+      text: messages.collectionCreated(collection.title, isFixed ? undefined : payLink),
+      keyboard,
+    };
   }
 
   private async runBillSplit(intent: Intent, ctx: DispatchContext): Promise<DispatchResult> {
@@ -662,10 +666,11 @@ class IntentDispatcherService {
    * progress — wallet and savings are personal and must not leak into a group.
    */
   private async runStatusQuery(ctx: DispatchContext): Promise<DispatchResult> {
-    const overview = await balanceService.overview(ctx.userId);
     if (ctx.scope === "group") {
-      return { text: messages.collectionsOverview(overview.collections) };
+      const collections = await collectionService.progressForChat(ctx.linkedChatId, ctx.userId);
+      return { text: messages.collectionsOverview(collections) };
     }
+    const overview = await balanceService.overview(ctx.userId);
     return { text: messages.balance(overview) };
   }
 
@@ -676,7 +681,11 @@ class IntentDispatcherService {
     }
     if (collections.length === 1) {
       const c = collections[0]!;
-      return { text: messages.collectionCard(c.title, c.amountPerMember ?? 0), keyboard: payButton(c.id, c.amountPerMember ?? 0) };
+      const payLink = collectionService.payLink(c.id);
+      return {
+        text: messages.collectionCard(c.title, c.amountPerMember ?? 0, payLink),
+        keyboard: collectionPayKeyboard({ id: c.id, amountPerMember: c.amountPerMember }, payLink),
+      };
     }
     const items = collections.map((c) => ({
       id: c.id,

@@ -7,10 +7,13 @@ import type {
   Payment,
   Prisma,
 } from "@prisma/client";
+import dayjs from "dayjs";
 import prisma from "../prisma/index.js";
 import env from "../config/env.js";
+import { randomToken } from "../lib/utils.js";
 import { platformUserService } from "./platform-user.service.js";
 import { transferService } from "./transfer.service.js";
+import { ledgerService } from "./ledger.service.js";
 import { BadRequestException, NotFoundException } from "../lib/exception.js";
 
 export interface CreateCollectionInput {
@@ -256,6 +259,49 @@ class CollectionService {
       where: { ownerUserId, status: active },
       orderBy: { createdAt: "desc" },
       take: 10,
+    });
+  }
+
+  /**
+   * Progress for the collections THIS chat can see (chat-scoped, same rule as
+   * {@link listPayableForChat}). Used by the group "how's it going" tool so a
+   * member can only ever see the collections tied to their own chat — never the
+   * owner's collections in other groups or the dashboard.
+   */
+  async progressForChat(linkedChatId: string, ownerUserId: string): Promise<
+    {
+      title: string;
+      status: CollectionStatus;
+      amountPerMember: number | null;
+      targetAmount: number | null;
+      deadline: string | null;
+      collected: number;
+      paidCount: number;
+      enrolledCount: number;
+    }[]
+  > {
+    const collections = await this.listPayableForChat(linkedChatId, ownerUserId);
+    if (collections.length === 0) return [];
+
+    const withMembers = await prisma.collection.findMany({
+      where: { id: { in: collections.map((c) => c.id) } },
+      orderBy: { createdAt: "desc" },
+      include: { members: { select: { paidAmount: true, expectedAmount: true } } },
+    });
+
+    return withMembers.map((c) => {
+      const collected = c.members.reduce((sum, m) => sum + m.paidAmount, 0);
+      const paidCount = c.members.filter((m) => m.paidAmount >= m.expectedAmount && m.expectedAmount > 0).length;
+      return {
+        title: c.title,
+        status: c.status,
+        amountPerMember: c.amountPerMember,
+        targetAmount: c.targetAmount,
+        deadline: c.deadline ? dayjs(c.deadline).format("YYYY-MM-DD") : null,
+        collected,
+        paidCount,
+        enrolledCount: c.members.length,
+      };
     });
   }
 
@@ -563,6 +609,22 @@ class CollectionService {
       );
     }
 
+    const [pendingPayout, inboundPending] = await Promise.all([
+      prisma.payment.findFirst({
+        where: { collectionId, kind: "transfer_out", status: "pending" },
+        select: { id: true },
+      }),
+      prisma.pendingPayment.findFirst({
+        where: { collectionId, status: "pending" },
+        select: { id: true },
+      }),
+    ]);
+    if (pendingPayout || inboundPending) {
+      throw new BadRequestException(
+        "This collection has a payment still in progress. Try again once it settles."
+      );
+    }
+
     await prisma.pendingPayment.deleteMany({ where: { collectionId } });
     await prisma.collection.delete({ where: { id: collectionId } });
   }
@@ -726,7 +788,15 @@ class CollectionService {
     });
   }
 
-  /** Finds a returning payer by chat identity (preferred) or by case-insensitive name. */
+  /**
+   * Finds a returning payer. Chat identity wins (a Telegram payer keeps one row
+   * across contributions). Falls back to a case-insensitive name match, but only
+   * onto a member NOT already claimed by a different chat identity — so a web payer
+   * typing "John" is never merged into a Telegram-"John"'s row (which would
+   * misattribute their money and mis-send receipts). When the caller has no
+   * identity and the same-named member belongs to someone else, returns undefined
+   * so a fresh member is created instead.
+   */
   private findExistingMember(
     members: CollectionMember[],
     platformUserId: string | undefined,
@@ -736,7 +806,12 @@ class CollectionService {
       const byId = members.find((row) => row.platformUserId === platformUserId);
       if (byId) return byId;
     }
-    return members.find((row) => row.displayName.toLowerCase() === payerName.toLowerCase());
+    const needle = payerName.toLowerCase();
+    return members.find(
+      (row) =>
+        row.displayName.toLowerCase() === needle &&
+        (row.platformUserId == null || row.platformUserId === platformUserId)
+    );
   }
 
   private async resolveOpenContributionMember(
@@ -822,15 +897,32 @@ class CollectionService {
 
   /**
    * The money position of a collection: `collected` (gross from members, never
-   * decreases), `withdrawn` (successful payouts net of refunds), and `available`
-   * (what's still in the pot to withdraw). Single source of truth reused by the
-   * withdraw check, the detail view, and the delete guard so they never disagree.
+   * decreases), `withdrawn` (money that has left or is leaving, net of refunds),
+   * and `available` (what's still in the pot to withdraw). Single source of truth
+   * reused by the withdraw check, the detail view, and the delete guard so they
+   * never disagree.
+   *
+   * `withdrawn` reserves BOTH successful AND pending payouts — a collection payout
+   * writes a `pending` transfer_out and never decrements a running balance, so a
+   * pending one must still hold the money down or the same funds could be withdrawn
+   * twice while the first is in flight. Failed payouts (money never left) are
+   * excluded; a REFUND restores the money via a successful `refund` credit. An
+   * instant to-wallet withdrawal is a `collection_withdrawal` and counts too.
    */
   async balanceOf(collectionId: string): Promise<{ collected: number; withdrawn: number; available: number }> {
-    const [members, payouts, refunds] = await Promise.all([
+    const [members, payouts, toWallet, refunds] = await Promise.all([
       prisma.collectionMember.aggregate({ where: { collectionId }, _sum: { paidAmount: true } }),
       prisma.payment.aggregate({
-        where: { collectionId, kind: "transfer_out", direction: "debit", status: "successful" },
+        where: {
+          collectionId,
+          kind: "transfer_out",
+          direction: "debit",
+          status: { in: ["pending", "successful"] },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.payment.aggregate({
+        where: { collectionId, kind: "collection_withdrawal", status: "successful" },
         _sum: { amount: true },
       }),
       prisma.payment.aggregate({
@@ -840,7 +932,8 @@ class CollectionService {
     ]);
 
     const collected = members._sum.paidAmount ?? 0;
-    const withdrawn = (payouts._sum.amount ?? 0) - (refunds._sum.amount ?? 0);
+    const withdrawn =
+      (payouts._sum.amount ?? 0) + (toWallet._sum.amount ?? 0) - (refunds._sum.amount ?? 0);
     return { collected, withdrawn, available: Math.max(0, collected - withdrawn) };
   }
 
@@ -885,6 +978,42 @@ class CollectionService {
       narration: input.narration,
       source: { kind: "collection", collectionId },
     });
+  }
+
+  /**
+   * Moves collected funds from a collection straight into the owner's Talli wallet.
+   * Owner-only. This is an INTERNAL ledger move — no Nomba payout, no fee, instant —
+   * because the money is already inside Talli. It credits the wallet and records a
+   * `collection_withdrawal` against the collection so `balanceOf` counts it as
+   * withdrawn. Idempotency-safe on the referenceId; the whole thing is atomic.
+   */
+  async withdrawToWallet(
+    userId: string,
+    collectionId: string,
+    amount: number
+  ): Promise<{ amount: number; walletBalance: number }> {
+    if (amount <= 0) throw new BadRequestException("Amount must be greater than zero");
+
+    const collection = await prisma.collection.findFirst({
+      where: { id: collectionId, ownerUserId: userId },
+      select: { id: true },
+    });
+    if (!collection) throw new NotFoundException("Collection not found");
+
+    const available = await this.availableToWithdraw(userId, collectionId);
+    if (amount > available) {
+      throw new BadRequestException(
+        `This collection only has ₦${available} available, can't withdraw ₦${amount}.`
+      );
+    }
+
+    const referenceId = `col_wd_wallet_${collectionId}_${randomToken(8)}`;
+    const { balance } = await ledgerService.credit(userId, "collection_withdrawal", amount, {
+      collectionId,
+      referenceId,
+    });
+
+    return { amount, walletBalance: balance };
   }
 
   private memberStatus(paid: number, expected: number): CollectionMember["status"] {

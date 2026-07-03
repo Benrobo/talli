@@ -31,11 +31,12 @@ let logoDataUri: string | null = null;
 /**
  * Fetches the brand logo from its public URL once and caches it as a data URI, so
  * satori renders self-contained (no per-receipt network call) and the receipt
- * never depends on a file bundled into the container. If the fetch fails the logo
- * is skipped rather than crashing the whole receipt.
+ * never depends on a file bundled into the container. A failed fetch is left
+ * uncached (logoDataUri stays null) so the NEXT receipt retries — the current one
+ * renders without the logo rather than being poisoned into never showing it again.
  */
 async function ensureLogo(): Promise<void> {
-  if (logoDataUri !== null) return;
+  if (logoDataUri) return;
   try {
     const res = await fetch(env.BRAND_LOGO_URL);
     if (!res.ok) throw new Error(`logo fetch ${res.status}`);
@@ -43,7 +44,6 @@ async function ensureLogo(): Promise<void> {
     logoDataUri = `data:image/png;base64,${buf.toString("base64")}`;
   } catch (err) {
     logger.warn(`[receipt] logo fetch failed, rendering without it: ${(err as Error).message}`);
-    logoDataUri = "";
   }
 }
 
@@ -265,6 +265,9 @@ function buildTree(data: ReceiptData): Node {
 
 export async function renderReceipt(data: ReceiptData): Promise<Buffer> {
   const [, fonts] = await Promise.all([ensureLogo(), receiptFontManager.getFonts()]);
+  if (fonts.length === 0) {
+    throw new Error("receipt fonts unavailable — could not load any font to render");
+  }
   const tree = buildTree(data);
   const svgOut = await satori(tree as never, { width: 720, fonts: fonts as never });
   return sharp(Buffer.from(svgOut)).png({ compressionLevel: 8 }).toBuffer();

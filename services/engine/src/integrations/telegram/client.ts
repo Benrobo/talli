@@ -30,12 +30,14 @@ export class TelegramClient {
     chatId: number | string,
     photo: Buffer,
     caption?: string,
+    keyboard?: InlineKeyboard,
     filename = "receipt.png"
   ): Promise<boolean> {
     try {
       await this.api.sendPhoto(chatId, new InputFile(photo, filename), {
         caption,
         parse_mode: "Markdown",
+        reply_markup: keyboard,
       });
       return true;
     } catch (err) {

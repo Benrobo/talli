@@ -38,7 +38,7 @@ interface CollectionLine {
 function collectionBlock(c: CollectionLine): string[] {
   const each = c.amountPerMember ? ` · ${formatNaira(c.amountPerMember)}/person` : "";
   const done = c.targetAmount != null && c.collected >= c.targetAmount;
-  const lines = [`*${c.title}*${each}${done ? "  ✅" : ""}`];
+  const lines = [`*${escapeMarkdown(c.title)}*${each}${done ? "  ✅" : ""}`];
   if (c.targetAmount) {
     const pct = Math.min(100, Math.round((c.collected / c.targetAmount) * 100));
     lines.push(`💵 ${formatNaira(c.collected)} of ${formatNaira(c.targetAmount)}  (${pct}%)`);
@@ -256,7 +256,7 @@ export const messages = {
       ? `Collected: *${formatNaira(p.collectedTotal)}* of *${formatNaira(p.targetAmount)}*`
       : `Collected so far: *${formatNaira(p.collectedTotal)}* (${p.paidCount} paid)`;
     const lines = [
-      `🎉 ${payer} just paid *${formatNaira(p.amount)}* to *${p.title}*!`,
+      `🎉 ${payer} just paid *${formatNaira(p.amount)}* to *${escapeMarkdown(p.title)}*!`,
       "",
       progress,
     ];
@@ -356,7 +356,7 @@ export const messages = {
     return [
       "💰 *Create collection*",
       "",
-      `Title: *${title}*`,
+      `Title: *${escapeMarkdown(title)}*`,
       isFixed ? `Everyone pays: *${formatNaira(amount)}*` : "Open pot — *anyone can chip in any amount*",
       targetAmount ? `Target: *${formatNaira(targetAmount)}*` : "",
       deadline ? `Deadline: *${deadline}*` : "",
@@ -491,8 +491,18 @@ export const messages = {
     ].join("\n");
   },
 
-  collectionCreated(title: string): string {
-    return `✅ Collection *${title}* is live. Members can tap the pay button to contribute.`;
+  collectionCreated(title: string, payLink?: string): string {
+    const lines = [`✅ Collection *${escapeMarkdown(title)}* is live.`];
+    if (payLink) {
+      lines.push(
+        "",
+        "Tap below to pay here, or share this link so anyone can chip in — even outside this chat:",
+        `[${payLink}](${payLink})`
+      );
+    } else {
+      lines.push("", "Members can tap the pay button below to contribute.");
+    }
+    return lines.join("\n");
   },
 
   noPayableCollections: "💰 There are no active collections to pay in this group right now.",
@@ -501,19 +511,28 @@ export const messages = {
     const lines = ["💰 *Which collection do you want to pay?*", ""];
     items.forEach((c) => {
       const amountLabel = c.amount > 0 ? `${formatNaira(c.amount)}/person` : "open pot";
-      lines.push(`• *${c.title}* — ${amountLabel}  ·  _${dayjs(c.createdAt).format("DD MMM")}_`);
+      lines.push(`• *${escapeMarkdown(c.title)}* — ${amountLabel}  ·  _${dayjs(c.createdAt).format("DD MMM")}_`);
     });
     lines.push("", "Tap one below to pay.");
     return lines.join("\n");
   },
 
-  collectionCard(title: string, amount: number): string {
-    const line = amount > 0 ? `Amount: *${formatNaira(amount)}* per person` : "*Open pot* — chip in any amount";
-    return [`💰 *${title}*`, "", line, "", "Tap below to pay."].join("\n");
-  },
-
-  contributeAsk(title: string): string {
-    return `💰 How much would you like to put into *${title}*? Reply with an amount.`;
+  collectionCard(title: string, amount: number, payLink?: string): string {
+    const lines = [`💰 *${escapeMarkdown(title)}*`, ""];
+    if (amount > 0) {
+      lines.push(`Amount: *${formatNaira(amount)}* per person`, "", "Tap *Pay* below to pay here.");
+      if (payLink) {
+        lines.push(
+          "",
+          "_Paying here keeps it tied to you._",
+          `Or [pay by link](${payLink}) — but then I can only show the name entered, not that it's you from this group.`
+        );
+      }
+    } else {
+      lines.push("*Open pot* — anyone can chip in any amount, even from outside this chat.");
+      if (payLink) lines.push("", `👉 [Open to contribute](${payLink})`);
+    }
+    return lines.join("\n");
   },
 
   contributeBadAmount: "🙏 Send just a number, like 500 or 2000.",

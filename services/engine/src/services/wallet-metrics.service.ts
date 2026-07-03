@@ -115,6 +115,7 @@ const REASON_BY_KIND: Record<PaymentKind, string> = {
   savings_deposit: "savings_deposit",
   savings_withdrawal: "savings_withdrawal",
   collection_payment: "collection",
+  collection_withdrawal: "collection_withdrawal",
   transfer_out: "send",
   wallet_topup: "topup",
   refund: "refund",
