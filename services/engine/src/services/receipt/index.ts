@@ -176,6 +176,43 @@ class ReceiptService {
     return payment?.orderRefId ?? null;
   }
 
+  /**
+   * Whether a receipt reference belongs to this requester — a transfer they made,
+   * a payment THEY made (matched by their platform id), or a payment into a
+   * collection they own. This gates a caller-supplied reference so someone can
+   * never render another user's receipt by passing an arbitrary reference.
+   */
+  async ownsReference(
+    userId: string,
+    platformUserId: string,
+    reference: string
+  ): Promise<boolean> {
+    const transfer = await prisma.transfer.findFirst({
+      where: { merchantTxRef: reference, userId },
+      select: { id: true },
+    });
+    if (transfer) return true;
+
+    const collections = await prisma.collection.findMany({
+      where: { ownerUserId: userId },
+      select: { id: true },
+    });
+    const collectionIds = collections.map((c) => c.id);
+
+    const payment = await prisma.pendingPayment.findFirst({
+      where: {
+        orderRefId: reference,
+        status: "completed",
+        OR: [
+          { payerPlatformUserId: platformUserId },
+          ...(collectionIds.length ? [{ collectionId: { in: collectionIds } }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+    return payment !== null;
+  }
+
   async render(data: ReceiptData): Promise<Buffer> {
     return renderReceipt(data);
   }
