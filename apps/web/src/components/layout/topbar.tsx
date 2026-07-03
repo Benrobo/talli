@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Icon } from "@benrobo/iconary/react";
 import { Logout01Icon, UserIcon } from "@benrobo/iconary/core/duotone-rounded";
@@ -21,6 +21,7 @@ export function Topbar() {
   const { data: meResponse } = useMe();
   const logout = useLogout();
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileRequested = useRef(false);
   const me = meResponse?.data.user;
   const avatarSeed = me?.email || me?.name;
 
@@ -55,7 +56,16 @@ export function Topbar() {
               <UserAvatar seed={avatarSeed} size={36} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent
+            align="end"
+            className="w-56"
+            onCloseAutoFocus={(event) => {
+              if (!profileRequested.current) return;
+              event.preventDefault();
+              profileRequested.current = false;
+              requestAnimationFrame(() => setProfileOpen(true));
+            }}
+          >
             <DropdownMenuLabel>
               <div className="flex items-center gap-2.5">
                 <UserAvatar seed={avatarSeed} size={36} />
@@ -69,9 +79,8 @@ export function Topbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                setProfileOpen(true);
+              onSelect={() => {
+                profileRequested.current = true;
               }}
             >
               <Icon icon={UserIcon} size={15} />
