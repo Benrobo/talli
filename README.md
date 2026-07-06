@@ -9,6 +9,13 @@ Nomba · Telegram bot. (WhatsApp is planned — see the PRD.)
 
 Full product spec: [`docs/talli-prd.md`](docs/talli-prd.md) · [`docs/talli-prd-v2.md`](docs/talli-prd-v2.md)
 
+## Demo
+
+See how Talli works — collecting, splitting, and sending money right where the
+conversation already happens:
+
+[![Watch the Talli demo](https://img.youtube.com/vi/Jxa6vZYg8Vo/maxresdefault.jpg)](https://www.youtube.com/watch?v=Jxa6vZYg8Vo)
+
 ## Prerequisites
 
 Icons come from **`@benrobo/iconary`**, a private package on **GitHub Packages**.
