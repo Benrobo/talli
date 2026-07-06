@@ -68,6 +68,13 @@ src/routeTree.gen.ts
 /docs/nomba-test-credentials.md
 /docs/talli-artifacts
 
+# Demo video / voiceover scripts (local-only, not part of the product)
+/docs/demo-script.md
+/docs/demo-final-two-voice.md
+/docs/demo-elevenlabs-input.md
+/docs/demo-voiceover-elevenlabs.md
+/docs/elevenlabs-demo-voice-plan.md
+
 # Local git history tooling (never commit)
 scripts/rewrite-commit-dates*
 .vercel

@@ -28,6 +28,7 @@ function LandingPage() {
       <SiteHeader />
       <Hero />
       <ProblemBand />
+      <DemoVideo />
       <Thesis />
       <ProductShot />
       <CollectChapter />
@@ -52,6 +53,7 @@ function SiteHeader() {
           <span className="font-display text-[18px] font-bold tracking-tight sm:text-[19px]">Talli</span>
         </Link>
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-[13.5px] font-medium text-content-muted md:flex">
+          <a href="#demo" className="transition-colors hover:text-foreground">Demo</a>
           <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
           <a href="#features" className="transition-colors hover:text-foreground">Features</a>
           <a href="#faq" className="transition-colors hover:text-foreground">FAQ</a>
@@ -282,6 +284,37 @@ function MockCount() {
         ))}
       </div>
     </div>
+  );
+}
+
+function DemoVideo() {
+  return (
+    <section id="demo" className="border-b border-hairline bg-paper">
+      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24">
+        <div className="mx-auto max-w-[620px] text-center">
+          <PixelEyebrow>See it in action</PixelEyebrow>
+          <h2 className="mt-5 font-display text-[32px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[40px]">
+            See how Talli works.
+          </h2>
+          <p className="mt-4 text-[15.5px] leading-relaxed text-content-muted">
+            A quick walkthrough of collecting, splitting, and sending money — right where the
+            conversation already happens.
+          </p>
+        </div>
+        <div className="t-dither mx-auto mt-10 max-w-[900px] rounded-[20px] border border-hairline p-2.5 sm:mt-12 sm:rounded-[24px] sm:p-3">
+          <div className="relative aspect-video overflow-hidden rounded-[14px] border border-hairline bg-black shadow-[0_30px_70px_-46px_rgba(23,20,39,0.5)]">
+            <iframe
+              className="absolute inset-0 h-full w-full"
+              src="https://www.youtube-nocookie.com/embed/Jxa6vZYg8Vo?rel=0"
+              title="Talli demo"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
